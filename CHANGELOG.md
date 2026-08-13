@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.3.0
+
+> 逐技能审阅后的优化批：短篇追踪补全、知识库单源化、去AI味评测基准、拆书效率、图像-写作闭环、审阅回流与一批小项修复。
+
+### 写作与审阅
+
+- **短篇轻量追踪**：新增 `light-tracking.md` 伏笔表契约（`追踪/伏笔.md`：埋设/回收/断线状态），Phase 2 开表 / Phase 3 批末维护 / Phase 4 核对三挂接点；转长篇时迁移入追踪事务
+- **review findings 回流**：`.story-review/findings.jsonl` 结构化落盘（batch/mode/agent/severity/category/status），与 state.md 跨批摘要互补，供写作画像消费
+- **去AI味评测基准**：`scripts/ai-pattern-benchmark/`（blocking 正例 10 句 + advisory 密度组 + demo 真实文本负例 60 句自举验证）+ `test-ai-benchmark.sh` 回归（命中率 ≥90%、零误伤）
+
+### 拆书效率（analyze）
+
+- Stage 2 默认分档抽取：黄金三章+节奏锚点章+情绪峰值章全量，其余一页摘要；brief 章不升 pro；耗时口径更新
+- Stage 6 文风进并行图（3‖4a‖6 三路并行）
+- Stage 0 章节边界脚本化：新增 `chapter-boundaries.py`（章节正则/剔目录块/卷号消歧/四列表）
+- 短拆验收 Step 1 确定性脚本优先（检测器副本同步至 story-short-analyze）
+
+### 工程与闭环
+
+- **知识库单源化**：同名 reference 副本全量登记 shared-assets.json（70 组/98 份）；修复 character-basics v2 漂移（long-write/short-analyze 旧副本升级）
+- **图像-写作闭环**：角色卡新增「形象图」字段；story-image 生成后回写；封面提示词注入题材定位表层卖点
+- **预算预警**：check-doc-budget.sh `--warn-margin` 模式
+- **小项**：旧工具名/退化链/模型残留全清零；browser-cdp 中文描述；short-analyze 版本号统一；import SKILL 拆分；long-scan 采集降级路径
+
 ## v1.2.2
 
 > 双视角审阅后的 P0 修复批：热路径执行歧义、agent 回退链退化、内部矛盾与隐私兑底。
