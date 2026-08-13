@@ -7,7 +7,8 @@
       "targets": [
         "skills/story-long-write/scripts/check-ai-patterns.js",
         "skills/story-review/scripts/check-ai-patterns.js",
-        "skills/story-short-write/scripts/check-ai-patterns.js"
+        "skills/story-short-write/scripts/check-ai-patterns.js",
+        "skills/story-short-analyze/scripts/check-ai-patterns.js"
       ]
     },
     {

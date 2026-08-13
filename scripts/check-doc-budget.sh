@@ -11,15 +11,15 @@ set -euo pipefail
 
 WARN_MARGIN=""
 case "${1:-}" in
-	--warn-margin)
-		WARN_MARGIN="${2:?--warn-margin 需要一个数字参数（距上限多少字符内预警）}"
-		shift 2
-		;;
-	"") ;;
-	*)
-		echo "用法: check-doc-budget.sh [--warn-margin N]" >&2
-		exit 2
-		;;
+--warn-margin)
+	WARN_MARGIN="${2:?--warn-margin 需要一个数字参数（距上限多少字符内预警）}"
+	shift 2
+	;;
+"") ;;
+*)
+	echo "用法: check-doc-budget.sh [--warn-margin N]" >&2
+	exit 2
+	;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -27,8 +27,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MANIFEST="$SCRIPT_DIR/doc-budget.json"
 
 if [ ! -f "$MANIFEST" ]; then
-  echo "FAIL: 预算清单缺失：$MANIFEST"
-  exit 1
+	echo "FAIL: 预算清单缺失：$MANIFEST"
+	exit 1
 fi
 
 node -e '

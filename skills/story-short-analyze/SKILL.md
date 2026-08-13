@@ -107,7 +107,7 @@ word_count = 全文字数
 ### Stage → 文件映射
 
 | Stage | 落地文件 |
-|-------|----------|
+| ------- | ---------- |
 | 2 | `拆文报告.md`（故事核+结构+梗概段） + `情节节点.md` |
 | 3 | `拆文报告.md`（情感曲线+爆点段） |
 | 4 | `拆文报告.md`（反转段） + `写作手法.md` |
@@ -138,7 +138,7 @@ word_count = 全文字数
 先只挑关键节点，不要为满足节点数量硬拆。
 
 | 阶段 | 名称 | 输入 | 输出 | 完成标志 |
-|------|------|------|------|----------|
+| ------ | ------ | ------ | ------ | ---------- |
 | 2 | 结构+情节节点 | 全文 | 故事核 + 故事梗概 + 功能分段（4-6段，必须含开端/发展/高潮/结局）+ 情节节点清单。节点密度按字数分档，见 material-decomposition.md「情节节点提取」的字数分档表。 | 结构划分 ≥4 段 + 故事核已提取 |
 | 3 | 情感线+爆点 | 故事核+结构划分+情节节点数据 | 情感曲线（≥5节点）+ 爆点分析（6维度）+ 期待感分析。 | 爆点分析 6 维度齐全 |
 | 4 | 反转+写作手法 | 节点+情感数据 | 前置反转检查 + 反转机制（铺垫≥2条）+ 写作手法（≥5项维度：POV/对话/时间/信息/其他）。 | 写作手法 ≥5 项 |
@@ -158,6 +158,7 @@ word_count = 全文字数
 切换/信息揭示点分段，再映射到开端、发展、高潮、结局；不要机械按自然段数量切分。
 
 **投稿层拆解**（拆 Stage 5 开头 / Stage 6 可复用时顺带记录进 拆文报告.md，非阻断；story-short-write 定平台基调时可作初判参考）：
+
 - **平台基调**：判定源文更贴哪一路——知乎盐选（第一人称剥洋葱、细思极恐、章末颠覆认知细节）/ 小程序（开局即地狱、当众打脸、章末卡脖子断点）/ 番茄短篇（顺滑无毒点、金手指直白、大满贯收尾）。
 - **导语写法**：源文开头前 150-220 字（多数就是正文第一段）怎么钩人——四维骨架（起因+核心冲突+人设底色+情绪反转）、黄金三角（具体物件+信息差+留白钩子）各落在哪句。
 - **付费点/最强断点**：源文把最强悬念断点（读者最想往下翻的地方）卡在第几节章末；付费点前后每章剧情点密度是否递增。
@@ -174,7 +175,7 @@ Stage 6 内容写完后，**不**立刻 append `6` 到 `stages_completed[]`。�
 
 ### Step 1：拆文报告 AI 腔自检
 
-扫描 `拆文报告.md` 全文 against [references/banned-words.md](references/banned-words.md)
+**确定性脚本优先**：先跑 `node <本 skill 目录>/scripts/check-ai-patterns.js --check <拆文库/{书名}/拆文报告.md>`（本 skill 自带副本，与 story-deslop 源字节一致），blocking 命中必须先改报告再继续；advisory 按读感复核。脚本不可用时回退手工扫描：对照 [references/banned-words.md](references/banned-words.md)
 词表 + [references/anti-ai-writing.md](references/anti-ai-writing.md) 句式规则。
 扫描时跳过源文引用——以 `>` 开头的引用行、以及表格中「关键台词 / 原文引用」列的引号直引不计入，只扫分析师本人写的措辞。
 
@@ -222,7 +223,7 @@ Stage 6 内容写完后，**不**立刻 append `6` 到 `stages_completed[]`。�
 **位置：** 拆文（第 2/3 步）
 
 | 时机 | 跳转到 | 命令 |
-|---|---|---|
+| --- | --- | --- |
 | 准备开写 | story-short-write（同时读 拆文报告.md + 情节节点.md + 写作手法.md + 原文/ + _meta.json） | `/skill:story-short-write` |
 | 需要市场数据 | story-short-scan | `/skill:story-short-scan` |
 | 字数 > 20k 更适合长篇 | story-long-scan → story-long-analyze | `/skill:story-long-scan` |
@@ -234,7 +235,7 @@ Stage 6 内容写完后，**不**立刻 append `6` 到 `stages_completed[]`。�
 ### 核心方法论（拆文时必须加载）
 
 | 文件 | 何时加载 |
-|------|----------|
+| ------ | ---------- |
 | [references/output-contract.md](references/output-contract.md) | 全程：Stage→文件映射 / `_meta.json` schema（含 structure_counts）/ 下游消费规范 / 验收接入点 |
 | [references/output-templates.md](references/output-templates.md) | 拆文时：输出模板 + 结构库 + 质量检查（含 [BLOCK]/[WARN] 标注） |
 | [references/material-decomposition.md](references/material-decomposition.md) | 拆文方法论：情节节点提取 + 写作手法 + 情感线 + 节奏分析 + 共鸣分析 + 人物规则 + **质量标准唯一权威** |
@@ -245,7 +246,7 @@ Stage 6 内容写完后，**不**立刻 append `6` 到 `stages_completed[]`。�
 ### 按需加载（拆解对应题材 / 维度时作为对照标尺）
 
 | 文件 | 何时加载 |
-|------|----------|
+| ------ | ---------- |
 | [references/deconstruction-examples.md](references/deconstruction-examples.md) | 校准拆文方法时：3 个完整案例作为参照 |
 | [references/zhihu-style.md](references/zhihu-style.md) | 拆解知乎盐言故事时作为平台特性对照 |
 | [references/genre-catalog.md](references/genre-catalog.md) | 拆解特定题材时：加载对应题材的「短篇视角」章节作为标准模式 |
