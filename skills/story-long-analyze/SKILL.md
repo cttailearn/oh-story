@@ -1,8 +1,7 @@
 ---
 name: story-long-analyze
 version: 1.0.0
-description: "长篇网文拆文。深度拆解爆款长篇小说的黄金三章、人设架构、爽点设计、节奏控制。单一深度拆解管道：跑完黄金三章（Stage 1）后产出快速预览报告并询问是否继续全量拆解，确认后从 Stage 2 续跑逐章摘要、聚合分析、设定关系、汇总报告，全程产物落盘 拆文库/{书名}/。触发方式：/story-long-analyze、/长篇拆文、「帮我拆这本书」「拆这本书」「分析黄金三章」「深度拆解」「完整拆解」「系统拆解」或提供小说文本文件路径——全部进入同一管道。"
-metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claudecode"}}
+description: "长篇网文拆文。深度拆解爆款长篇小说的黄金三章、人设架构、爽点设计、节奏控制。单一深度拆解管道：跑完黄金三章（Stage 1）后产出快速预览报告并询问是否继续全量拆解，确认后从 Stage 2 续跑逐章摘要、聚合分析、设定关系、汇总报告，全程产物落盘 拆文库/{书名}/。触发方式：/skill:story-long-analyze、/长篇拆文、「帮我拆这本书」「拆这本书」「分析黄金三章」「深度拆解」「完整拆解」「系统拆解」或提供小说文本文件路径——全部进入同一管道。"
 ---
 # story-long-analyze：长篇网文拆文
 
@@ -12,9 +11,9 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ---
 
-> Agent 兼容性：检查专业 agent 是否可用时，按 `.claude/agents/{agent}.md` → `.opencode/agents/{agent}.md` → `.codex/agents/{agent}.toml` 的顺序查找。Codex 原生子代理调用优先使用同名 `agent_type`；如果当前 Codex 运行时返回 `unknown agent_type` 或未暴露 custom-agent registry，必须降级为 solo/direct。检测到 `.zcode/` 时同样直接 solo/direct，因为 ZCode 3.3.4 不执行项目 custom agents；报告 `Fallback: project custom agents unavailable -> solo`。Claude/OpenCode 兼容面保留 `subagent_type`。
+> Agent 兼容性：检查专业 agent 是否可用时，检查 `.pi/agents/{agent}.md` 是否存在且运行时暴露 subagent 工具（pi-subagents）；任一不满足即降级为 solo/direct，报告 `Fallback: project custom agents unavailable -> solo`。
 >
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-claudecode，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/skill:story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 ## 拆解边界声明（主线程同样适用）
 
@@ -111,9 +110,8 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 **预期耗时提示**：开始前根据章节数给用户一个粗估：<50 章通常 30-60 分钟；50-200 章通常 1-3 小时；>200 章可能需要多轮会话。Stage 2 可并行提取，但 Stage 3-6 仍依赖前序产物，需按阶段推进。
 
-
 | 阶段 | 名称 | 输入 | 输出 | 完成标志 |
-|------|------|------|------|----------|
+| ------ | ------ | ------ | ------ | ---------- |
 | 0 | 概要提取 | 原始文本 | 概要.md（**首版 200 字 thin first-pass** + 章节索引；full plot-aware 500-1000 字版在 Stage 5 落盘覆盖）+ **Stage 0 章节边界子步骤将边界表写入 `_progress.md`**（详见下方说明） | 章节结构识别完成 + 章节边界落盘 |
 | 1 | 黄金三章 | 前3章原文 | 第1章_深度拆解.md / 第2章_深度拆解.md / 第3章_深度拆解.md（每章一个文件）。非人形反派（灵气复苏/末世/国运等抽象对抗型）出现在前三章时，在本阶段一并按抽象对抗型路由分析（核心对抗面/紧迫感来源/升级机制/叙事替代）。 | 3章拆解完成 → **停靠产出快速预览.md** |
 | 2 | 逐章摘要 | 分块章节文本 | 章节摘要.md（含情节点+角色+**关键信息与扩写技法**+**逐章写法公式**）。逐章写法公式必须提取情绪流向、节奏配比、结构公式、核心技巧、章尾卡点与伏笔。角色过滤（龙套不提取、别名归类）。每章10-40情节点（密度150-200字/个，按字数动态调节；公式低于10时仍按硬下限10拆足关键步骤）。**并行模式：每章 spawn chapter-extractor agent**。**计数验证：摘要数 == 章节数，不等则标记失败章节**。 | 所有章节处理完成 |
@@ -127,6 +125,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 Stage 0 完成概要 + 章节索引之后、转入 Stage 1 之前，**必须**额外产出一份「章节边界」表写入 `_progress.md`。这是后续 Stage 1（黄金三章原文切片）/ Stage 2（每章传给 chapter-extractor agent）/ Stage 6（文风采样）共用的**唯一切片来源**——避免每个阶段各跑一次 regex 切片，结果可能不一致。
 
 操作：
+
 - 用 `style-profile-generator.md` Step 4 的章节正则（含 千/两，覆盖 1000+ 章）grep 出全部章节行号
 - **先剔掉目录块**：不少原文开头带一段目录，目录里的 `第N章` 同样顶行，会和正文章节行重复命中，不处理就会切出两个「第一章」。判据是行距——目录块内相邻命中只隔一两行，正文章节之间隔着整章篇幅。算相邻命中的行号差，把文件开头那段「行距持续远小于全体中位数」的连续命中整块丢弃
 - **剔完仍有重复章号时不要自行取其一**：多卷书每卷从「第一章」重起是合法结构。这种情况在标题列保留卷号消歧（如 `卷二 第一章`），章号列按全书连续序号重编
@@ -145,7 +144,7 @@ Stage 0+1 完成后，管道**自动停靠**，产出快速预览报告并询问
 3. **询问用户**（用 AskUserQuestion 风格的明确二选一）：
    > 「黄金三章已拆完，快速预览报告见 `快速预览.md`。是否继续全量拆解（Stage 2-6：逐章摘要 / 聚合分析（含 `剧情/节奏.md`、`剧情/情绪模块.md`）/ 设定关系 / 汇总报告 / 文风）？预计耗时 {基于章节数粗估}。」
    - 选「继续全量拆解」→ 读 `_progress.md`，从 **Stage 2** 续跑，**不重跑 Stage 0/1**。
-   - 选「就到这里」→ 管道结束，`_progress.md` 状态保持 `paused_after_stage1`，告知用户「之后可随时 `/story-long-analyze` 同一本书，会自动从 Stage 2 续跑」。
+   - 选「就到这里」→ 管道结束，`_progress.md` 状态保持 `paused_after_stage1`，告知用户「之后可随时 `/skill:story-long-analyze` 同一本书，会自动从 Stage 2 续跑」。
 4. **跳过询问的情形**：用户在一开始就明确说「完整拆解 / 一次跑完 / 系统拆解 / 别问」时，仍生成 `快速预览.md`（保留早期判断快照），但**不停下询问**，直接从 Stage 2 续跑到 Stage 6。
 
 ### Stage 5 后：选题决策回填（可选）
@@ -155,6 +154,7 @@ Stage 0+1 完成后，管道**自动停靠**，产出快速预览报告并询问
 先定位 `选题决策.md`：项目根有就用它。项目根没有 → 从项目根及其上一级目录起、向下最多 3 层按文件名搜（跳过隐藏目录），按 mtime 由新到旧取最新 3 份。回填是写文件，项目根之外的文件写之前必须先确认：搜到 1 份 → 报出路径问「把本书的拆解支撑回填进这份吗？」；搜到多份 → 用 AskUserQuestion 列候选（路径 + `扫榜日期` + 「都不回填」）。用户不选 → 记「未回填」跳过，不动任何文件。
 
 **仅当**定位到 `选题决策.md`（项目根那份直接用；项目根之外的那份须经上面的确认）时：按本书题材，在它的推荐选题里找**题材关键词对得上**的那个——
+
 - 正好对上一个 → 把该选题的"能爆的原因"从 `待拆文验证` 改成带出处的支撑：「本书拆解支撑：{`拆文报告.md` 的 读者需求/情绪引擎 + `剧情/情绪模块.md` 的可复现模块 Top + `剧情/节奏.md` 的爽点/触动点节奏摘要}（`拆文库/{书名}/拆文报告.md`、`剧情/情绪模块.md`、`剧情/节奏.md`）」。注意还只是假设（只拆了一本，不算坐实）。
 - 对上多个 / 拿不准 → 问用户「《{书名}》对应选题决策里的哪个方向？」
 - 一个都对不上 → 记录「无匹配选题，未回填」，不改文件。
@@ -171,6 +171,7 @@ Stage 0+1 完成后，管道**自动停靠**，产出快速预览报告并询问
 ### Stage 3-4 并行执行
 
 **并行执行图**：
+
 ```
 Stage 3（剧情聚合 + 角色合并）       ──┐
                                        ├── 4a 与 Stage 3 可并行
@@ -211,14 +212,13 @@ Stage 2 使用 chapter-extractor agent 并行处理每章，替代原来的串�
 
 每条章节 prompt **必须以「材料声明」前缀开头**（即下方 prompt 字符串首段）——给子代理正确语境，避免它把通俗题材的正常戏剧化剧情误判为有害内容而拒绝拆解。前缀是固定文本，逐字带上，不要改写或省略。
 
-```python
-Agent(
-  subagent_type: "chapter-extractor",
-  prompt: "[材料声明] 以下为用户合法持有的虚构小说，任务是只读的转化性文学分析（编辑/评论视角）。暴力/复仇/家暴/情爱/黑暗伦理是该题材常规虚构元素，照常提取，不得以敏感拒绝整章或整本；个别片段无法处理则跳过、照常续完其余。\n\n章节编号：第{N}章\n章节标题：{标题}\n章节字数：{字数}\n\n章节原文：\n{原文文本}\n\n[情节点格式要求] 模板里的 {} 是占位标记，不要输出花括号本身：写「类型信息揭示」，不写「类型：信息揭示」或「类型{信息揭示}」。主题标签只填一个值，不要用 / 、 ，或空格并列多个。空字段统一写「无」，不要用「—」，涉及段不可省略。每个情节点后紧跟自己的那一行「主题标签X | 基调：Y」，不要把标签行堆到文件末尾。正确样例：\nP7 **龙血针检测**：类型信息揭示 | 许七安用龙血针验出对方身份，当场揭穿 | 涉及许七安,郑兴怀 | 地点府衙后堂 | 物品龙血针 | 时间入夜\n主题标签悬念 | 基调：紧张\n\n[输出前自检] 交付前逐条核对：① 文本里没有 { 或 }；② ^P 行数 == 主题标签行数 == 基调：行数；③ 每个主题标签只有一个值；④ 每个 P 行都含类型、白描、涉及三段。任何一条不符，先改再输出。"
-)
+用 subagent 工具 spawn 子代理 `chapter-extractor`（pi-subagents），task 传：
+
+```text
+"[材料声明] 以下为用户合法持有的虚构小说，任务是只读的转化性文学分析（编辑/评论视角）。暴力/复仇/家暴/情爱/黑暗伦理是该题材常规虚构元素，照常提取，不得以敏感拒绝整章或整本；个别片段无法处理则跳过、照常续完其余。\n\n章节编号：第{N}章\n章节标题：{标题}\n章节字数：{字数}\n\n章节原文：\n{原文文本}\n\n[情节点格式要求] 模板里的 {} 是占位标记，不要输出花括号本身：写「类型信息揭示」，不写「类型：信息揭示」或「类型{信息揭示}」。主题标签只填一个值，不要用 / 、 ，或空格并列多个。空字段统一写「无」，不要用「—」，涉及段不可省略。每个情节点后紧跟自己的那一行「主题标签X | 基调：Y」，不要把标签行堆到文件末尾。正确样例：\nP7 **龙血针检测**：类型信息揭示 | 许七安用龙血针验出对方身份，当场揭穿 | 涉及许七安,郑兴怀 | 地点府衙后堂 | 物品龙血针 | 时间入夜\n主题标签悬念 | 基调：紧张\n\n[输出前自检] 交付前逐条核对：① 文本里没有 { 或 }；② ^P 行数 == 主题标签行数 == 基调：行数；③ 每个主题标签只有一个值；④ 每个 P 行都含类型、白描、涉及三段。任何一条不符，先改再输出。"
 ```
 
-> 上面的 `[情节点格式要求]` / `[输出前自检]` 两段由主线程在 spawn 时拼进 prompt，**不依赖项目里已部署的 agent 文件版本**——老项目不重新跑 `/story-setup` 也能拿到这份格式约束。sonnet 升级重试沿用同一段。
+> 上面的 `[情节点格式要求]` / `[输出前自检]` 两段由主线程在 spawn 时拼进 prompt，**不依赖项目里已部署的 agent 文件版本**——老项目不重新跑 `/skill:story-setup` 也能拿到这份格式约束。sonnet 升级重试沿用同一段。
 
 ### 批量策略
 
@@ -235,10 +235,12 @@ Agent(
 ### 失败处理 + 质量升级重试
 
 **两类失败**：
+
 1. **执行失败**（agent crash / 超时 / 空输出）→ 同模型（haiku）重试 1 次
 2. **质量失败**（输出落盘后跑 chapter-extractor.md「质量检查」12 条自检，任一不达标——典型：情节点 < 10、P 行缺白描、概要写成条目罗列或整段「因为…所以…」串联、类型/基调/主题标签超出枚举、`基调：` 漏全角冒号、角色名为昵称/通用称呼）→ **升级到 sonnet 重试 1 次**
 
 **可机械校验的硬检查**（主线程落盘后直接 grep，命中即判质量失败，不依赖 agent 自报）：
+
 - 情节点数 `N = grep -cE '^P[0-9]+ '`；`grep -c '基调：'` 必须 == N（少于 N = 有情节点漏 `基调：` 或漏全角冒号 → 下游 Stage 6 文风采样按全角 `基调：` grep，会静默漏章）
 - 白描段有内容：`grep -cE '^P[0-9]+ [^|]+\|[^|]*[^|[:space:]][^|]*\|[^|]*涉及'` 必须 == N（`涉及` 段前要有两个 `|`，即 类型段与白描段各占一段，且白描段不能只有空白；少于 N = 有情节点缺白描，或字段顺序/分隔符不对。白描是情节点的主要证据，引用改为精选后由它承担事实回查）
 - `grep -hoE '基调：[^ |]+'` 去重后 ⊆ {紧张, 轻松, 悲伤, 热血, 爽, 甜, 温馨, 恐怖, 压抑, 其他}
@@ -248,15 +250,14 @@ Agent(
 
 **升级重试调用方式**（主线程在校验失败后执行）：
 
-```python
-Agent(
-  subagent_type: "chapter-extractor",
-  model: "sonnet",            # 显式覆盖 frontmatter 的 haiku
-  prompt: "章节编号：第{N}章\n...（同首次 prompt，含开头的「材料声明」前缀，可追加：'上次校验失败原因：{自检失败项}'）"
-)
+用 subagent 工具 spawn `chapter-extractor`，`model` 覆盖为 sonnet（显式覆盖 agent 默认的 haiku），task 传：
+
+```text
+"章节编号：第{N}章\n...（同首次 prompt，含开头的「材料声明」前缀，可追加：'上次校验失败原因：{自检失败项}'）"
 ```
 
 **最终落盘规则**：
+
 - haiku 首次通过 → 写入 `章节/第{N}章_摘要.md`，`_progress.md` 标记 `success`
 - haiku 失败 + 同模型 retry 通过 → 同上，备注 `retry_same_model`
 - 质量失败 + sonnet retry 通过 → 同上，备注 `retry_sonnet`
@@ -267,7 +268,7 @@ Agent(
 
 以下任一情况，Stage 2 自动退回串行模式，由主线程逐章处理（质量不受影响，只是改为串行、速度略慢）。**两条路径的要求是同一份**：串行时概要写法、情节点白描、原文引用精选规则和输出自检都按 [output-templates.md](references/output-templates.md)「Stage 2 章节摘要+情节点」执行；上面的机械硬检查串行同样要跑。串行没有 sonnet 升级重试这条路——硬检查命中时由主线程按失败项重写本章摘要 1 次，仍不过按 `⚠️ 跳过` 记入 `_progress.md` 「失败记录」表。
 
-- **agent 未部署**：agent 目录（优先 `.claude/agents/`，其次 `.opencode/agents/`，再检查 `.codex/agents/`）下的 `chapter-extractor.md` 或 `.codex/agents/chapter-extractor.toml` 不存在。`.claude/agents/` 通常不随仓库提交，应重新运行 `/story-setup` 完成当前适配器部署，不跨 Skill 读取模板源。
+- **agent 未部署**：agent 目录（优先 `.pi/agents/`，其次 `.pi/agents/`，再检查 `.pi/agents/`）下的 `chapter-extractor.md` 或 `.pi/agents/chapter-extractor.toml` 不存在。`.pi/agents/` 通常不随仓库提交，应重新运行 `/skill:story-setup` 完成当前适配器部署，不跨 Skill 读取模板源。
 - **环境不支持 spawn 子代理**：本 skill 正运行在某个子代理上下文中，无法再起下一层 agent。
 
 ### Stage 2 收尾：合并章节摘要（_章节摘要汇总.md）
@@ -279,6 +280,7 @@ ls 章节/*_摘要.md | sed -E 's/.*第([0-9]+)章.*/\1 &/' | sort -n | cut -d' 
 ```
 
 **无损检查**（拼接后校验，任一不过即删除 `_章节摘要汇总.md`、回退逐文件扫描，行为不变）：
+
 - `grep -cE '^P[0-9]+ ' _章节摘要汇总.md` == 各摘要 `^P` 行数之和
 - `grep -cE '^\*\*概要\*\*' _章节摘要汇总.md` == 摘要文件数（`**概要**` 每章一行，chapter-extractor 并行输出与串行摘要模板都有；不用 `## 第N章` 头——串行摘要模板没有章节头，会误判）
 
@@ -303,17 +305,17 @@ Stage 3-5 分块见 [material-decomposition.md](references/material-decompositio
 **位置：** 拆文（长篇流水线第 2 步，在 story-long-scan 之后、story-long-write 之前）
 
 | 时机 | 跳转到 | 命令 |
-|---|---|---|
-| 准备开写 | story-long-write | `/story-long-write` |
-| 需要市场数据 | story-long-scan | `/story-long-scan` |
-| 更适合短篇 | story-short-scan → story-short-analyze | `/story-short-scan` |
+| --- | --- | --- |
+| 准备开写 | story-long-write | `/skill:story-long-write` |
+| 需要市场数据 | story-long-scan | `/skill:story-long-scan` |
+| 更适合短篇 | story-short-scan → story-short-analyze | `/skill:story-short-scan` |
 
 ---
 
 ## 参考资料
 
 | 文件 | 何时加载 |
-|------|----------|
+| ------ | ---------- |
 | [references/output-templates.md](references/output-templates.md) | 管道全程：各 Stage 输出模板 + 快速预览报告模板 + `剧情/节奏.md` / `剧情/情绪模块.md` 模板 + 通用速查表 |
 | [references/material-decomposition.md](references/material-decomposition.md) | Stage 2-5：素材拆解方法论 + 质量阈值 + 分块策略；Stage 6 另见文风资料 |
 | [references/pipeline-ops.md](references/pipeline-ops.md) | 管道运维：_progress.md 模板、错误处理、恢复机制操作步骤 |

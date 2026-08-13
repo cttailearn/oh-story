@@ -1,8 +1,7 @@
 ---
 name: story-long-scan
 version: 1.0.0
-description: "长篇网文扫榜。分析起点、番茄、晋江等平台排行榜数据，提炼市场趋势与热门题材。触发方式：/story-long-scan、/长篇扫榜、「长篇什么火」「起点排行」。"
-metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claudecode"}}
+description: "长篇网文扫榜。分析起点、番茄、晋江等平台排行榜数据，提炼市场趋势与热门题材。触发方式：/skill:story-long-scan、/长篇扫榜、「长篇什么火」「起点排行」。"
 ---
 # story-long-scan：长篇网文扫榜
 
@@ -53,7 +52,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 #### 脚本采集模式
 
-优先运行对应平台脚本直接采集结构化数据。起点使用移动端 SSR pageContext，默认不需要 Chrome/CDP；番茄等需要浏览器态的平台再使用 `/browser-cdp` 启动 Chrome。
+优先运行对应平台脚本直接采集结构化数据。起点使用移动端 SSR pageContext，默认不需要 Chrome/CDP；番茄等需要浏览器态的平台再使用 `/skill:browser-cdp` 启动 Chrome。
 
 **采集流程**：
 1. 选择平台脚本；起点直接运行 `scripts/qidian-rank-scraper.js`，番茄/七猫/晋江等按需启动 browser-cdp
@@ -312,9 +311,9 @@ node scripts/jjwxc-rank-scraper.js --type 12 --list-only                 # 只�
 
 | 时机 | 跳转到 | 命令 |
 |---|---|---|
-| 找到方向 | story-long-analyze | `/story-long-analyze` |
-| 直接开写 | story-long-write | `/story-long-write` |
-| 更适合短篇 | story-short-scan | `/story-short-scan` |
+| 找到方向 | story-long-analyze | `/skill:story-long-analyze` |
+| 直接开写 | story-long-write | `/skill:story-long-write` |
+| 更适合短篇 | story-short-scan | `/skill:story-short-scan` |
 
 ## 参考资料
 

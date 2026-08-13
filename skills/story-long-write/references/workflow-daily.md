@@ -16,13 +16,13 @@
 - 用户明确说"日更""续写""继续写"，或明确指定"写第 N-M 章"
 - 目标：每次会话写 2-3 章（4000-9000 字）
 
-> **裸调用不进日更**：如果用户只是触发 `/story-long-write` / `$story-long-write`，没有说"日更/续写/继续写/写第N章/只写1章/逐章确认"，不得进入本 workflow。回到 `SKILL.md` 的"裸调用与停靠点"，只展示当前进度与可选命令，避免重启会话后自动写 3 章。
+> **裸调用不进日更**：如果用户只是触发 `/skill:story-long-write`，没有说"日更/续写/继续写/写第N章/只写1章/逐章确认"，不得进入本 workflow。回到 `SKILL.md` 的"裸调用与停靠点"，只展示当前进度与可选命令，避免重启会话后自动写 3 章。
 
 ---
 
 ## Step 1：快速上下文加载
 
-**可选：使用 story-explorer agent 批量加载上下文**。如果项目已部署 story-explorer agent（检查 `.claude/agents/story-explorer.md` 是否存在），可以用 `Agent(subagent_type: "story-explorer", prompt: "项目目录：{dir}\n查询类型：context_load\n查询参数：准备写第 {N} 章\n追踪状态：last_committed_chapter={上一步 check 的值}，state_revision={上一步 check 的值}")` 执行 `context_load` 查询，一次获取全部写作上下文。spawn 返回后直接使用其 results，跳过下方手动加载步骤。如果 agent 不可用或返回不完整，回退到下方手动加载。
+**可选：使用 story-explorer agent 批量加载上下文**。如果项目已部署 story-explorer agent（检查 `.pi/agents/story-explorer.md` 是否存在），可以用 `子代理 `story-explorer`（subagent 工具，task："项目目录：{dir}\n查询类型：context_load\n查询参数：准备写第 {N} 章\n追踪状态：last_committed_chapter={上一步 check 的值}，state_revision={上一步 check 的值}"）` 执行 `context_load` 查询，一次获取全部写作上下文。spawn 返回后直接使用其 results，跳过下方手动加载步骤。如果 agent 不可用或返回不完整，回退到下方手动加载。
 
 手动加载（默认方式）：
 
@@ -48,7 +48,7 @@
 **首次初始化**：
 
 1. `_tracking-state.json` 不存在且项目尚无正文：构造 `last_chapter=0` 的初始化事务，执行 `tracking_commit.py init`。
-2. `_tracking-state.json` 不存在但项目已有正文：停止日更。该目录停在旧追踪结构上，走 `/story-import` 的「旧追踪项目迁移」重建 `追踪/`——**不用重跑全书拆解**，只按最后完整章号和现有追踪文件构造初始化事务。本 workflow 自己不解析旧追踪结构、不推测状态。`init` 会把旧结构按原样整体移入 `追踪/_旧追踪存档/` 再建当前协议——旧内容不删除也不参与解析。
+2. `_tracking-state.json` 不存在但项目已有正文：停止日更。该目录停在旧追踪结构上，走 `/skill:story-import` 的「旧追踪项目迁移」重建 `追踪/`——**不用重跑全书拆解**，只按最后完整章号和现有追踪文件构造初始化事务。本 workflow 自己不解析旧追踪结构、不推测状态。`init` 会把旧结构按原样整体移入 `追踪/_旧追踪存档/` 再建当前协议——旧内容不删除也不参与解析。
 3. `tracking_commit.py check` 报告派生视图与 state 不一致：重新提交该章的 `mode=revision` 事务让工具整份重建（`expected_state_revision` 取 `追踪/_tracking-state.json` 的 `state_revision` 字段——`check` 失败时只往 stderr 打 ERROR，不输出 JSON）；不得手改 Markdown 或继续写下一章。手写出的逐章记录会让同章 append 永久报 `chapter delta N already exists with different content`，删掉那个手写文件后重跑原事务即可。
 
 **长期约束溢出**：工具最多接受 6 条。出现第 7 条时，在提交事务前先合并语义重叠项或请用户裁定取舍；不得自动删除旧约束，也不得把待办塞进派生视图。
@@ -78,7 +78,7 @@
    - **久别角色交叉检查**：本章细纲列出的核心复用角色若不在 `## 核心角色状态`，直接读取小文件 `追踪/角色状态/{名}.md`；不存在即视为当前检查点损坏，运行 `tracking_commit.py check` 并通过完整事务修复，不能临时扫描增量后手写替代。`设定/角色/{名}.md` 只有静态原始人设，不能替代动态快照。角色重新活跃后，把名字放进本章事务 `context.active_character_names`，由工具更新续写状态卡。
    - **story-explorer 召回的 gaps 分支**（用 `benchmark_style_load` query_type 一次拿到 `{style_profile_path, style_profile_summary, selected_emotion_module, rhythm_reference, module_source_path, rhythm_source_path, matched_chapter_K, matched_chapter_techniques, anchor_excerpts, gaps}` 后按此分流）：
      - 若 `gaps.no_benchmark: true` → `custom_style` 为真则进入「自定义文风模式」（用 `设定/文风.md` 写作；无对标可召回，情绪 / 节奏目标改从本书细纲「目标情绪」、卷纲、`设定/题材定位.md` 等内部材料取，`selected_emotion_module` / `rhythm_reference` 记为「无」，不声称从对标召回）；否则跳过文风召回，在「意图确认」标记"无对标参考"
-     - 若 `gaps.missing_primary_contract: true` → 停止本章准备，按 `repair_action` 提示重跑 `/story-long-analyze` Stage 3+ 或重新 `/story-import`；不得进入 narrative-writer（情绪 / 节奏轴独立于文风轴，**自定义文风模式不豁免此停止**——补 `剧情/情绪模块.md` / `剧情/节奏.md`，而非写 `设定/文风.md`）
+     - 若 `gaps.missing_primary_contract: true` → 停止本章准备，按 `repair_action` 提示重跑 `/skill:story-long-analyze` Stage 3+ 或重新 `/skill:story-import`；不得进入 narrative-writer（情绪 / 节奏轴独立于文风轴，**自定义文风模式不豁免此停止**——补 `剧情/情绪模块.md` / `剧情/节奏.md`，而非写 `设定/文风.md`）
      - 若 `gaps.conflict` 或 `gaps.module_rhythm_conflict: true` → 意图确认必须说明冲突并按 `剧情/情绪模块.md` / `剧情/节奏.md` 的权威优先级执行；不得让 `文风.md` 覆盖情绪/节奏目标
      - 若 `gaps.profile_missing: true` → `custom_style` 为真则进入自定义文风模式继续；否则按上文 fail-fast 流程停止
      - 若 `gaps.profile_degenerate: true`（对标文风不可用） → `custom_style` 为真则用 `设定/文风.md` 写作；否则跳过文风、回到默认 Gates 写作
@@ -96,7 +96,7 @@
      `追踪/逐章记录/第NNN章.md` 由工具按 5 类变化生成，目标 ≤1536 字节、硬上限 3072 字节。它不是正文摘要大全，更不保存写作过程。`伏笔.md` 每个 ID 只有一行当前状态；角色状态按核心角色拆文件；时间线的客观事实和读者认知只在同一事件登记中维护，再派生作者/读者两个视图。
 
      状态更新仍由主会话负责。narrative-writer 只写正文并回报必要的写作结果，不直接写 `追踪/`；主会话也不绕过事务工具直接修改最终追踪文件。
-   - **质检提示**（可选）：本章写作完成。如需一致性检查，运行 `/story-review lean`。批量写作模式跳过此步骤，全部写完后再统一审查。
+   - **质检提示**（可选）：本章写作完成。如需一致性检查，运行 `/skill:story-review lean`。批量写作模式跳过此步骤，全部写完后再统一审查。
 3. **不中断但不并发**：一章写完不问用户，直接写下一章（除非用户要求逐章确认）；下一章必须读取上一章刚写入的正文和追踪更新后再开始。
 
 **资料研究（按需）**：如果写作中遇到需要查证的外部事实（历史年代、地理方位、职业细节等），暂停写作，spawn `story-researcher` agent 搜索并输出到 `参考资料/` 目录。研究完成后再继续写作。
@@ -112,7 +112,7 @@
 | 3 | 需要变化原因/历史时，调用 story-explorer 的 `foreshadow_status / character_status / timeline`；各 adapter 按自身 agent 调用方式，agent 不可用就直接 Grep/Read | 子代理/主会话只返回相关条目 |
 | 4 | explorer 不可用 → `grep -R -n --include='第*.md' "F007" 追踪/逐章记录/ 2>/dev/null \| tail -5`，只取最近 5 条匹配增量 | 只读取匹配行 |
 | 5 | 仍不够 → `Read` 对应增量或埋设章正文 | 1 个紧凑增量或单章正文 |
-| 6 | 全量读取所有逐章增量/正文 | **日更禁止**。只在 `/story-review` 或用户明确要求全面审计时 |
+| 6 | 全量读取所有逐章增量/正文 | **日更禁止**。只在 `/skill:story-review` 或用户明确要求全面审计时 |
 
 **查询次数限制**：单章执行步骤 3 和步骤 4 合计超过 3 次，说明细纲没写清本章要消费哪些旧信息。这时一次性让 story-explorer 查询多项，并在批末口头提示细纲需补清回收项，不另写过程日志。
 

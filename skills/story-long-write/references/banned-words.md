@@ -1,6 +1,6 @@
 # AI味禁用词与句式表
 
-<!-- 同名副本×6 字节同步，改动后跑 scripts/check-shared-files.sh -->
+<!-- 同名副本×6 字节同步，改动后跑 scripts/sync-shared-assets.py -->
 
 ## 最毒禁用句式（出现即修，最高优先级）
 

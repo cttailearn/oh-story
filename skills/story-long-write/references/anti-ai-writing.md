@@ -1,6 +1,6 @@
 # 去AI味完整指南
 
-<!-- 同名副本×5 字节同步，改动后跑 scripts/check-shared-files.sh -->
+<!-- 同名副本×5 字节同步，改动后跑 scripts/sync-shared-assets.py -->
 
 > 识别AI写作指纹、系统性去AI三遍法、禁用词约束、改写范例库。用于正文写作后做去AI味自检和改写时查阅。
 

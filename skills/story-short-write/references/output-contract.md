@@ -5,7 +5,7 @@ description: |
   下游消费规范（story-short-write 读全套 markdown + 原文 + _meta.json 写新短篇）。
 sync-policy: |
   本文件在 story-short-analyze 与 story-short-write 之间需保持字节一致（byte-equal）。
-  修改任一副本后，必须同步另一副本，并通过 bash scripts/check-shared-files.sh 验证。
+  修改任一副本后，必须同步另一副本，并通过 bash scripts/sync-shared-assets.py 验证。
   禁止把本文件加入 IGNORE_NAMES 列表——它必须保持同步，不属于 intentional differences。
 ---
 
@@ -121,7 +121,7 @@ Stage 6 内容写完后、`stages_completed[6]` append 前，跑三道检查：
 ### Step 4：通过
 
 清空 `_meta.json.last_stage_in_progress`，append `6` 到 `stages_completed[]`，提示
-用户「拆解完成，可调用 `/story-short-write` 写下一篇」。
+用户「拆解完成，可调用 `/skill:story-short-write` 写下一篇」。
 
 ---
 
@@ -150,7 +150,7 @@ Stage 6 内容写完后、`stages_completed[6]` append 前，跑三道检查：
 
 ```bash
 ls 拆文库/{书名}/   # 应有：原文/ 拆文报告.md 情节节点.md 写作手法.md _meta.json
-/story-short-write 拆文库/{书名}/
+/skill:story-short-write 拆文库/{书名}/
 # 通过：输出 8000+ 字同题材新短篇，prose 有源文对话节奏和画面感
 # 失败：写得像填空 / 或 short-write 找不到三个 markdown
 ```
@@ -161,5 +161,5 @@ ls 拆文库/{书名}/   # 应有：原文/ 拆文报告.md 情节节点.md 写�
 
 - `_meta.json.version` 与本文件 `sync-policy` 联动。
 - breaking change（字段重命名 / 类型变更 / 必填变更）必须 bump major version 并同步两侧
-  副本，CI 通过 `scripts/check-shared-files.sh` 拦截单边修改。
+  副本，CI 通过 `scripts/sync-shared-assets.py` 拦截单边修改。
 - additive change（新增可选字段）可 bump minor；producer、consumer 与两侧副本必须在同一变更中升级到当前 schema。

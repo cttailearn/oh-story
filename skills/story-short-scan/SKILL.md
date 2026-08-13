@@ -1,8 +1,7 @@
 ---
 name: story-short-scan
 version: 1.0.0
-description: "短篇网文扫榜。分析知乎盐言、七猫、黑岩、点众等平台热门短篇数据，捕捉风口题材。触发方式：/story-short-scan、/短篇扫榜、「短篇什么火」「知乎故事排行」。"
-metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claudecode"}}
+description: "短篇网文扫榜。分析知乎盐言、七猫、黑岩、点众等平台热门短篇数据，捕捉风口题材。触发方式：/skill:story-short-scan、/短篇扫榜、「短篇什么火」「知乎故事排行」。"
 ---
 # story-short-scan：短篇网文扫榜
 
@@ -53,7 +52,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 #### browser-cdp 采集模式
 
-使用 `/browser-cdp` 启动 Chrome，直接抓取平台页面的结构化数据。适用于需要登录才能看到的数据（知乎个人中心、番茄书架等）。
+使用 `/skill:browser-cdp` 启动 Chrome，直接抓取平台页面的结构化数据。适用于需要登录才能看到的数据（知乎个人中心、番茄书架等）。
 
 **点众采集目标**：
 
@@ -187,9 +186,9 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 | 时机 | 跳转到 | 命令 |
 |---|---|---|
-| 找到方向 | story-short-analyze | `/story-short-analyze` |
-| 直接开写 | story-short-write | `/story-short-write` |
-| 更适合长篇 | story-long-scan | `/story-long-scan` |
+| 找到方向 | story-short-analyze | `/skill:story-short-analyze` |
+| 直接开写 | story-short-write | `/skill:story-short-write` |
+| 更适合长篇 | story-long-scan | `/skill:story-long-scan` |
 
 ---
 

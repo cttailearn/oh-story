@@ -1,12 +1,11 @@
 ---
 name: story-review
 version: 1.1.1
-description: "多视角对抗式审查。full/lean 模式在已部署 reviewer agents 时并行 spawn；缺失/异常 agents 或 spawn 失败时自动降级 solo，参考文件不可读时使用内置 rubric fallback。触发方式：/story-review、/审查、「审查一下」「帮我审一下」。"
-metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claudecode"}}
+description: "多视角对抗式审查。full/lean 模式在已部署 reviewer agents 时并行 spawn；缺失/异常 agents 或 spawn 失败时自动降级 solo，参考文件不可读时使用内置 rubric fallback。触发方式：/skill:story-review、/审查、「审查一下」「帮我审一下」。"
 ---
 # story-review：多视角对抗式审查
 
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-claudecode，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/skill:story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 你是审查协调器。你的职责是找出小说文本中的结构、角色、文字、设定问题，并给出可执行修改建议。
 
@@ -16,9 +15,9 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ## Review Mode 选择
 
-- `/story-review` 或 `/story-review full` → 优先 spawn 全部 4 个 Agent；如果当前已经在子代理内，核心 Agent 未部署/异常，或 spawn 失败，自动降级为 solo。
-- `/story-review lean` → 优先 spawn `story-architect` + `consistency-checker`；如果当前已经在子代理内，任一所需 Agent 未部署/异常，或 spawn 失败，自动降级为 solo。
-- `/story-review solo` → 不 spawn Agent，由当前会话执行基础审查。
+- `/skill:story-review` 或 `/skill:story-review full` → 优先 spawn 全部 4 个 Agent；如果当前已经在子代理内，核心 Agent 未部署/异常，或 spawn 失败，自动降级为 solo。
+- `/skill:story-review lean` → 优先 spawn `story-architect` + `consistency-checker`；如果当前已经在子代理内，任一所需 Agent 未部署/异常，或 spawn 失败，自动降级为 solo。
+- `/skill:story-review solo` → 不 spawn Agent，由当前会话执行基础审查。
 - 未指定 → 默认 full，并在报告里写明最终实际执行模式。
 
 ---
@@ -27,19 +26,15 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 1. **确定请求模式**：解析用户输入中的 `full`、`lean`、`solo`；未指定时目标模式为 `full`。
 2. **确认是否允许 spawn**：如果当前已经在子代理/Agent 内执行，不再递归 spawn，直接降级为 `solo`。
-3. **识别 ZCode 能力边界**：如果当前运行于 ZCode 且项目使用 `.zcode/`，ZCode 3.3.4 不执行项目/plugin custom agents；不要因为磁盘上存在其他端的 agent 文件就尝试同名 spawn，直接降级 `solo` 并报告 `Fallback: project custom agents unavailable -> solo`。
-4. **检查核心 Agent 部署状态**（检查项目内 agents，同时兼容 Claude Code、OpenCode 和 Codex）：
-   - 优先检查 `.claude/agents/`，其次检查 `.opencode/agents/`，再检查 `.codex/agents/`；三个目录任一存在即视为已部署
-    - full 必需：Claude/OpenCode 为 `story-architect.md`、`character-designer.md`、`narrative-writer.md`、`consistency-checker.md`；Codex 为同名 `.toml`
-    - lean 必需：Claude/OpenCode 为 `story-architect.md`、`consistency-checker.md`；Codex 为同名 `.toml`
-    - 对每个必需 Agent 文件：
-      - **Claude Code agent（`.claude/agents/`）**：读取 frontmatter，确认 `name:` 与 subagent_type 完全一致；frontmatter 缺失、不可解析或 name 不匹配时视为 malformed agent。
-      - **OpenCode agent（`.opencode/agents/`）**：文件名即 agent 名（OpenCode 不要求在 frontmatter 中写 `name:`），读取 frontmatter 确认 `mode: subagent` 和 `permission` 字段存在且可解析即可；frontmatter 缺失或不可解析视为 malformed。
-      - **Codex agent（`.codex/agents/`）**：文件名为 `{agent}.toml`，TOML 必须可解析，且包含 `name`、`description`、`developer_instructions`；`name` 必须与目标 agent 完全一致。
-   - 如果目标模式所需任一文件缺失或 malformed，**不要尝试 spawn 缺失/异常 Agent**；自动降级为 `solo`，并在报告开头写明：`Fallback: missing agents -> solo` 或 `Fallback: malformed agents -> solo`，列出问题文件，建议用户运行 `/story-setup`。
-5. **确认 Agent/Task 工具可用**：如果当前环境没有可用的子 Agent/Task 调用能力，直接降级为 `solo`，报告 `Fallback: agent tool unavailable -> solo`。
-6. **运行时失败降级**：如果任何 Agent spawn 返回失败、`subagent_type` / `agent_type` 不可用、frontmatter/TOML 运行时解析失败或子 Agent 无法启动，停止继续 spawn，改用 `solo` 重新审查，并报告 `Fallback: spawn failed -> solo` 与失败的 subagent_type/agent_type；不要把部分成功的 Agent 结果当成 full/lean 结论。
-7. **确定实际模式**：报告中必须同时列出 `Requested Mode` 与 `Effective Mode`。
+3. **检查核心 Agent 部署状态**（pi：检查项目 `.pi/agents/`，兼看全局 `~/.pi/agent/agents/`）：
+   - 检查 `.pi/agents/` 目录；任一必需 agent 文件存在即视为已部署
+    - full 必需：`story-architect.md`、`character-designer.md`、`narrative-writer.md`、`consistency-checker.md`
+    - lean 必需：`story-architect.md`、`consistency-checker.md`
+    - 对每个必需 Agent 文件（`.pi/agents/{agent}.md`）：读取 frontmatter，确认 `name:` 与文件名一致；frontmatter 缺失、不可解析或 name 不匹配时视为 malformed agent。
+   - 如果目标模式所需任一文件缺失或 malformed，**不要尝试 spawn 缺失/异常 Agent**；自动降级为 `solo`，并在报告开头写明：`Fallback: missing agents -> solo` 或 `Fallback: malformed agents -> solo`，列出问题文件，建议用户运行 `/skill:story-setup`。
+4. **确认 subagent 工具可用**：如果当前环境没有可用的子 Agent 调用能力（无 subagent 工具或 pi-subagents 未装），直接降级为 `solo`，报告 `Fallback: agent tool unavailable -> solo`。
+5. **运行时失败降级**：如果任何 Agent spawn 返回失败、agent 名不可用、frontmatter 运行时解析失败或子 Agent 无法启动，停止继续 spawn，改用 `solo` 重新审查，并报告 `Fallback: spawn failed -> solo` 与失败的 agent 名；不要把部分成功的 Agent 结果当成 full/lean 结论。
+6. **确定实际模式**：报告中必须同时列出 `Requested Mode` 与 `Effective Mode`。
 
 ---
 
@@ -62,20 +57,19 @@ Rubric Source: file | embedded fallback
 ### 参考资料解析顺序
 
 可读取参考文件时，按以下顺序尝试，第一个命中即用：
-1. `{项目根}/.claude/skills/{规范路径}`（Claude Code 项目内安装）
-2. `{项目根}/.opencode/skills/{规范路径}`（OpenCode 项目内安装）
-3. `{项目根}/.codex/skills/{规范路径}`（Codex 项目内安装）
-4. `{项目根}/.zcode/skills/{规范路径}`（ZCode 项目内安装）
-5. `{项目根}/skills/{规范路径}`（OpenClaw / Reasonix / generic 部署，也是本仓库开发环境）
-6. `{项目根}/.agents/skills/{规范路径}`（Codex / Reasonix 扫描的项目 skill root，通常是指向 `skills/` 的 symlink）
-7. 当前运行时加载本 skill 的目录，或其可访问的全局 skill 搜索路径中同名 `{skill-name}/...` 目录
 
-> 靠前几层不存在是正常的，不是部署损坏。`/story-setup` 只在 ZCode 的 `.zcode/skills/` 和 OpenClaw / Reasonix / generic 的 `skills/` 下整份复制 skill；Codex 项目部署不复制 skill 本体，本 skill 由 Codex 从 skill root 加载，references 就在其中，通常命中第 6 或第 7 层。不要手工把 `references/` 复制进 `.codex/skills/`——手工副本不受 story-setup 管理，升级后会静默变旧。
+1. `{项目根}/.pi/skills/{规范路径}`（pi 项目内安装）
+2. `{项目根}/skills/{规范路径}`（本仓库开发环境 / 本地路径安装）
+3. `{项目根}/.agents/skills/{规范路径}`（pi 扫描的项目 skill root，通常是指向 `skills/` 的 symlink）
+4. `~/.pi/agent/skills/{规范路径}`（pi 全局包安装）
+5. 当前运行时加载本 skill 的目录，或其可访问的全局 skill 搜索路径中同名 `{skill-name}/...` 目录
+
+> 靠前几层不存在是正常的，不是部署损坏。`/skill:story-setup` 只在 pi 项目初始化时把 `agents/` 部署到 `.pi/agents/`，skill 本体由 pi 包管理加载，references 就在其中，通常命中第 3 或第 5 层。不要手工把 `references/` 复制进 `.pi/skills/`——手工副本不受包管理，升级后会静默变旧。
 
 规范路径如下；禁止只写裸文件名，禁止跨 skill 误读其他 skill 的 references：
 
 | 用途 | 规范路径 |
-|---|---|
+| --- | --- |
 | 通用质量清单 | `story-review/references/quality-checklist.md` |
 | 通用内容评分 rubric | `story-review/references/quality-rubric.md` |
 | 去 AI 味方法 | `story-review/references/anti-ai-writing.md` |
@@ -92,6 +86,7 @@ Rubric Source: file | embedded fallback
 如果上述参考文件在当前项目中不可读，**不要把审查降级为无 rubric，也不要在报告里说“无法加载具体 rubric”后停止使用标准**。必须使用本节内置基准包，并报告：`Rubric Source: embedded fallback`。
 
 通用网文内容 rubric：
+
 - 核心卖点：本章是否围绕明确卖点推进；看不出卖点至少 S2。
 - 冲突推进：本章是否有阻碍、选择、代价或关系变化；只解释/闲聊/总结至少 S2。
 - 任务卡点：角色办事被卡住时，是否卡出信息、关系、代价、选择或伏笔变化；卡点只剩流程细节、删掉不影响故事至少 S3。
@@ -112,6 +107,7 @@ Rubric Source: file | embedded fallback
 - 伏笔状态：伏笔状态需可追踪；伏笔密度只作为结构风险提示，除非直接造成理解混乱，否则不升级到 S2+。
 
 AI 味 / 禁用词 fallback 速查：
+
 - 高频套话：`命运的齿轮开始转动`、`心猛地一沉`、`眼神复杂`、`深刻变化`、`踏上新的旅程`。
 - 章末总结体：`这一切都说明...`、`他终于明白...`、`新的篇章开始了...`。
 - 信息倾倒：角色直接说“我要解释世界观/规则/关系变化”。
@@ -119,6 +115,7 @@ AI 味 / 禁用词 fallback 速查：
 - 处理原则：有原文证据才输出 finding；给出可执行替换方向，不只评价“AI 味重”。修法方向不默认「拆短 / 删虚词 / 剥标点」：把正常的逗号长句拆成碎句，与 AI 腔同样是问题。
 
 平台 fallback 摘要：
+
 - 番茄：强开局、强冲突、高频爽点/情绪反馈、低理解门槛。
 - 起点：设定自洽、升级路径、长线期待、世界观承载力。
 - 知乎盐言：短篇钩子、反转密度、情绪兑现、信息差推进。
@@ -162,19 +159,21 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
    - 未识别平台 → 优先读取 `story-review/references/quality-rubric.md`；不可读时使用内置通用网文内容 rubric，并报告 `Rubric: generic web-fiction` 与 `Rubric Source: file | embedded fallback`。
 5. **形成审查基准包摘要**：把已加载的文件内容或内置 fallback 摘要压缩为 5-12 条审查标准，后续 solo 和子 Agent 都必须使用这份摘要。摘要必须保留一条句长标准：叙述默认是逗号长句，碎句和电报体与 AI 腔同级处理，不因「短」放行。
 6. **确定性预检（只报告，不修改）**：当审查范围包含本地正文文件路径时，运行本 skill 自带脚本：
+
    ```bash
    node scripts/normalize-punctuation.js --check <正文文件...>
    node scripts/check-ai-patterns.js --check --fail-on=blocking <正文文件...>
    node scripts/check-degeneration.js --check <正文文件...>
    ```
+
    - 将 `ellipsis`、`double-hyphen`、`markdown-divider` 结果作为 `format` findings 合并进报告。`em-dash` 破折号只采用 `check-ai-patterns.js` 的语义改写建议（见下条）；`normalize-punctuation.js` 报的同一位置 `em-dash` 在合并时去重丢弃，避免同处出现「机械替换」与「按功能改写」两条相互冲突的 finding。另外人工检查标点节奏是否通篇句号化或随机堆砌，脚本不替代语气判断。
    - `check-ai-patterns.js` 的 findings 合并进 `prose`：severity=blocking 的类别一律按 S2（当前为 `not-is-comparison` / `em-dash` / `voice-contrast` / `negation-parade` / `reverse-not-is` / `trailer-ending` / `trailer-summary`），修法直接采用检测器输出的建议（删否定铺垫/反差腔/排比否定/章尾预告腔/章尾状态总结句，直接写后项或具体动作；破折号按功能改成动作/短句/逗号/冒号）。
    - 其余 prose findings 统一按 S4：只指出读感风险，不替代人工判断；功能性写法标 `[需复核]` 并保留。完整类别和修法见 `anti-ai-writing.md`。
    - `check-degeneration.js` 报告模型退化（逐字复读/截断/占位符/工程词泄漏），每条带 `severity: blocking|advisory`：blocking（复读/截断/tier1 工程词）作为 S1/S2 `prose` findings，修复建议是「重新生成该段，不是改写」；advisory（tier2 章节/歧义词）作为 S4。
-   - 这三个预检脚本只读；`story-review` **不修改正文、设定或大纲文件**，需要自动修复正文时建议转 `/story-deslop`。full / lean 模式只有下方「追踪文件维护」允许修改 `追踪/`；分批审查的所有模式都可按上方契约写 **.story-review/state.md**，solo 除该状态外不写项目内容。
+   - 这三个预检脚本只读；`story-review` **不修改正文、设定或大纲文件**，需要自动修复正文时建议转 `/skill:story-deslop`。full / lean 模式只有下方「追踪文件维护」允许修改 `追踪/`；分批审查的所有模式都可按上方契约写 **.story-review/state.md**，solo 除该状态外不写项目内容。
    - 默认 `--quote-mode keep`，不把知乎盐言短篇的 `「」` 当作问题；只有项目明确指定引号风格时才检查对应转换建议。
 
-**story-explorer 预查询（可选）**。仅当 `Effective Mode` 仍为 `full`/`lean`、当前允许 spawn 且 Agent/Task 工具可用时，才可检查 agent 目录（优先 `.claude/agents/`，其次 `.opencode/agents/`，再检查 `.codex/agents/`）下的 `story-explorer.md` 或 `story-explorer.toml` 并 spawn `story-explorer` 预查设定摘要；`solo` 或子代理递归保护场景下不得 spawn，只能直接 Read/Grep。Prompt 示例：
+**story-explorer 预查询（可选）**。仅当 `Effective Mode` 仍为 `full`/`lean`、当前允许 spawn 且 subagent 工具可用时，才可检查 `.pi/agents/story-explorer.md` 是否存在并 spawn `story-explorer` 预查设定摘要；`solo` 或子代理递归保护场景下不得 spawn，只能直接 Read/Grep。Prompt 示例：
 
 ```text
 项目目录：{dir}
@@ -200,6 +199,7 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
 ```
 
 严重度定义：
+
 - **S1**：会破坏主线、角色动机、世界规则或读者信任，需优先修。
 - **S2**：明显影响章节效果、留存、节奏、人物可信度，建议本轮修。
 - **S3**：局部质量问题，如措辞、轻微格式、局部节奏，可排期修。
@@ -209,14 +209,16 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
 
 ## Phase 2：并行 Spawn Agent（full/lean 模式）
 
-使用 Agent/Task 工具并行调用（Codex 原生子代理使用 `agent_type`，Claude Code 兼容面使用 `subagent_type`；实际字段以当前 CLI 暴露的工具为准）。每个 Agent 不继承父对话上下文，prompt 必须自包含项目路径、审查范围、文件路径、必要摘录、审查基准包摘要、Rubric Source 和统一 Findings Schema。
+使用 subagent 工具并行 spawn（pi-subagents，每 Agent 一个 runs.run）。每个 Agent 不继承父对话上下文，task 必须自包含项目路径、审查范围、文件路径、必要摘录、审查基准包摘要、Rubric Source 和统一 Findings Schema。
 
 **调用规则**：执行 Phase 0 后，只有实际模式仍是 full/lean 时才 spawn。不要 spawn 缺失 Agent。
 
-**Agent 1: story-architect**（subagent_type: story-architect）
+**Agent 1: story-architect**（agent: story-architect）
+
 - full/lean 均调用。
 - 审查视角：主题对齐、大纲结构、钩子/反转质量、范围控制、平台期待。
 - 提示指令：
+
   ```
   你是 story-architect，从故事架构层面审查以下内容。
   你的任务是【找问题】，不是验证正确性。以最严苛的标准审视。
@@ -239,7 +241,7 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
   9. 按平台 rubric 或通用内容 rubric 逐项对照，标记 PASS/FAIL。
   10. 继承的开放项里，本批本该兑现的钩子/伏笔是否落空？
   11. 开头同质化（仅当本章是全书开篇/前 3 章）：开局切口是不是同题材的默认套路（穿越即退婚、系统绑定、末世第一天、开场即打脸等），能不能原样换到任意同类书？"有钩子/非天气开场"不等于不同质。对照 references/plot-core-methods.md「噱头分类与开篇流程」判断——能整体换到同类书=同质化（撞题材模板至少 S2；套路化但有具体人物/处境微差 S3）。
-  12. 结尾总结：章尾是总结/升华/复述式收尾（"就这样……""他终于明白……""这一夜注定……"），还是落在动作/画面/悬念上？检测器已判 blocking 的（`trailer-summary`）按上面「blocking 一律 S2」处理，不重复定级；检测器没覆盖的总结/升华/复述式收尾按影响定 S2/S3（改写走 /story-deslop Gate F，本 skill 只标问题不改写）。
+  12. 结尾总结：章尾是总结/升华/复述式收尾（"就这样……""他终于明白……""这一夜注定……"），还是落在动作/画面/悬念上？检测器已判 blocking 的（`trailer-summary`）按上面「blocking 一律 S2」处理，不重复定级；检测器没覆盖的总结/升华/复述式收尾按影响定 S2/S3（改写走 /skill:story-deslop Gate F，本 skill 只标问题不改写）。
 
   输出格式：
   VERDICT: APPROVE / CONCERNS / REJECT
@@ -248,10 +250,12 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
   RECOMMENDATIONS: [修改建议]
   ```
 
-**Agent 2: character-designer**（subagent_type: character-designer）
+**Agent 2: character-designer**（agent: character-designer）
+
 - full 模式调用。
 - 审查视角：角色语言风格一致性、对话质量、人物弧线、关系推进。
 - 提示指令：
+
   ```
   你是 character-designer，从角色和对话层面审查以下内容。
   你的任务是【找问题】，不是验证正确性。以最严苛的标准审视。
@@ -277,10 +281,12 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
   RECOMMENDATIONS: [修改建议]
   ```
 
-**Agent 3: narrative-writer**（subagent_type: narrative-writer）
+**Agent 3: narrative-writer**（agent: narrative-writer）
+
 - full 模式调用。
 - 审查视角：AI味检测（含解释腔/上帝感/安排感=模式 8）、情绪烈度（够不够爽/会不会太保守）、格式合规、节奏均匀度、文字自然度。
 - 提示指令：
+
   ```
   你是 narrative-writer，从文字质量层面审查以下内容。
   你的任务是【找问题】，不是验证正确性。以最严苛的标准审视。
@@ -308,10 +314,12 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
   RECOMMENDATIONS: [修改建议]
   ```
 
-**Agent 4: consistency-checker**（subagent_type: consistency-checker）
+**Agent 4: consistency-checker**（agent: consistency-checker）
+
 - full/lean 均调用。
 - 审查视角：grep-first + 推理型一致性检测，输出 S1-S4 报告。
 - 提示指令：
+
   ```
   你是 consistency-checker，使用 grep-first + 推理型一致性审查检测事实矛盾。
   你的任务是【找事实矛盾、状态断线和需要推理才能发现的设定逻辑冲突】，不做创作评判，不评价文学质量，不输出创作修改建议。
@@ -344,7 +352,7 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
 
 1. 收集实际执行的 reviewer VERDICT 和 FINDINGS。
 2. 合并去重：按 `severity` 排序（S1 > S2 > S3 > S4），同级内按影响范围排序。
-3. **可选事实核查**：如果审查内容涉及需要验证的外部事实（历史年代、地理方位、职业细节等），只有在 `Effective Mode` 仍为 `full`/`lean`、当前不是子 Agent、Agent/Task 工具可用且 agent 目录（优先 `.claude/agents/`，其次 `.opencode/agents/`，再检查 `.codex/agents/`）下的 `story-researcher.md` 或 `story-researcher.toml` 已部署时，才可额外 spawn `story-researcher` 搜索验证；`solo`、missing/malformed/stale/spawn failed 降级或子代理递归保护场景下不得 spawn，只能在报告中标记“需人工事实核查”。
+3. **可选事实核查**：如果审查内容涉及需要验证的外部事实（历史年代、地理方位、职业细节等），只有在 `Effective Mode` 仍为 `full`/`lean`、当前不是子 Agent、subagent 工具可用且 `.pi/agents/story-researcher.md` 已部署时，才可额外 spawn `story-researcher` 搜索验证；`solo`、missing/malformed/stale/spawn failed 降级或子代理递归保护场景下不得 spawn，只能在报告中标记“需人工事实核查”。
 4. **分歧呈现**：如果 reviewer 间有冲突意见，明确呈现分歧让用户裁决；不要自动妥协。
 5. 输出综合审查报告。报告必须列出实际模式、fallback 原因、使用的 rubric、Rubric Source、审查范围和证据不足项。
 
@@ -405,6 +413,7 @@ APPROVE(通过) / CONCERNS(有问题) / REJECT(需重写)
 不 spawn Agent。先按 Phase 1 第 4 步识别目标平台并加载对应 rubric；即使是 solo，也必须用平台 rubric、`story-review/references/quality-rubric.md` 或内置审查基准包校准判断。
 
 solo 必须执行基础检查：
+
 1. 格式合规性检查（戏剧单元/画面分段、无机械字数切分、无空行、对话格式、主语/角色名节奏）。
 2. 简单的设定一致性 grep（角色名、属性、关键设定、伏笔关键词）+ 推理型一致性检查（规则边界、设定层级、跨章因果链、可滥用漏洞、代价一致性）。
 3. AI 味与禁用词检查（优先读取 `story-review/references/banned-words.md` 与 `story-review/references/anti-ai-writing.md`，不可读时使用内置 AI 味 / 禁用词 fallback 速查）。
@@ -470,10 +479,10 @@ Rubric Source: file | embedded fallback
 **位置：** 审查（写作之后）
 
 | 时机 | 跳转到 | 命令 |
-|---|---|---|
+| --- | --- | --- |
 | 要修改查出的问题 | story-long-write / story-short-write | 返回对应写作 skill 修改 |
-| 发现 AI 味需清理 | story-deslop | `/story-deslop` |
-| 需要重新拆解对标书 | story-long-analyze / story-short-analyze | `/story-long-analyze` 或 `/story-short-analyze` |
+| 发现 AI 味需清理 | story-deslop | `/skill:story-deslop` |
+| 需要重新拆解对标书 | story-long-analyze / story-short-analyze | `/skill:story-long-analyze` 或 `/skill:story-short-analyze` |
 
 ---
 

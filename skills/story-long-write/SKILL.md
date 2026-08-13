@@ -1,8 +1,7 @@
 ---
 name: story-long-write
 version: 1.0.0
-description: "长篇网文写作。从大纲到正文，辅助长篇网络小说的创作，包括世界观、人物、情节线管理。触发方式：/story-long-write、/写长篇、「帮我开书」「写大纲」「日更」「续写」「继续写」「修改第X章」「回炉」「重写第X章」。"
-metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claudecode"}}
+description: "长篇网文写作。从大纲到正文，辅助长篇网络小说的创作，包括世界观、人物、情节线管理。触发方式：/skill:story-long-write、/写长篇、「帮我开书」「写大纲」「日更」「续写」「继续写」「修改第X章」「回炉」「重写第X章」。"
 ---
 # story-long-write：长篇网文写作
 
@@ -10,9 +9,9 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ---
 
-> 运行环境兼容性：Claude Code / OpenCode / Codex / ZCode / OpenClaw 是内置适配目标；NarraFork、Web AI、自定义 Agent 等能读取项目文件的环境，可按本 skill 执行长篇流程。检查专业 agent 时按 `.claude/agents/{agent}.md` → `.opencode/agents/{agent}.md` → `.codex/agents/{agent}.toml` 查找；找不到、Codex 返回 `unknown agent_type`，或检测到 `.zcode/`（ZCode 3.3.4 不执行项目 custom agents）时，直接 solo/direct 执行并报告 fallback。
+> 运行环境兼容性：本 skill 面向 pi 环境设计。检查专业 agent 时检查 `.pi/agents/{agent}.md` 是否存在且运行时暴露 subagent 工具（pi-subagents）；不满足时直接 solo/direct 执行并报告 fallback。
 >
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-claudecode，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/skill:story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 ## 核心方法
 
@@ -25,7 +24,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 5. **契约与推进决策走权威参考文件**。涉及读者契约、主角代理权、利益安全、期待债、终局储备（终局底牌/升级台阶）、机构/势力边界和 契约安全 / 需补强 / 契约破坏 风险判定时，先按 `references/reader-contract-and-progression.md` 校准，不在 SKILL.md 内复制长规则。
 
 | 题材 | 核心情绪 | 重点参考 |
-|------|---------|---------|
+| ------ | --------- | --------- |
 | 打脸/逆袭 | 爽感释放 | genre-writing-formulas.md |
 | 身份反转 | 震撼+痛快 | reversal-toolkit.md |
 | 感情拉扯 | 意难平 | emotional-methods.md |
@@ -41,7 +40,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 根据用户意图和项目状态选择场景：
 
 | 场景 | 触发条件 | 执行流程 |
-|------|----------|----------|
+| ------ | ---------- | ---------- |
 | **开书** | "帮我开书" / 项目目录为空 | Phase 1→2→3：建项目、核心设定、卷纲与首批 10 章细纲；**默认停在细纲交付，不自动写正文** |
 | **写指定章** | "写第 N 章" / "写第1章" / "开书并写首章" | Phase 4 单章写作；只写用户点名的章节，写完 Phase 5 检查后停止。空项目/无细纲（如"开书并写首章"）先补 Phase 1→3 再写点名章 |
 | **补纲/扩纲** | "出细纲/补细纲/规划下一段剧情/接下来写XX剧情（先出细纲）" **且**项目已有大纲 | Phase 3「中途补纲/扩纲小流程」（见 `references/workflow-setup.md`）：选同类剧情单元→追加剧情单元卡→按剧情批滚动补细纲；**默认停在细纲交付，不自动写正文** |
@@ -52,7 +51,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ### 裸调用与停靠点（防失控）
 
-`/story-long-write` 或 `$story-long-write` **裸调用**（没有"开书/写第N章/日更/续写/修改"等明确意图）时，先只做项目状态诊断并列出下一步选项，**不得自动进入正文写作，也不得把已有项目默认为日更 3 章**：
+`/skill:story-long-write` **裸调用**（没有"开书/写第N章/日更/续写/修改"等明确意图）时，先只做项目状态诊断并列出下一步选项，**不得自动进入正文写作，也不得把已有项目默认为日更 3 章**：
 
 - 空项目 → 建议说「帮我开书」或先提供 `选题决策.md`；
 - 已有设定/大纲但无正文 → 建议说「写第1章」「只写1章」或「日更2章」；
@@ -164,7 +163,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 **产物映射表**（创建模板详见 [references/artifact-protocols.md](references/artifact-protocols.md)）：
 
 | 文件 | 粒度 | 创建阶段 | 读取时机 |
-|------|------|---------|---------|
+| ------ | ------ | --------- | --------- |
 | 设定/关系.md | 全书 | Phase 2 | 按需：story-explorer relationship 查询、story-review 查设定（不在每章写作回路里逐章读） |
 | 设定/题材定位.md（含 `主对标书` 字段，多对标时必填） | 全书 | Phase 2 | Phase 3 大纲、每卷开始前、Phase 4 写前召回 |
 | 设定/题材正文提示卡.md | 全书/题材 | Phase 2（缺失则 Phase 4 写前即时生成） | Phase 4 每章写作前：按 `genre-prose-cards.md` 索引匹配后读取 `genre-prose-cards/` 目录对应单题材卡优先、`style-genre-modules.md` 通用模块兜底，与通用正文要求、情绪/节奏召回和文风一起组装 prompt |
@@ -187,14 +186,16 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 | 对标/{书名}/设定/*.md | 对标书 | analyze 输出 | Phase 2 设定参考、Phase 4 世界观约束 |
 
 **缺失文件处理**：当前主产物缺失时显式修复，不拼装降级结果：
-1. **角色状态文件缺失** → 当前协议项目先运行 `tracking_commit.py check`，再重跑产生该状态的完整事务；已有正文但 `_tracking-state.json` 缺失时重新 `/story-import`。不得从前文临时推断后直接手写快照。
+
+1. **角色状态文件缺失** → 当前协议项目先运行 `tracking_commit.py check`，再重跑产生该状态的完整事务；已有正文但 `_tracking-state.json` 缺失时重新 `/skill:story-import`。不得从前文临时推断后直接手写快照。
 2. **角色、普通剧情单元或设定等非主产物子目录缺失** → 按「对标书路径查找」查找项目视图与根目录数据源，仍缺失则跳过该可选模块。本条不适用于 `剧情/情绪模块.md` 和 `剧情/节奏.md`。
-3. **`剧情/情绪模块.md` / `剧情/节奏.md` 缺失** → 写前准备必须停下，设置 `missing_primary_contract: true` 并给出 `repair_action`：重跑 `/story-long-analyze` Stage 3+ 或重新 `/story-import`，不得用摘要文件假装已召回权威模块。
-4. **有对标书但 `文风.md` 缺失** → 若有 `设定/文风.md`（含实质内容）走自定义文风模式继续；否则日更文风召回 fail-fast，提示先运行 `/story-long-analyze` Stage 6 并 `/story-import` 同步。**完全无对标项目**则跳过文风召回、不阻塞（有 `设定/文风.md` 时用它写作）。情绪/节奏轴（`missing_primary_contract`）独立，自定义文风模式不豁免其 fail-fast。
+3. **`剧情/情绪模块.md` / `剧情/节奏.md` 缺失** → 写前准备必须停下，设置 `missing_primary_contract: true` 并给出 `repair_action`：重跑 `/skill:story-long-analyze` Stage 3+ 或重新 `/skill:story-import`，不得用摘要文件假装已召回权威模块。
+4. **有对标书但 `文风.md` 缺失** → 若有 `设定/文风.md`（含实质内容）走自定义文风模式继续；否则日更文风召回 fail-fast，提示先运行 `/skill:story-long-analyze` Stage 6 并 `/skill:story-import` 同步。**完全无对标项目**则跳过文风召回、不阻塞（有 `设定/文风.md` 时用它写作）。情绪/节奏轴（`missing_primary_contract`）独立，自定义文风模式不豁免其 fail-fast。
 5. **伏笔/时间线文件缺失** → 视为当前语义检查点损坏，停止写正文；先运行 `tracking_commit.py check`，再用事务修复。卷纲/大纲中的计划不能代替已发生事实的当前检查点。
 6. **`设定/题材正文提示卡.md` 缺失** → 不阻塞；写前从 `设定/题材定位.md` 精确匹配 `references/genre-prose-cards.md` 索引，并只读取 `references/genre-prose-cards/` 中对应题材单卡（高/中/低置信照原卡标注），无命中再用 `references/style-genre-modules.md` 通用流派模块即时生成短 `genre_prose_card`。只有 `设定/题材定位.md` 也缺失时，退回细纲和目标平台做低置信题材卡，并在意图确认写明。
 
 **对标分析权威优先级（权威读取顺序）**：
+
 1. `剧情/情绪模块.md` 是读者需求 / 情绪引擎、爽文套路框架、可复现模块和重组指南的权威来源。
 2. `剧情/节奏.md` 是关键信息推进、章节扩写技法聚合、情绪触动点和爆发节奏的权威来源。
 3. `文风.md` 只管句长、标点、对话潜台词、原文锚点等风格；它不能覆盖情绪模块或节奏意图。**自定义文风 `设定/文风.md`（用户自写、不被导入/拆解覆盖）优先级高于对标 `文风.md`**：含实质内容时作权威风格基，对标文风降为参考与句长数值兜底；命中硬安全线的写法（`……` / 破折号 / 段间空行 / 碎句）仍按 narrative-writer 归一，自定义只接管句长 / 软标点 / 潜台词 / 情绪交替。
@@ -202,6 +203,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 5. `拆文报告.md`、`剧情/故事线.md` 是投影/摘要；若与 `剧情/情绪模块.md` 或 `剧情/节奏.md` 冲突，写作以两个权威文件为准，并在写前准备 `gaps.conflict` 记录冲突来源。
 
 **文件组织原则：**
+
 - **人物一个一个文件**：`角色/角色名.md`，方便按需读取
 - **势力一个一个文件**：`势力/势力名.md`，组织/门派/家族/国家等
 - **世界观按主题拆分**：背景、力量体系、社会结构等各自独立
@@ -225,11 +227,11 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 **位置：** 写作（第 3/3 步）
 
 | 时机 | 跳转到 | 命令 |
-|---|---|---|
-| 写完，去 AI 味 | story-deslop | `/story-deslop` |
-| 想对比参考书 | story-long-analyze | `/story-long-analyze` |
-| 需要市场方向 | story-long-scan | `/story-long-scan` |
-| 太长，适合短篇 | story-short-write | `/story-short-write` |
+| --- | --- | --- |
+| 写完，去 AI 味 | story-deslop | `/skill:story-deslop` |
+| 想对比参考书 | story-long-analyze | `/skill:story-long-analyze` |
+| 需要市场方向 | story-long-scan | `/skill:story-long-scan` |
+| 太长，适合短篇 | story-short-write | `/skill:story-short-write` |
 
 ---
 
@@ -242,7 +244,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 ### Phase 1：选题方向
 
 | 场景 | 加载文件 |
-|------|---------|
+| ------ | --------- |
 | 确定题材类型 | `references/genre-catalog.md` |
 | 判断市场方向 | `references/genre-readers.md` |
 | 特殊题材考量 | `references/plot-special-topics.md` |
@@ -251,7 +253,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 ### Phase 2：核心设定
 
 | 场景 | 加载文件 |
-|------|---------|
+| ------ | --------- |
 | 设定人物 | `references/character-basics.md` |
 | 设计关系 | `references/character-relations.md` |
 | 题材框架与定位 | `references/genre-catalog.md` + `references/genre-core-mechanics.md` |
@@ -261,7 +263,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 ### Phase 3：大纲搭建
 
 | 场景 | 加载文件 |
-|------|---------|
+| ------ | --------- |
 | 搭建大纲 | `references/outline-methods.md` |
 | 设计矛盾与结构 | `references/outline-conflict.md` |
 | 深度结构设计 | `references/outline-structure-theory.md` |
@@ -277,7 +279,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 ### Phase 4：正文写作
 
 | 场景 | 加载文件 |
-|------|---------|
+| ------ | --------- |
 | 章节钩子 | `references/hooks-chapter.md` |
 | 悬念设计 | `references/hooks-suspense.md` |
 | 段落级钩子 | `references/hooks-paragraph.md` |
@@ -296,7 +298,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 ### Phase 5：质量检查
 
 | 场景 | 加载文件 |
-|------|---------|
+| ------ | --------- |
 | 质量检查 | `references/quality-checklist.md` + `references/reader-contract-and-progression.md` |
 | 禁用词扫描 | `references/banned-words.md` |
 | AI句式脚本复扫 | `scripts/check-ai-patterns.js` |
@@ -307,7 +309,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 有些主题横跨多个阶段、散在多个文件里。下表给每个主题一个**权威文件**（先读它，通常够用），配套文件只在需要那个角度时再加载。括号是该文件里对应的小节。
 
 | 主题 | 权威文件（先读） | 配套文件（按角度补充） |
-|------|-----------------|----------------------|
+| ------ | ----------------- | ---------------------- |
 | 爽点（按意图分流） | **`references/plot-emotion-system.md`**（爽点设计体系：本质/六种类型/倒推法——"怎么设计爽点"先读这个） | 翻盘/高潮式爽点→`references/plot-core-methods.md`（假胜→崩解）· 打脸/装逼释放→`references/style-combat-face.md`· 题材打脸逆袭公式→`references/genre-writing-formulas.md`· 爽文循环/多层→`references/outline-methods.md`·`references/outline-conflict.md` |
 | 情绪模块 | **`对标/{书名}/剧情/情绪模块.md`（项目/书级权威）**；无对标或设计新模块时再读 `references/plot-emotion-system.md` | `references/outline-rhythm.md` 只作理论参考；不得覆盖对标书权威模块 |
 | 节奏 | **`对标/{书名}/剧情/节奏.md`（项目/书级权威）**；无对标或设计新节奏时再读 `references/outline-rhythm.md` | `references/plot-core-methods.md` 只作理论参考；不得覆盖对标书权威节奏 |

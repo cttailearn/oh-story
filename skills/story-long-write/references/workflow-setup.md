@@ -28,13 +28,13 @@ SKILL.md 只保留场景路由与停靠规则；进入任一 Phase 前读本文�
 1. `ls 拆文库/`（数据源）与项目 `对标/`（引用视图）列已有书目；先按当前项目目录名、`.active-book` 和 `设定/题材定位.md` 中的本书信息识别当前作品，排除同名或来源指向当前正文的 `拆文库/{当前书}/`。story-import 为重建工程生成的本书拆文分析不是对标候选，也不得复制回 `对标/`。排除后都为空 → 跳到第 4 条。
 2. 逐本读题材（短篇读 `拆文库/{书}/_meta.json` 的 `genre_detected`；长篇读 `概要.md` 头部或 `拆文报告.md`「基本信息」的「题材」），与本书题材/方向比对，标 同题材 / 弱相关 / 不相关。
 3. 有同题材或弱相关候选 → 用 AskUserQuestion 推荐（列候选书 +「都不用」+「另拆一本」），主对标 1 本走文风/正文、其余作副对标。选定后写入 `设定/题材定位.md`「对标登记」的 `主对标书` / `对标书列表`（Phase 2 落文件，此处先记选择），并按 SKILL.md「路径与术语约定」的「首次引用对标书」规则把选中书从 `拆文库/{书}/` 复制到 `对标/{书}/`。
-4. 无候选 → 无对标继续（大纲按八节点自排，见 Phase 3）；用户想对标可先 `/story-long-analyze` 拆一本。
+4. 无候选 → 无对标继续（大纲按八节点自排，见 Phase 3）；用户想对标可先 `/skill:story-long-analyze` 拆一本。
 
 如果用户提到对标书或工作目录下已存在 `对标/` 目录：
 
 1. 先按上方「对标发现」第 1 条的同一口径识别当前作品，排除同名或来源指向当前正文的 `对标/{当前书}/`——老导入项目里可能留着历史误建的自对标目录。排除后没有外部对标书时不进入下面几步，按无对标继续。
 2. 按对标书路径查找规则检查 `剧情/情绪模块.md` 与 `剧情/节奏.md`。
-3. 任一主产物缺失时必须停止，设置 `missing_primary_contract: true`，并给出 `repair_action`：重跑 `/story-long-analyze` Stage 3+ 或重新 `/story-import`；不得以 `拆文报告.md`、章节摘要或故事线代替。
+3. 任一主产物缺失时必须停止，设置 `missing_primary_contract: true`，并给出 `repair_action`：重跑 `/skill:story-long-analyze` Stage 3+ 或重新 `/skill:story-import`；不得以 `拆文报告.md`、章节摘要或故事线代替。
 4. 两个主产物都存在时，先读 `剧情/情绪模块.md` 的读者需求 / 情绪引擎与可复现模块，再读 `剧情/节奏.md` 的关键信息推进、情绪触动点和爆发节奏；`拆文报告.md` 只用作人类可读概览。
 5. 如果角色、普通剧情单元或设定子目录存在，写作时按需召回相关模块。
 
@@ -46,7 +46,7 @@ SKILL.md 只保留场景路由与停靠规则；进入任一 Phase 前读本文�
 
 #### Agent 调用：story-architect
 
-story-architect 属于高层级结构设计 agent。轻量题材定位优先由主会话完成；只有涉及复杂世界观、多线结构、强反转工程或用户明确要求时，才调用 story-architect。确认选题方向后，如果项目已部署 story-architect agent（检查 `.claude/agents/story-architect.md` 是否存在），可 spawn `Agent(subagent_type: "story-architect", prompt: "项目目录：{dir}\n任务类型：题材定位\n查询参数：{用户选择的方向+对标信息}")` 辅助题材分析和核心梗设计。如 agent 不可用，由主线程直接执行。
+story-architect 属于高层级结构设计 agent。轻量题材定位优先由主会话完成；只有涉及复杂世界观、多线结构、强反转工程或用户明确要求时，才调用 story-architect。确认选题方向后，如果项目已部署 story-architect agent（检查 `.pi/agents/story-architect.md` 是否存在），可 spawn `子代理 `story-architect`（subagent 工具，task："项目目录：{dir}\n任务类型：题材定位\n查询参数：{用户选择的方向+对标信息}"）` 辅助题材分析和核心梗设计。如 agent 不可用，由主线程直接执行。
 
 > **story-architect 契约摘要（spawn 时必须原样附带）**：部署的 story-architect agent 不认识本 skill 的 `references/reader-contract-and-progression.md`，只能靠 spawn prompt 里带的这段摘要对齐 schema，否则主线程和委托产出会用不同的推进规则。摘要内容：
 > - **终局储备边界**：终局底牌（头号宿敌/终极真相/金手指上限/身份终点/核心情感终点）是一次性资源，逐卷解锁，不得提前打光；升级台阶（境界/等级/地图/势力层级）按剩余档数逐级解锁，不得越级。
@@ -109,9 +109,9 @@ story-architect 属于高层级结构设计 agent。轻量题材定位优先由�
 
 #### Agent 调用：story-architect + character-designer
 
-核心设定阶段，如果项目已部署对应 agent（优先检查 `.claude/agents/` 下的 `story-architect.md` 和 `character-designer.md` 是否存在；不存在时再检查 `.opencode/agents/`，再不存在时检查 `.codex/agents/`），可 spawn 以下 agent 辅助：
-- `Agent(subagent_type: "story-architect", prompt: "项目目录：{dir}\n任务类型：核心设定\n查询参数：世界观构建+核心冲突设计")` — 辅助世界观和核心冲突设计；spawn prompt 必须原样附带 Phase 1 的「story-architect 契约摘要」（升级台阶检查约束力量体系设计）
-- `Agent(subagent_type: "character-designer", prompt: "项目目录：{dir}\n任务类型：角色设定\n查询参数：{主角设定信息}")` — 辅助角色设定和语言风格档案
+核心设定阶段，如果项目已部署对应 agent（优先检查 `.pi/agents/` 下的 `story-architect.md` 和 `character-designer.md` 是否存在；不存在时再检查 `.pi/agents/`，再不存在时检查 `.pi/agents/`），可 spawn 以下 agent 辅助：
+- `子代理 `story-architect`（subagent 工具，task："项目目录：{dir}\n任务类型：核心设定\n查询参数：世界观构建+核心冲突设计"）` — 辅助世界观和核心冲突设计；spawn prompt 必须原样附带 Phase 1 的「story-architect 契约摘要」（升级台阶检查约束力量体系设计）
+- `子代理 `character-designer`（subagent 工具，task："项目目录：{dir}\n任务类型：角色设定\n查询参数：{主角设定信息}"）` — 辅助角色设定和语言风格档案
 
 如 agent 不可用，由主线程直接执行。
 
@@ -173,7 +173,7 @@ story-architect 属于高层级结构设计 agent。轻量题材定位优先由�
 
 > **多对标书时**：参 `references/cross-book-recall.md`，副对标 `章节/*_摘要.md` + `剧情/*.md` 召回卷级节奏
 
-> **对标节奏回流（有主对标书时，卷纲定稿前做一次）**：读主对标 `对标/{书}/剧情/节奏.md`；缺失时设置 `missing_primary_contract: true` 并停止，提示重跑 `/story-long-analyze` Stage 3+ 或重新 `/story-import`，不得用章节摘要、故事线或拆文报告代替。文件存在时，按 references/outline-structure-theory.md「对标节奏迁移」把对标的一级结构关键点（1/4·中点·3/4）换素材排进本卷卷纲「对标结构坐标」——选段以主对标剧情单元为单位，按「类型/桥段标签」圈同类（详见该节步骤 1），选中的剧情单元写入剧情单元卡「对标剧情参照」。若尚未登记主对标书但 `拆文库/` 有同题材候选，先回 Phase 1「对标发现」登记再排节奏；确无对标书则按八节点占比自排。
+> **对标节奏回流（有主对标书时，卷纲定稿前做一次）**：读主对标 `对标/{书}/剧情/节奏.md`；缺失时设置 `missing_primary_contract: true` 并停止，提示重跑 `/skill:story-long-analyze` Stage 3+ 或重新 `/skill:story-import`，不得用章节摘要、故事线或拆文报告代替。文件存在时，按 references/outline-structure-theory.md「对标节奏迁移」把对标的一级结构关键点（1/4·中点·3/4）换素材排进本卷卷纲「对标结构坐标」——选段以主对标剧情单元为单位，按「类型/桥段标签」圈同类（详见该节步骤 1），选中的剧情单元写入剧情单元卡「对标剧情参照」。若尚未登记主对标书但 `拆文库/` 有同题材候选，先回 Phase 1「对标发现」登记再排节奏；确无对标书则按八节点占比自排。
 
 #### 细纲（全书每章）
 
@@ -272,7 +272,7 @@ story-architect 属于高层级结构设计 agent。轻量题材定位优先由�
 
 大纲搭建阶段优先由主会话产出卷纲+首批细纲；只有结构复杂、反转链多或主会话方案不稳时，才调用 story-architect agent。
 
-若已部署 story-architect agent（优先检查 `.claude/agents/story-architect.md`），可让它辅助：
+若已部署 story-architect agent（优先检查 `.pi/agents/story-architect.md`），可让它辅助：
 - 任务：卷级结构、首批细纲、钩子/反转/情绪弧线。
 - 章节定位：每章标高压/推进/修炼试错/关系回收/低压生活/信息整理；低压章可弱爽点，但仍要有往下看的理由。
 - 字数预算：每个情节点标密/疏和预算；密点展开，疏点带过；末尾写 `预算合计：X字（目标Y，范围Y-Z）`。

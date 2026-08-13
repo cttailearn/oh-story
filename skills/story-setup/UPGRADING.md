@@ -5,7 +5,7 @@
 - `setup_skill_version: 1.2.7`
 - `agents_version: 25`
 
-`.story-deployed` 缺失任一字段，或 `agents_version` 缺失 / 非整数 / 小于 `25`，都视为待更新部署。直接重新运行 `/story-setup`（Codex 用 `$story-setup`）；不在运行时逐级兼容历史模板。如项目 `agents_version` 大于 `25`，说明本地 story-setup 比项目旧：先更新 oh-story-claudecode，不得用 v25 降级覆盖。历史版本改动见仓库根目录 `CHANGELOG.md`。
+`.story-deployed` 缺失任一字段，或 `agents_version` 缺失 / 非整数 / 小于 `25`，都视为待更新部署。直接重新运行 `/skill:story-setup`（Codex 用 `$story-setup`）；不在运行时逐级兼容历史模板。如项目 `agents_version` 大于 `25`，说明本地 story-setup 比项目旧：先更新 oh-story-pi，不得用 v25 降级覆盖。历史版本改动见仓库根目录 `CHANGELOG.md`。
 
 ## 升级策略
 
@@ -23,9 +23,9 @@
 
 这些文件由 story-setup 管理，不含用户自定义内容：
 - `.claude/hooks/` — 所有 hook 脚本与 `lib/` 辅助库
-- `.claude/agents/` — 所有 agent 定义
+- `.pi/agents/` — 所有 agent 定义
 - `.claude/rules/` — 所有 path-scoped 规则
-- `.claude/skills/story-setup/references/agent-references/` — Agent 参考资料副本
+- `.claude/skills/skill:story-setup/references/agent-references/` — Agent 参考资料副本
 - `.zcode/skills/{13 known skills}/`、`.zcode/commands/{13 known commands}.md` — 仅覆盖 oh-story 已知名称
 - `.zcode/hooks/story_zcode_hook.js` — ZCode 专用 Hook runner
 
@@ -55,9 +55,9 @@
 
 - `.claude/rules/story-narrative.md` 删掉「禁止 AI 腔」红线块。该块只在 `拆文库/` `对标/` `设定/` 三个 path 下加载，正文目录根本不命中，五条规则也已由 narrative-writer 的 7 Gate / 禁止事项与 `check-ai-patterns.js` 的 blocking 规则覆盖。
 - `.claude/rules/story-format.md` 的对话标签规则从「禁止「他说」「她道」」改为「避免对话标签机械化」：高频或公式化标签用动作/上下文替代，普通「说」低频使用可保留。此前该文件是全仓唯一把普通「说」判为违规的地方，与 `format-and-structure.md` 等 11 处口径冲突，且它正好在 `正文/` path 上加载。
-- `.claude/agents/narrative-writer.md` 精简约 19%：删除与 7 Gate / 禁止事项重复的审查清单（story-review spawn 时会内联完整 rubric）、正文写作阶段的具体字数表达校验（移到审查侧）、以及 `……`/`——`、段间空行、章节元信息正则的重复陈述。写作规则本身未放宽，Gate A-G 与禁止事项口径不变。
+- `.pi/agents/narrative-writer.md` 精简约 19%：删除与 7 Gate / 禁止事项重复的审查清单（story-review spawn 时会内联完整 rubric）、正文写作阶段的具体字数表达校验（移到审查侧）、以及 `……`/`——`、段间空行、章节元信息正则的重复陈述。写作规则本身未放宽，Gate A-G 与禁止事项口径不变。
 - `.claude/hooks/guard-outline-before-prose.sh` 补上追踪检查点门，与 OpenCode / ZCode / Codex 同序：追踪状态缺失、schema 不是 4、续写状态卡修订号与 state 不一致、首建新章时上一章事务未提交，都拦下写正文。细纲/大纲门只在首建时判，追踪门对首建与续写都判。判定经 `.claude/hooks/story_hook_cli.js` 的 `tracking-checkpoint` 子命令调共享核，四端一份实现；需要解析 JSON，故 node 不在场时这道门放行（大纲/细纲门仍是纯 bash，无 node 也拦得住）。
-  - **对已部署项目的影响**：v0.7.3 起就该迁移的旧追踪项目，此前在 Claude Code 上还能继续写，现在会被拦下。按提示走 `/story-import` 的「旧追踪项目迁移」重建 `追踪/` 即可，不必重跑全书拆解。
+  - **对已部署项目的影响**：v0.7.3 起就该迁移的旧追踪项目，此前在 Claude Code 上还能继续写，现在会被拦下。按提示走 `/skill:story-import` 的「旧追踪项目迁移」重建 `追踪/` 即可，不必重跑全书拆解。
 
 重新部署后需**新开会话**，custom agent 才会重新注册。
 
@@ -65,7 +65,7 @@
 
 - `story-import` 只把作者已有小说重建为写作工程：`拆文库/{导入书名}/` 迁移到正文/设定/大纲/追踪，不再自动登记成主/副对标，也不再复制到项目 `对标/`。只有用户明确选择、且来源为独立 `拆文库/{对标书名}/` 的外部作品才同步到 `对标/{对标书名}/`。
 - 无外部对标时只跳过对标模块、节奏和文风召回；项目题材卡仍从本书题材信息生成，不再被对标分支误伤。对标主产物缺失继续 fail-fast，只有单个可选模块卡未命中时才局部跳过。
-- 所有可能 spawn 项目 agent 的 Skill 都先读取 `.story-deployed.agents_version`：与 v23 不一致时**照常 spawn**，只在报告里提示版本不匹配、建议重跑 `/story-setup` 并新开会话。版本不匹配不阻断并行——bump 常常源于别的部署物变化而 agent 模板未动。真正降级 solo/direct 的信号是 agent 文件缺失或运行时不暴露 custom agent。
+- 所有可能 spawn 项目 agent 的 Skill 都先读取 `.story-deployed.agents_version`：与 v23 不一致时**照常 spawn**，只在报告里提示版本不匹配、建议重跑 `/skill:story-setup` 并新开会话。版本不匹配不阻断并行——bump 常常源于别的部署物变化而 agent 模板未动。真正降级 solo/direct 的信号是 agent 文件缺失或运行时不暴露 custom agent。
 - 写作与导入只接受当前拆文产物：`剧情/情绪模块.md` 与 `剧情/节奏.md` 缺失时 fail-fast，并给出重跑 Stage 3+ / 重新导入的修复动作。
 - 新建、补建、改纲的细纲只接受完整章节蓝图：缺少阶段位置、结构公式、禁止提前释放、内容概括、情节安排、人物关系、情节细化或结尾设定时，先补齐再写。旧版细纲缺这些字段不阻塞日更，回退消费旧字段（核心事件、情节点序列、目标情绪、章首/章尾钩子、字数目标）。
 - 细纲字段是本章「要发生什么」的内容规格，不规定正文形状：各字段都要在正文里兑现，但正文可合并、穿插、重排情节点，不按条目顺序一条一段平推。细纲「结尾 / 结尾设定」写本章最后落在什么动作、画面或台词上，不写状态判词。
@@ -93,7 +93,7 @@
 2. 以项目根 `设定/` 为本书正式设定。若 `对标/{当前书名}/` 的内容确认只是从本书 `设定/` 或 `拆文库/{导入书名}/` 复制而来，且没有人工补充，再删除这个误建目录。
 3. 清理 `设定/题材定位.md` 中把当前书登记为主/副对标的字段；真实外部对标登记不动。
 4. 若某个 `对标/{外部书名}/` 目录名看似外部作品，但内容实际来自当前书，删除这份错误视图，再从真正的 `拆文库/{对标书名}/` 重新同步；不要改名冒充修复。
-5. 重新运行 `/story-setup`（Codex 用 `$story-setup`）并新开会话，使 v23 的 agent 模板生效；在此之前 spawn 照常工作，只会多一条版本不匹配提示。
+5. 重新运行 `/skill:story-setup`（Codex 用 `$story-setup`）并新开会话，使 v23 的 agent 模板生效；在此之前 spawn 照常工作，只会多一条版本不匹配提示。
 
 ## 追踪模型迁移（v0.7.2 及更早的长篇项目必读）
 
@@ -107,7 +107,7 @@
 | 缺 `_tracking-state.json` 但已有正文 | 日更停止；OpenCode / ZCode / Codex 上写正文被 hook 直接拦截 |
 | 存在但派生视图被手改 | `check` 报 `derived view differs from _tracking-state.json` |
 
-迁移**不需要重跑全书拆解**：正文、`设定/`、`大纲/`、`拆文库/` 都不受影响，只重建 `追踪/`。执行 `/story-import` 的「旧追踪项目迁移」——数出最后完整章号 `N`，从旧追踪文件与最近几章正文重建当前状态，构造 `last_chapter=N` 的初始化事务跑 `tracking_commit.py init`。旧追踪结构会被按原样整体移入 `追踪/_旧追踪存档/`，不删除、不参与解析。
+迁移**不需要重跑全书拆解**：正文、`设定/`、`大纲/`、`拆文库/` 都不受影响，只重建 `追踪/`。执行 `/skill:story-import` 的「旧追踪项目迁移」——数出最后完整章号 `N`，从旧追踪文件与最近几章正文重建当前状态，构造 `last_chapter=N` 的初始化事务跑 `tracking_commit.py init`。旧追踪结构会被按原样整体移入 `追踪/_旧追踪存档/`，不删除、不参与解析。
 
 退役结构：`_tracking-meta.json`、`时间线/事件库.json` 及更早追踪文件不再被解析，`commit` 与 `check` 遇到会直接拒绝。
 

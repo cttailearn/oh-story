@@ -1,8 +1,7 @@
 ---
 name: story-short-write
 version: 1.0.0
-description: "短篇网文写作。辅助短篇小说创作，从构思到成稿，聚焦情绪拉扯与节奏把控。触发方式：/story-short-write、/写短篇、「帮我写一篇短篇」「写个盐言故事」。"
-metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claudecode"}}
+description: "短篇网文写作。辅助短篇小说创作，从构思到成稿，聚焦情绪拉扯与节奏把控。触发方式：/skill:story-short-write、/写短篇、「帮我写一篇短篇」「写个盐言故事」。"
 ---
 # story-short-write：短篇网文写作
 
@@ -12,9 +11,9 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ---
 
-> Agent 兼容性：检查专业 agent 是否可用时，按 `.claude/agents/{agent}.md` → `.opencode/agents/{agent}.md` → `.codex/agents/{agent}.toml` 的顺序查找。Codex 原生子代理调用优先使用同名 `agent_type`；如果当前 Codex 运行时返回 `unknown agent_type` 或未暴露 custom-agent registry，必须降级为 solo/direct。检测到 `.zcode/` 时同样直接 solo/direct，因为 ZCode 3.3.4 不执行项目 custom agents；报告 `Fallback: project custom agents unavailable -> solo`。Claude/OpenCode 兼容面保留 `subagent_type`。
+> Agent 兼容性：检查专业 agent 是否可用时，检查 `.pi/agents/{agent}.md` 是否存在且运行时暴露 subagent 工具（pi-subagents）；任一不满足即降级为 solo/direct，报告 `Fallback: project custom agents unavailable -> solo`。
 >
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-claudecode，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/skill:story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 ## 执行规则
 
@@ -65,7 +64,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ### Phase 2：构思核心框架
 
-> 如果用户有参考小说，先用 `/story-short-analyze` 拆解。默认输出存入项目根目录 `拆文库/{书名}/`；如用户指定当前短篇引用目录，则可输出/同步到 `{短篇标题}/对标/{书名}/`。写作时会自动查找并读取这些拆文结果，不需要用户手动复制到 prompt。
+> 如果用户有参考小说，先用 `/skill:story-short-analyze` 拆解。默认输出存入项目根目录 `拆文库/{书名}/`；如用户指定当前短篇引用目录，则可输出/同步到 `{短篇标题}/对标/{书名}/`。写作时会自动查找并读取这些拆文结果，不需要用户手动复制到 prompt。
 
 #### 对标上下文加载
 
@@ -120,7 +119,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 4. 读取核心发现：结构段落、情绪曲线、反转位置、铺垫方式、句式节奏、可借鉴技法。**把拆文报告里的具体招式对到题材包招式库**：拆文给「这一篇怎么做的」，题材包给「这一类通用怎么做」，两者合用——拆文是当前对标书的实证，题材包是该题材的通法
 5. 写入本篇 `设定.md` 的“对标摘要”区，写作时每个场景从中召回 1-2 个相关技法
-6. 如只找到原文、未找到拆文报告，提示用户先运行 `/story-short-analyze`；如用户要求继续，也可只按原文做弱参考
+6. 如只找到原文、未找到拆文报告，提示用户先运行 `/skill:story-short-analyze`；如用户要求继续，也可只按原文做弱参考
 
 > **拆文产出格式**：analyze 落盘的完整文件树、`_meta.json` schema、Stage→文件映射，以及「story-short-write 怎么读这些产出」的下游消费规范，见 [references/output-contract.md](references/output-contract.md)。
 
@@ -128,7 +127,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 #### Agent 调用：story-architect
 
-构思阶段，如果项目已部署 story-architect agent（查找顺序见顶部），可 spawn `Agent(subagent_type: "story-architect", prompt: "项目目录：{dir}\n任务类型：短篇构思\n查询参数：{情绪目标+题材方向}")` 辅助框架设计。如 agent 不可用，由主线程直接执行。
+构思阶段，如果项目已部署 story-architect agent（查找顺序见顶部），可 spawn `子代理 `story-architect`（subagent 工具，task："项目目录：{dir}\n任务类型：短篇构思\n查询参数：{情绪目标+题材方向}"）` 辅助框架设计。如 agent 不可用，由主线程直接执行。
 
 帮用户确定短篇的核心框架：
 
@@ -177,7 +176,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 #### Agent 调用：character-designer
 
-设计任务完成后，如果项目已部署 character-designer agent（查找顺序见顶部），可 spawn `Agent(subagent_type: "character-designer", prompt: "项目目录：{dir}\n任务类型：角色设定\n查询参数：{人设速写+关系}")` 辅助角色设定和语言风格档案。如 agent 不可用，由主线程直接执行。
+设计任务完成后，如果项目已部署 character-designer agent（查找顺序见顶部），可 spawn `子代理 `character-designer`（subagent 工具，task："项目目录：{dir}\n任务类型：角色设定\n查询参数：{人设速写+关系}"）` 辅助角色设定和语言风格档案。如 agent 不可用，由主线程直接执行。
 
 ---
 
@@ -213,7 +212,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 - 每批写完后更新“已写小节摘要”（3-5 条：已揭示信息、情绪位置、未回收伏笔、下一批衔接句）。
 - 下一批先读该摘要和 `正文.md` 尾部 300-500 字再续写。
 - 只有用户明确要求子代理、主会话上下文不足，或需要隔离试写时，才检查 narrative-writer agent（查找顺序见顶部）。
-- 如可用，spawn `Agent(subagent_type: "narrative-writer", prompt: ...)`，只传项目目录、输出文件、情绪目标、题材风格包、小节大纲、角色、主/副对标召回摘要、格式硬约束和写作硬约束。
+- 如可用，spawn `子代理 `narrative-writer`（subagent 工具，task：...）`，只传项目目录、输出文件、情绪目标、题材风格包、小节大纲、角色、主/副对标召回摘要、格式硬约束和写作硬约束。
 - 不把本 skill 整段规则塞进 prompt；细节以已加载的 `short-format.md`、题材包和 `short-craft.md` 为准。
 - 无论谁写，写入 `正文.md` 前都按同一格式规范重排，保证主会话与子代理输出一致。
 
@@ -349,8 +348,8 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 #### Agent 调用：narrative-writer（去AI味）+ consistency-checker
 
 精修阶段，如果项目已部署对应 agent，可 spawn：
-- `Agent(subagent_type: "narrative-writer", prompt: "项目目录：{dir}\n任务描述：去AI味+格式检查\n检查范围：{正文文件}\n删除优先：每条 AI 味项先判能否删除——删后不丢伏笔/钩子/角色/情节/必要信息的直接删，会丢才润色（删除受比例上限与字数下限约束，跌破下限改降AI重写）\n必须检查：先否定再肯定的翻转句式，发现后直接改成后项或动作细节；检查像/好像/仿佛/如同等比喻是否成片堆叠，确属堆叠时只留最有功能的少数比喻，其余回到具体画面；检查是否连续使用头皮发紧/眼皮一跳/心口一沉/胃里翻涌等精致戏剧反应，能写普通动作/普通感觉就写普通动作/普通感觉；已有手机/聊天记录/公告/账单/病历/证据截图等信息，保留为角色看到或处理的场内载体，不改成叙述者解释；任务卡点只在角色本来有要办的事且能加重情绪/证据/关系/反转时使用，不为自然感补流程")` — 执行去AI味（7 Gate）和格式合规检查
-- `Agent(subagent_type: "consistency-checker", prompt: "项目目录：{dir}\n检查范围：{正文文件}\n检查类型：事实冲突+伏笔断线+角色属性不一致")` — 执行一致性检查
+- `子代理 `narrative-writer`（subagent 工具，task："项目目录：{dir}\n任务描述：去AI味+格式检查\n检查范围：{正文文件}\n删除优先：每条 AI 味项先判能否删除——删后不丢伏笔/钩子/角色/情节/必要信息的直接删，会丢才润色（删除受比例上限与字数下限约束，跌破下限改降AI重写）\n必须检查：先否定再肯定的翻转句式，发现后直接改成后项或动作细节；检查像/好像/仿佛/如同等比喻是否成片堆叠，确属堆叠时只留最有功能的少数比喻，其余回到具体画面；检查是否连续使用头皮发紧/眼皮一跳/心口一沉/胃里翻涌等精致戏剧反应，能写普通动作/普通感觉就写普通动作/普通感觉；已有手机/聊天记录/公告/账单/病历/证据截图等信息，保留为角色看到或处理的场内载体，不改成叙述者解释；任务卡点只在角色本来有要办的事且能加重情绪/证据/关系/反转时使用，不为自然感补流程"）` — 执行去AI味（7 Gate）和格式合规检查
+- `子代理 `consistency-checker`（subagent 工具，task："项目目录：{dir}\n检查范围：{正文文件}\n检查类型：事实冲突+伏笔断线+角色属性不一致"）` — 执行一致性检查
 
 如 agent 不可用，由主线程直接执行。
 
@@ -370,11 +369,11 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 | 时机 | 跳转到 | 命令 |
 |---|---|---|
-| 有参考小说想对标 | story-short-analyze | `/story-short-analyze` → 输出存入 `拆文库/{书名}/` |
-| 写完，去 AI 味 | story-deslop | `/story-deslop` |
+| 有参考小说想对标 | story-short-analyze | `/skill:story-short-analyze` → 输出存入 `拆文库/{书名}/` |
+| 写完，去 AI 味 | story-deslop | `/skill:story-deslop` |
 | 想自检 | 本 skill 质量自检 | 用 Phase 4 自检流程 + `references/quality-checklist.md` 逐项核对 |
-| 需要市场方向 | story-short-scan | `/story-short-scan` |
-| 设定太大，适合长篇 | story-long-write | `/story-long-write` |
+| 需要市场方向 | story-short-scan | `/skill:story-short-scan` |
+| 设定太大，适合长篇 | story-long-write | `/skill:story-long-write` |
 
 ---
 

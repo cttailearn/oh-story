@@ -1,8 +1,7 @@
 ---
 name: story-import
 version: 1.0.0
-description: "逆向导入已有小说。将已写好的小说（半成品或完本）反向解析为标准项目目录结构，兼容 story-long-write / story-short-write 后续写作流程；内部复用 story-long-analyze / story-short-analyze 的拆解管道，按篇幅自动分流。触发方式：/story-import、「导入小说」「反向解析」「导入」「把我的书导进来」。"
-metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claudecode"}}
+description: "逆向导入已有小说。将已写好的小说（半成品或完本）反向解析为标准项目目录结构，兼容 story-long-write / story-short-write 后续写作流程；内部复用 story-long-analyze / story-short-analyze 的拆解管道，按篇幅自动分流。触发方式：/skill:story-import、「导入小说」「反向解析」「导入」「把我的书导进来」。"
 ---
 # story-import：逆向导入已有小说
 
@@ -12,9 +11,9 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ---
 
-> Agent 兼容性：检查专业 agent 是否可用时，按 `.claude/agents/{agent}.md` → `.opencode/agents/{agent}.md` → `.codex/agents/{agent}.toml` 的顺序查找。Codex 原生子代理调用优先使用同名 `agent_type`；如果当前 Codex 运行时返回 `unknown agent_type` 或未暴露 custom-agent registry，必须降级为 solo/direct。检测到 `.zcode/` 时同样直接 solo/direct，因为 ZCode 3.3.4 不执行项目 custom agents；报告 `Fallback: project custom agents unavailable -> solo`。Claude/OpenCode 兼容面保留 `subagent_type`。
+> Agent 兼容性：检查专业 agent 是否可用时，检查 `.pi/agents/{agent}.md` 是否存在且运行时暴露 subagent 工具（pi-subagents）；任一不满足即降级为 solo/direct，报告 `Fallback: project custom agents unavailable -> solo`。
 >
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-claudecode，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/skill:story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 ## 核心原则
 
@@ -31,7 +30,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ### 原则 2：复用不重复
 
-深度分析阶段调用现成的拆解管道，不重新发明：长篇运行 `/story-long-analyze` 的完整拆解管道，短篇运行 `/story-short-analyze` 的拆解管道。拆解方法论与输出模板由对应 analyze skill 自带，story-import 不执行拆解方法论、不维护这些文件。
+深度分析阶段调用现成的拆解管道，不重新发明：长篇运行 `/skill:story-long-analyze` 的完整拆解管道，短篇运行 `/skill:story-short-analyze` 的拆解管道。拆解方法论与输出模板由对应 analyze skill 自带，story-import 不执行拆解方法论、不维护这些文件。
 
 ---
 
@@ -41,9 +40,9 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 当用户问"导入续写先走 story-setup 还是 story-import"、"已有小说怎么续写"、"导入流程"这类流程问题时，先直接给出结论，再继续收集原文：
 
-1. **推荐顺序**：先 `/story-setup`（部署 hooks/agents/AGENTS），新开/刷新会话后运行 `/story-import`，最后用 `/story-long-write 日更/写第N章` 续写。
-2. **也可以直接 `/story-import`**：本 skill 会在进入深度分析前检测 `.story-deployed` 与专业 agent；未部署时会给出"先去 setup"或"继续导入（串行降级）"两种选择。
-3. **已导入过的当前协议项目**（书名目录下有 `追踪/_tracking-state.json`）：不要重复跑完整导入；直接进入书名目录，确认 `.active-book` 指向正确书目，再用 `/story-long-write 日更` 或 `/story-long-write 写第N章`。
+1. **推荐顺序**：先 `/skill:story-setup`（部署 hooks/agents/AGENTS），新开/刷新会话后运行 `/skill:story-import`，最后用 `/skill:story-long-write 日更/写第N章` 续写。
+2. **也可以直接 `/skill:story-import`**：本 skill 会在进入深度分析前检测 `.story-deployed` 与专业 agent；未部署时会给出"先去 setup"或"继续导入（串行降级）"两种选择。
+3. **已导入过的当前协议项目**（书名目录下有 `追踪/_tracking-state.json`）：不要重复跑完整导入；直接进入书名目录，确认 `.active-book` 指向正确书目，再用 `/skill:story-long-write 日更` 或 `/skill:story-long-write 写第N章`。
 4. **v0.7.2 及更早的旧追踪项目**（有 `追踪/` 和正文，但没有 `追踪/_tracking-state.json`）：日更会停下要求重新导入，但**不需要重跑全书拆解**。只重建追踪即可，见下方「旧追踪项目迁移」。
 
 这段结论必须出现在任何导入源追问之前，避免用户只想确认流程却被直接要求贴原文。
@@ -56,7 +55,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 2. 从旧 `追踪/` 现有文件（角色状态、伏笔、时间线等，文件名按项目实际情况）和最近 3-5 章正文，重建当前状态：核心角色快照、未回收伏笔、已揭示时间线事件、长期约束、下一章承诺。角色快照的反推方法见 [references/character-state-reverse.md](references/character-state-reverse.md)。
 3. 按 [references/tracking-transaction.md](references/tracking-transaction.md) 的初始化事务格式构造 JSON，`last_chapter` 写 `N`（第 1..N 章不伪造逐章记录），执行 `tracking_commit.py init`。
 4. `init` 会把旧追踪结构按原样整体移入 `追踪/_旧追踪存档/` 再建当前协议——旧内容不删除、不参与解析，留给作者查阅。
-5. 跑 `tracking_commit.py check` 确认通过，再回 `/story-long-write 日更` 续写。
+5. 跑 `tracking_commit.py check` 确认通过，再回 `/skill:story-long-write 日更` 续写。
 
 重建结果以第 2 步的证据为准；拿不准的字段留空或写进 `continuity_risks`，不杜撰。用户明确要求重拆全书时才走完整 Phase 2。
 
@@ -69,7 +68,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 > 「你是想把这本书做成可续写的写作工程（设定/大纲/正文/追踪，能接着写第 N+1 章），还是只要一份拆文库分析？」
 
 - 要可续写工程 → 走完整 story-import（Phase 2 拆 + Phase 3 迁移）。
-- 只要分析 / 拆文库 → 直接用 `/story-long-analyze`（短篇 `/story-short-analyze`），到拆文库为止，不进 Phase 3 迁移。
+- 只要分析 / 拆文库 → 直接用 `/skill:story-long-analyze`（短篇 `/skill:story-short-analyze`），到拆文库为止，不进 Phase 3 迁移。
 
 ### Step 3：输入方式识别
 
@@ -102,16 +101,15 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 在进入 Phase 2 之前，先检测项目是否已部署 story-setup 基础设施：
 
 - 先读取 `.story-deployed` 并执行顶部 Spawn 版本门禁；旧版 `chapter-extractor` 文件即使仍在磁盘上也不可复用。
-- 只有 `agents_version: 25` 通过后，才按 `.claude/agents/chapter-extractor.md` → `.opencode/agents/chapter-extractor.md` → `.codex/agents/chapter-extractor.toml` 检查 Phase 2 长篇并行 agent。
-- 如果 `.story-deployed` 的 `target_cli` 包含 `zcode`，项目 agents 缺失是 ZCode 3.3.4 的预期状态：不要提示重复部署，直接以串行 solo/direct 进入分析并报告 fallback。
+- 只有 `agents_version: 25` 通过后，才检查 `.pi/agents/chapter-extractor.md` 是否存在，作为 Phase 2 长篇并行 agent 的可用信号。
 
-**部署标记缺失、版本无效/过期，或当前端的 agent 不可用，且不是已部署 ZCode 项目时**，提示用户：
+**部署标记缺失、版本无效/过期，或当前端的 agent 不可用时**，提示用户：
 
-> 「检测到当前项目尚未部署写作基础设施。建议先运行 `/story-setup` 再回来导入，否则深度分析阶段无法使用并行 chapter-extractor agent。」
+> 「检测到当前项目尚未部署写作基础设施。建议先运行 `/skill:story-setup` 再回来导入，否则深度分析阶段无法使用并行 chapter-extractor agent。」
 
 给用户两个选择：
 
-1. **先去 setup**：暂停导入，运行 `/story-setup`，部署完成后重新触发 `/story-import`；
+1. **先去 setup**：暂停导入，运行 `/skill:story-setup`，部署完成后重新触发 `/skill:story-import`；
 2. **继续导入**：接受 Phase 2 降级为串行处理（长篇逐章摘要不并行，速度较慢，但产物完整）。
 
 用户选择记入上下文，Phase 2 据此决定是否走并行模式。
@@ -150,7 +148,7 @@ story-long-analyze 在 Stage 0+1（黄金三章）后会**自动停靠**并用 A
 story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点**，一次跑完即可。它的 Phase 1 四个 Step 都要跑，按下表的导入场景取值执行，不整段跳过：
 
 | Phase 1 步骤 | 导入场景下的处理 |
-|-------------|----------------|
+| ------------- | ---------------- |
 | Step 1：拿到原文 | 用 story-import Phase 1 已确认的源文件，不重新问 |
 | Step 2：字数检查（长短篇路由） | 篇幅已在 story-import Phase 1 判定并经用户确认，直接答「按短篇继续」，不重新路由 |
 | Step 3：题材识别 | **照常跑**，题材标尺必须加载；story-import Phase 1 Step 4 已确认的题材类型直接代入，不重复提问 |
@@ -159,7 +157,7 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 `_meta.json` 的 `genre_detected` 由 Step 3 产出，是拆文契约的阻断级必填字段，下游 story-short-write 靠它选题材标尺——**不要跳过 Step 3 直接从原文备份起跑**。
 
 - 措辞示例：启动深度分析时声明「《{导入书名}》篇幅已确认为短篇（题材 {题材类型}，全文约 {N} 字），Step 2 直接按短篇继续，Step 4 按覆盖并归档处理，题材识别照跑，确保 Stage 2-6 全部产出」。
-- **兜底**：若运行环境仍抛出「此文字数 {N} 偏长，建议改用 `/story-long-analyze`」或灰区提问「介于短/长之间，按短篇还是长篇拆？」，一律按 Phase 1 已锁定的判定逐字回「按短篇继续」，**绝不把路由询问甩给用户**。
+- **兜底**：若运行环境仍抛出「此文字数 {N} 偏长，建议改用 `/skill:story-long-analyze`」或灰区提问「介于短/长之间，按短篇还是长篇拆？」，一律按 Phase 1 已锁定的判定逐字回「按短篇继续」，**绝不把路由询问甩给用户**。
 
 ### 输出目录
 
@@ -210,10 +208,10 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 
 ### 长篇完整管道（Stage 0-6）
 
-> 管道详细说明见 story-long-analyze（运行 `/story-long-analyze`），此处仅列概要。
+> 管道详细说明见 story-long-analyze（运行 `/skill:story-long-analyze`），此处仅列概要。
 
 | 阶段 | 名称 | 输入 | 输出 | 完成标志 |
-|------|------|------|------|----------|
+| ------ | ------ | ------ | ------ | ---------- |
 | 0 | 概要提取 | 原始文本 | 概要.md + 章节索引 | 章节结构识别完成 |
 | 1 | 黄金三章 | 前 3 章原文 | 第1章_深度拆解.md / 第2章_深度拆解.md / 第3章_深度拆解.md → **停靠产出快速预览.md**（导入场景自动续跑，不停下询问） | 3 章拆解完成 |
 | 2 | 逐章摘要 | 分块章节文本 | 章节摘要.md（含情节点+角色+**关键信息与扩写技法**）。每章10-40情节点（密度150-200字/个，按字数动态调节）。角色过滤（龙套不提取、别名归类）。**并行 chapter-extractor agent 模式**（未部署 agent 时降级串行）。**计数验证：摘要数 == 章节数**。 | 所有章节处理完成 |
@@ -224,7 +222,7 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 
 ### 短篇拆文管道
 
-> 管道详细说明见 story-short-analyze（运行 `/story-short-analyze`），此处仅列概要。
+> 管道详细说明见 story-short-analyze（运行 `/skill:story-short-analyze`），此处仅列概要。
 
 短篇为单一全量管道（Stage 2-6 严格串行），产物落盘 `拆文库/{导入书名}/`：Stage 2 结构+情节节点 → Stage 3 情感线+爆点 → Stage 4 反转+写作手法 → Stage 5 人物+开头结尾 → Stage 6 综合评估，最终汇总为 `拆文报告.md`、`情节节点.md`、`写作手法.md`，另有 `_meta.json` 记管道元数据与结构计数。
 
@@ -252,7 +250,7 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 按 Phase 1 判定的篇幅类型分流，两条路径产出的工程结构完全不同：
 
 | 篇幅 | 迁移路径 | 映射规则 | 续写接手 |
-|------|---------|---------|---------|
+| ------ | --------- | --------- | --------- |
 | 长篇 | **3-L：长篇结构迁移** | [references/structure-mapping-long.md](references/structure-mapping-long.md) | story-long-write 日更循环 |
 | 短篇 | **3-S：短篇结构迁移** | [references/structure-mapping-short.md](references/structure-mapping-short.md) | story-short-write Phase 3 逐场景写作 |
 
@@ -298,7 +296,7 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 角色分级（沿用 story-long-analyze 标准）：
 
 | 等级 | 标准 | 迁移策略 |
-|------|------|---------|
+| ------ | ------ | --------- |
 | 主角 | 出现章节 ≥50% + 推动主线 + 完整成长轨迹 | 完整迁移 |
 | 反派 | 与主角对立 + 推动核心冲突 + 明确动机 | 完整迁移 |
 | 核心配角 | 出现章节 ≥20% 或推动重要支线 | 完整迁移 |
@@ -424,7 +422,7 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 
 **缺失处理**：
 
-- 已选外部对标缺 `剧情/节奏.md` 或 `剧情/情绪模块.md` → 不登记、不生成半套对标视图；报告 `module_or_rhythm_required_missing` 并提示对 `{对标书名}` 重跑 `/story-long-analyze` Stage 3+。本书核心工程迁移不因此回滚。
+- 已选外部对标缺 `剧情/节奏.md` 或 `剧情/情绪模块.md` → 不登记、不生成半套对标视图；报告 `module_or_rhythm_required_missing` 并提示对 `{对标书名}` 重跑 `/skill:story-long-analyze` Stage 3+。本书核心工程迁移不因此回滚。
 - 其它结构化子目录缺失 → 按既有导入缺失项提示，不阻塞项目创建
 
 #### Step 10：文风同步
@@ -433,7 +431,7 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 
 **缺失处理**：
 
-- 拆文库没有文风文件（analyze 未跑 Stage 6）→ 导入报告提示用户重跑 `/story-long-analyze` 后再同步；日更前文风缺失会被 fail-fast 拦截
+- 拆文库没有文风文件（analyze 未跑 Stage 6）→ 导入报告提示用户重跑 `/skill:story-long-analyze` 后再同步；日更前文风缺失会被 fail-fast 拦截
 - 项目对标已有旧文风文件 → 覆盖（最新拆文产物优先），在导入报告告知
 
 ---
@@ -519,8 +517,8 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 - [ ] 若绑定外部对标，`设定/题材定位.md` 的 `主对标书` 与 `对标书列表` 只包含独立 `{对标书名}`，且同步来源与目录名一致
 
 ## 下一步操作
-- 运行 `/story-review lean` 审查导入结果
-- 运行 `/story-long-write` + "日更" 开始续写
+- 运行 `/skill:story-review lean` 审查导入结果
+- 运行 `/skill:story-long-write` + "日更" 开始续写
 ```
 
 **短篇导入完成报告**：
@@ -543,14 +541,14 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 - [ ] 核心反转的铺垫线索已确认
 
 ## 下一步操作
-- 运行 `/story-short-write` Phase 3 开始续写
+- 运行 `/skill:story-short-write` Phase 3 开始续写
 ```
 
 ### Step 3：项目激活
 
 - 设置 `.active-book` 指向导入的书名/标题目录
 - 确认项目可以被对应写作 skill 识别（长篇 → story-long-write，短篇 → story-short-write）
-- 可选验证：如果项目已部署 story-explorer agent（优先检查 `.claude/agents/` 下的 `story-explorer.md` 是否存在；不存在时再检查 `.opencode/agents/`，再不存在时检查 `.codex/agents/`），可 spawn `Agent(subagent_type: "story-explorer", prompt: "项目目录：{dir}\n查询类型：progress\n查询参数：导入验证")` 交叉验证迁移数据完整性
+- 可选验证：如果项目已部署 story-explorer agent（优先检查 `.pi/agents/` 下的 `story-explorer.md` 是否存在；不存在时再检查 `.pi/agents/`，再不存在时检查 `.pi/agents/`），可 spawn `子代理`story-explorer`（subagent 工具，task："项目目录：{dir}\n查询类型：progress\n查询参数：导入验证"）` 交叉验证迁移数据完整性
 
 > setup 环境检测已在 Phase 1「环境检测前置」完成，此处不再重复检测。
 
@@ -577,21 +575,21 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 ### Phase 1：确认导入源
 
 | 场景 | 加载文件 |
-|------|---------|
+| ------ | --------- |
 | 篇幅分流判定 | `references/length-routing.md` |
-| 章节格式识别 | 由 story-long-analyze 拆解管道（运行 `/story-long-analyze`）的阶段 1 负责 |
+| 章节格式识别 | 由 story-long-analyze 拆解管道（运行 `/skill:story-long-analyze`）的阶段 1 负责 |
 
 ### Phase 2：深度分析
 
 | 场景 | 加载文件 / 相关 skill |
-|------|---------|
-| 长篇深度分析（方法论、质量检查、输出模板均自带） | 运行 `/story-long-analyze` 调用长篇拆解管道 |
-| 短篇深度分析（方法论、质量检查、输出模板均自带） | 运行 `/story-short-analyze` 调用短篇拆解管道 |
+| ------ | --------- |
+| 长篇深度分析（方法论、质量检查、输出模板均自带） | 运行 `/skill:story-long-analyze` 调用长篇拆解管道 |
+| 短篇深度分析（方法论、质量检查、输出模板均自带） | 运行 `/skill:story-short-analyze` 调用短篇拆解管道 |
 
 ### Phase 3：结构迁移
 
 | 场景 | 加载文件 |
-|------|---------|
+| ------ | --------- |
 | 长篇迁移映射规则 | `references/structure-mapping-long.md` |
 | 短篇迁移映射规则 | `references/structure-mapping-short.md` |
 | 角色状态反推规则（长篇） | `references/character-state-reverse.md` |
@@ -603,10 +601,10 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 ### Phase 4：项目激活
 
 | 场景 | 说明 |
-|------|---------|
+| ------ | --------- |
 | 长篇项目结构规范 | 参见 story-long-write（Phase 4 项目文件结构） |
 | 短篇项目结构规范 | 参见 story-short-write（Phase 3 项目结构） |
-| 环境部署 | 部署模板由 `/story-setup` 提供，story-import 不负责部署 |
+| 环境部署 | 部署模板由 `/skill:story-setup` 提供，story-import 不负责部署 |
 
 ---
 
@@ -616,15 +614,15 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 **位置：** 导入（在开书之前）
 
 | 时机 | 跳转到 | 命令 |
-|---|---|---|
-| 导入完想继续写（长篇） | story-long-write | `/story-long-write` + "日更" |
-| 导入完想继续写（短篇） | story-short-write | `/story-short-write` |
-| 导入完想审查质量 | story-review | `/story-review` |
-| 想深入分析对标（长篇） | story-long-analyze | `/story-long-analyze` |
-| 想深入分析对标（短篇） | story-short-analyze | `/story-short-analyze` |
-| 从零开新书（长篇） | story-long-write | `/story-long-write` + "开书" |
-| 从零开新书（短篇） | story-short-write | `/story-short-write` |
-| 项目未部署环境 | story-setup | `/story-setup` |
+| --- | --- | --- |
+| 导入完想继续写（长篇） | story-long-write | `/skill:story-long-write` + "日更" |
+| 导入完想继续写（短篇） | story-short-write | `/skill:story-short-write` |
+| 导入完想审查质量 | story-review | `/skill:story-review` |
+| 想深入分析对标（长篇） | story-long-analyze | `/skill:story-long-analyze` |
+| 想深入分析对标（短篇） | story-short-analyze | `/skill:story-short-analyze` |
+| 从零开新书（长篇） | story-long-write | `/skill:story-long-write` + "开书" |
+| 从零开新书（短篇） | story-short-write | `/skill:story-short-write` |
+| 项目未部署环境 | story-setup | `/skill:story-setup` |
 
 ---
 
