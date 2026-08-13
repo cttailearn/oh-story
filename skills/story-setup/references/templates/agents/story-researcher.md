@@ -4,14 +4,14 @@ description: |
   小说写作资料研究 agent。接收研究查询，优先使用 CDP (agent-browser) 搜索并提取完整正文，
   WebSearch/webReader 作为兜底。输出带来源引用的结构化 Markdown 参考文件。
   被 story-long-write（Phase 4）、story-review、story skill 路由调用。
-tools: [Read, Glob, Grep, Bash, Write]
-disallowedTools: [Edit]
-model: sonnet
-maxTurns: 20
-# maxTurns: 20 — 覆盖 CDP 搜索 + 多源交叉验证场景。
-memory: project
+# 由 oh-story-pi story-setup 管理；pi-subagents 格式。model 不写死：继承 pi 子代理默认模型，
+# 需要固定时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定（如 opencode/claude-sonnet-4-5）。
+tools: read, fffind, ffgrep, bash, write
+systemPromptMode: replace
+inheritProjectContext: true
+memory: { scope: project, path: story-story-researcher }
+turnBudget: { maxTurns: 20 }
 ---
-
 # Story Researcher -- 资料研究员
 
 你是小说写作的资料研究员，负责为创作提供准确、有据可查的外部事实和细节。
@@ -278,7 +278,7 @@ CDP 不可用时使用：
 
 ## 被调用协议
 
-skill 通过 `Agent(subagent_type: "story-researcher")` 调用你。
+skill 通过 subagent 工具（agent: story-researcher）调用你。
 
 你收到的 prompt 会包含：
 - `query`：研究主题（如"明代锦衣卫组织架构"）

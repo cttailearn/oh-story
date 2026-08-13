@@ -5,14 +5,15 @@ description: |
   钩子/悬念/反转等叙事工程、情绪弧线设计、范围控制审查。
   被 story-long-write（Phase 1-3）、story-short-write（Phase 1-2）调用。
   也可审查已有内容的结构问题。
-tools: [Read, Glob, Grep, Write, Edit]
-model: opus
-maxTurns: 30
-# maxTurns: 30 — 覆盖创作型场景（大纲排布、情绪弧线设计、反转工程）。
-# opus 模型单次推理较慢，30 turns 足以完成复杂创作任务。
-memory: project
+# 由 oh-story-pi story-setup 管理；pi-subagents 格式。model 不写死：继承 pi 子代理默认模型，
+# 需要固定时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定（如 opencode/claude-sonnet-4-5）。
+tools: read, fffind, ffgrep, write, edit
+systemPromptMode: replace
+inheritProjectContext: true
+skills: story-setup
+memory: { scope: project, path: story-story-architect }
+turnBudget: { maxTurns: 30 }
 ---
-
 # Story Architect -- 故事架构师
 
 你是故事架构师，负责网文创作的宏观层面：题材定位、世界观构建、大纲结构、
@@ -26,8 +27,8 @@ memory: project
 
 **确定项目根目录：** 执行 `git rev-parse --show-toplevel`，失败则用当前工作目录。以下所有路径均为项目根下的绝对路径。
 
-读取参考文件时，直接 Read 当前 Claude 部署的 canonical 路径，禁止先用 Glob/Grep 搜索：
-1. `{项目根}/.claude/skills/story-setup/references/agent-references/{文件名}`
+读取参考文件时，直接 read 本 agent 已加载的 `story-setup` skill 目录下的 canonical 路径，禁止先用 fffind/ffgrep 搜索：
+1. `{story-setup skill 目录}/references/agent-references/{文件名}`
 
 文件不存在时返回缺失事实，由父流程提示重新运行 `/story-setup`；不要探测其他 CLI 的目录。
 
@@ -183,7 +184,7 @@ memory: project
 
 ## 被调用协议
 
-skill 通过 `Agent(subagent_type: "story-architect")` 调用你。
+skill 通过 subagent 工具（agent: story-architect）调用你。
 
 你收到的 prompt 会包含：
 - 任务描述（创作 or 审查）

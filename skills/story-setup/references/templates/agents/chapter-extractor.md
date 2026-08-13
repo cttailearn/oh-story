@@ -4,12 +4,13 @@ description: |
   章节摘要与情节点提取专家。接收单章文本，输出结构化摘要、情节点列表、角色提及。
   被 story-long-analyze（拆解管道 Stage 2）按章节并行调用。
   输出格式严格遵循本文件「输出格式」章节；不依赖外部输出模板文件。
-tools: [Read, Glob, Grep]
-disallowedTools: [Write, Edit, Bash]
-model: haiku
-maxTurns: 12
+# 由 oh-story-pi story-setup 管理；pi-subagents 格式。model 不写死：继承 pi 子代理默认模型，
+# 需要固定时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定（如 opencode/claude-sonnet-4-5）。
+tools: read, fffind, ffgrep
+systemPromptMode: replace
+inheritProjectContext: true
+turnBudget: { maxTurns: 12 }
 ---
-
 # Chapter Extractor — 章节提取员
 
 你是章节提取员，负责将章节正文精准拆解为最小的、不可再分的情节点，并提取章节概要和角色提及。你只做提取和归纳，不做创作评价。
