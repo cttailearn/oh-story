@@ -36,7 +36,7 @@ description: "网络小说工具箱主入口。根据用户需求自动路由到
 
 ### 导入续写顺序
 
-用户问"导入续写先 setup 还是 import"时，直接回答：**推荐先 `/skill:story-setup`，新开/刷新会话后 `/skill:story-import`，最后 `/skill:story-long-write 日更` 或 `/skill:story-long-write 写第N章`**。如果用户已经直接触发 `/skill:story-import`，按 story-import 自带环境检测继续：未 setup 时让用户选择先去 setup 或继续串行导入。
+用户问"导入续写先 setup 还是 import"时，直接回答：**推荐先 `/skill:story-setup`，然后直接 `/skill:story-import`（agents 部署后立即生效，无需新开会话；仅当未安装 pi-subagents 时才需安装并新开会话），最后 `/skill:story-long-write 日更` 或 `/skill:story-long-write 写第N章`**。如果用户已经直接触发 `/skill:story-import`，按 story-import 自带环境检测继续：未 setup 时让用户选择先去 setup 或继续串行导入。
 
 ## Dashboard 工作台
 
@@ -78,7 +78,7 @@ description: "网络小说工具箱主入口。根据用户需求自动路由到
 
 ## 查询降级
 
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/skill:story-setup` 后新开会话；大于 25 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 25` 不一致时（标记缺失、字段缺失/非整数、小于或大于 25）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 25）` 并提示重新运行 `/skill:story-setup` 刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 25 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 「查故事资料」「查资料」走 agent 前先做轻量可用性检查（路由只做这一层，不承担全局部署策略）：当前不在子代理上下文、subagent 工具可用（pi-subagents）、且 `.pi/agents/{story-explorer|story-researcher}.md` 存在 → 可尝试 spawn。任一不满足，或运行时未暴露 custom-agent registry，则降级，不硬失败：
 
@@ -113,5 +113,5 @@ description: "网络小说工具箱主入口。根据用户需求自动路由到
 4. **告知**：
    - 已最新 → 「已是最新版 vX.Y.Z」。
    - 有新版 → 列出 当前 vA → 最新 vB + [Releases](https://github.com/cttailearn/oh-story-pi/releases)/[CHANGELOG](https://github.com/cttailearn/oh-story-pi/blob/main/CHANGELOG.md)（能拿到 release notes 就附本次要点），再用 AskUserQuestion 问「现在更新吗？」：
-     - 选更新 → 跑 `pi update --extensions`（git 源会同步到已固定 ref；新版本先 `pi install git:github.com/cttailearn/oh-story-pi@新ref`）；完成后提示：已部署过的项目在项目根重跑 `/skill:story-setup` 同步 agents/references，并**新开一个会话**让 agents 重新注册。
+     - 选更新 → 跑 `pi update --extensions`（git 源会同步到已固定 ref；新版本先 `pi install git:github.com/cttailearn/oh-story-pi@新ref`）；完成后提示：已部署过的项目在项目根重跑 `/skill:story-setup` 同步 agents/references（重跑后下一次 spawn 即用新版 agent，无需新开会话；本会话若在更新前打开，用 `/reload` 加载新 skill 目录即可）。
      - 选先不 → 不动，告知随时可再来。
