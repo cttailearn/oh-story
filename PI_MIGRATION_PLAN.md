@@ -42,7 +42,7 @@
    `-R cttailearn/oh-story-pi`；更新安装命令改 `pi update npm:oh-story-pi`（git 源则 `pi install git:...@新ref`）
 5. 删除 ZCode 3.3.4 边界说明、OpenCode 阻塞说明等平台段落
 6. 涉及 skill：story、story-review、story-import、story-deslop、story-long-analyze、
-   story-long-write、story-short-write、story-short-analyze、story-cover、browser-cdp（10 个含 spawn/平台逻辑）
+   story-long-write、story-short-write、story-short-analyze、story-image、browser-cdp（10 个含 spawn/平台逻辑）
 7. `browser-cdp`：删除 opencode 卡顿段落；增补 pi 原生 `agent_browser` 工具说明
 8. `agents_version` 机制：保留 `.story-deployed` sentinel 但简化（pi 无 hooks 部署，只剩 agents 同步）
 

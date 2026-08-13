@@ -19,7 +19,7 @@
 ### git 安装（当前唯一发布通道）
 
 ```bash
-pi install git:github.com/cttailearn/oh-story-pi@v1.1.1
+pi install git:github.com/cttailearn/oh-story-pi@v1.2.0
 ```
 
 更新 / 卸载：
@@ -116,7 +116,7 @@ flowchart LR
 | `story-deslop` | `/skill:story-deslop` `/去AI味` | 去AI味 · 检测并清除 AI 写作痕迹 |
 | `story-import` | `/skill:story-import` `/导入小说` | 逆向导入 · 将已有小说反向解析为标准项目结构 |
 | `story-review` | `/skill:story-review` `/审查` | 多视角审查 · 4 Agent 多视角审稿 + 番茄/起点/知乎评分标准 |
-| `story-cover` | `/skill:story-cover` `/封面` | 封面生成 · 书名题材分析 + GPT-Image-2 出图 |
+| `story-image` | `/skill:story-image` `/封面` `/人物图` `/三视图` `/场景图` | 图像生成 · 封面/人设立绘/三视图/场景图，多后端（GPT-Image-2/火山方舟/通义万相/ComfyUI） |
 | `browser-cdp` | `/skill:browser-cdp` | 浏览器操控 · CDP 协议复用登录态抓取数据（pi 内置 agent_browser 优先） |
 
 > `story-deslop` 的本地检查是写作 lint：blocking 只限确定性句式/标点问题，其他提示按读感判断；朱雀等外部检测只作自测参考，不替代人工读感。
@@ -195,7 +195,7 @@ pi 无 hooks 机制，原多端版的运行时硬拦截由两层等价物承担�
 
 ## 适用平台
 
-- **pi**：原生支持（本包）。`pi install git:github.com/cttailearn/oh-story-pi@v1.1.1` 后 13 个 skill 自动可用，
+- **pi**：原生支持（本包）。`pi install git:github.com/cttailearn/oh-story-pi@v1.2.0` 后 13 个 skill 自动可用，
   `/story` 命令别名由包内扩展注册。npm 发布因账号 2FA 策略暂缓，待条件允许后补充（包名 `oh-story-pi` 已预留）。
 - 旧多端版（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）见上游仓库
   [oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) 的 v0.7.5

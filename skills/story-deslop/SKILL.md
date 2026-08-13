@@ -434,7 +434,7 @@ node scripts/normalize-punctuation.js <正文文件...>
 |---|---|---|
 | 继续写作 | story-long-write / story-short-write | `/skill:story-long-write` 或 `/skill:story-short-write` |
 | 发现结构问题 | story-long-analyze / story-short-analyze | `/skill:story-long-analyze` 或 `/skill:story-short-analyze` |
-| 准备做封面 | story-cover | `/skill:story-cover` |
+| 准备做封面/人设图/三视图/场景图 | story-image | `/skill:story-image` |
 
 ---
 

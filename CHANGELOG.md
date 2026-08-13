@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.2.0
+
+> story-cover 升级为 story-image：从「封面生成」扩展为「故事图像生成」，四类图像 + 四个后端。
+
+### 改名
+
+- `story-cover` → `story-image`（目录/路由表/AGENTS.md 模板/README/ISSUE 模板全量同步）；旧触发词 `/封面`、`/skill:story-cover` 意图保留为 cover 类型别名
+
+### 四类图像
+
+- `cover` 封面（保留原 story-cover 能力：文字层/平台尺寸/质量检查）
+- `portrait` 人物形象图（立绘）：外貌描述串与 `设定/角色/{名}.md` 联动，作为一致性事实源
+- `turnaround` 角色三视图：三视角同一性检查表；单图三格提示词（API 后端）或专用工作流（ComfyUI）
+- `scene` 场景图：前中后景分层，与 `设定/世界观/{主题}.md` 规则一致性检查
+
+### 多后端
+
+- `imagegen.sh` 统一入口 + 自动探测（`IMG_BACKEND` 显式指定优先）：
+  - `openai`：GPT-Image-2 文生图/图生图（原逻辑参数化改造，兼容 b64 与 url 响应）
+  - `volcengine`：火山方舟 Seedream（`ARK_API_KEY`，size 规格串透传）
+  - `dashscope`：阿里通义万相（原生异步+轮询，`DASHSCOPE_MODE=compatible` 可切同步）
+  - `comfyui`：本地 ComfyUI（`/prompt` → `/history` → `/view` 三步流；内置 4 个 API 格式工作流模板，`__PROMPT__/__NEGATIVE__/__CKPT__` 占位注入，`--workflow` 可覆盖自备 JSON）
+- 风格库升级：cover-styles.md → visual-styles.md（新增人物形象图/三视图/场景图规范），新增 image-types.md（类型模板/输出目录/质量检查表）
+
 ## v1.1.0
 
 > 设定层增强 + 模型 deepseek 化。三个目标：正文生成时“设定锚定”取代“模型记忆”、角色卡从纯人设升级为可 grep 的事实源、子代理模型按角色分工钉定 deepseek-v4（flash 高频只读 / pro 创作主力）。

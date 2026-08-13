@@ -17,7 +17,7 @@ skills/
 ├── story-short-scan/        # 短篇扫榜
 ├── story-deslop/            # 去AI味
 ├── story-review/            # 多视角审查
-├── story-cover/             # 封面生成
+├── story-image/             # 图像生成（封面/人设/三视图/场景）
 └── browser-cdp/             # 浏览器操控
 extensions/                   # pi 扩展（/story 命令别名）
 scripts/                      # 开发守卫 / 测试 / 同步（完整索引见 scripts/README.md）

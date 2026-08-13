@@ -5,7 +5,7 @@ Web-novel writing toolkit (pi-exclusive edition): ranking research, deconstructi
 ## Install
 
 ```bash
-pi install git:github.com/cttailearn/oh-story-pi@v1.1.1
+pi install git:github.com/cttailearn/oh-story-pi@v1.2.0
 ```
 
 Update / uninstall:
@@ -37,7 +37,7 @@ skills degrade to solo/direct mode (reported as `Fallback: ... -> solo`).
 | De-AI polish | `/skill:story-deslop` | story-deslop |
 | Import existing novel | `/skill:story-import` | story-import |
 | Review manuscript | `/skill:story-review` | story-review |
-| Generate cover | `/skill:story-cover` | story-cover |
+| Generate cover / portraits / turnarounds / scenes | `/skill:story-image` | story-image |
 | Browser automation | `/skill:browser-cdp` | browser-cdp |
 
 Natural-language triggers work too (skill descriptions auto-match), e.g.

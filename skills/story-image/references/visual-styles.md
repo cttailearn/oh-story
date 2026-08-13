@@ -1,5 +1,5 @@
-# 小说封面视觉风格库
-各题材网文封面视觉风格定义，用于构建 GPT-Image-2 英文提示词。
+# 小说视觉风格库
+各题材网文视觉风格定义，用于构建图像生成提示词（封面/人物形象图/三视图/场景图通用）。封面专属的文字层规范见 image-types.md。
 
 ---
 
@@ -208,3 +208,60 @@ Professional book cover, high detail digital painting, portrait 2:3 ratio, no wa
 **人物**：Q版/萌系角色，猫耳/翅膀等萌属性
 **背景**：奇幻世界、校园、异世界、星空
 **光效**：`sparkly star effects, magical particle effects, soft luminous glow`
+
+---
+
+## 人物形象图规范（portrait）
+
+**用途**：角色立绘/人设图，供写作参考、封面素材与宣传使用。无文字层。
+
+**构图**：
+- 半身像 `half-body portrait`（头+肩+胸，细节清晰）| 全身像 `full body standing pose`（展示服装）
+- 单人构图，角色占画面 70-85%，背景简洁不抢戏
+- 角色特征必须来自 `设定/角色/{名}.md`：外貌特征、身份标签、标志动作；服饰参考身份标签与题材
+
+**关键约束**：
+- 同一角色多次生成保持一致性：每次提示词固定「外貌特征 + 服饰 + 发型」描述串不变
+- 表情/姿态按用途指定（沉稳/张扬/温柔…），并指定道具（武器/法器/职业工具）
+
+**提示词模板**：
+```
+Character portrait, [题材风格标签], [平台或通用画风].
+[外貌特征：发型/瞳色/面容], [服饰：材质/颜色/纹样], [姿态与表情], [道具].
+[背景：简洁/氛围元素], [色彩指令], [光效指令].
+high detail digital painting, single character, no text, no watermark
+```
+
+## 三视图规范（turnaround）
+
+**用途**：角色设定三视图（正面/侧面/背面），供人设存档与后续一致性参考。
+
+**关键约束**（三视图的核心是"同一性"，不是"好看"）：
+- 同一角色、同一服饰、同一发型，三个视角缺一不可
+- 姿态统一：站立、双臂自然下垂或对称抱臂，不做大幅度动作（动作会破坏对比性）
+- 三格水平排列：`three-panel character turnaround sheet, front view / side view / back view, same character, same outfit, standing pose`
+- 纯色或极简背景，禁止背景元素干扰轮廓；不加任何文字
+
+**后端差异**：
+- 单图三格：openai/volcengine/dashscope 用单次生成三格提示词
+- ComfyUI：用内置 `turnaround.json` 工作流（三格布局更可控）
+
+**质量检查**：三个视角的发型、服饰颜色、饰品位置、体态特征逐一比对，任何一处不一致即不合格。
+
+## 场景图规范（scene）
+
+**用途**：场景概念图（城镇/宗门/战场/内景等），供世界观可视化与写作参考。无文字层。
+
+**构图**：前中后景分层 + 指定视角（平视/俯瞰/仰视）+ 横竖版由用途决定
+- 横版 `landscape 16:9`：大场景/地图感
+- 竖版 `portrait 3:4`：氛围场景/封面素材
+
+**提示词模板**：
+```
+Scene concept art, [题材风格标签], [时间/季节/天气], [地点类型].
+Foreground: [前景元素]; Midground: [中景主体建筑/地形]; Background: [远景氛围].
+[色彩指令], [光效指令：光源方向+颜色], [氛围词].
+high detail digital painting, no characters or sparse small figures for scale, no text, no watermark
+```
+
+**质量检查**：场景元素与 `设定/世界观/{主题}.md` 的规则一致（如力量体系对应的建筑/环境特征）；光影与时间设定一致。
