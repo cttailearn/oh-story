@@ -3,8 +3,12 @@
 # 用法：bash imagegen-dashscope.sh --prompt-file <文件> --size <规格> --out <输出PNG路径>
 # 环境：DASHSCOPE_API_KEY、DASHSCOPE_IMAGE_MODEL(默认 wanx2.1-t2i-turbo)
 #       DASHSCOPE_MODE=compatible 时改走 OpenAI 兼容端点（同步）
+# 依赖：curl + python（JSON 处理内置于同目录 api-json.py，无需 jq）+ base64
 # 注意：万相 size 用规格串（如 "1024*1024"、"720*1280"），星号分隔。
 set -euo pipefail
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+JSONPY="$SCRIPT_DIR/api-json.py"
 
 PROMPT_FILE=""
 SIZE=""
@@ -37,7 +41,8 @@ PROMPT=$(cat "$PROMPT_FILE")
 MODEL="${DASHSCOPE_IMAGE_MODEL:-wanx2.1-t2i-turbo}"
 SIZE="${SIZE:-1024*1024}"
 
-command -v jq >/dev/null 2>&1 || { echo "需要 jq（JSON 解析），请先安装：Linux/macOS 用包管理器，Windows 用 scoop/choco 或 Git Bash 自带" >&2; exit 1; }
+command -v python >/dev/null 2>&1 || { echo "需要 python（JSON 处理依赖）" >&2; exit 1; }
+command -v base64 >/dev/null 2>&1 || { echo "需要 base64" >&2; exit 1; }
 mkdir -p "$(dirname "$OUT")"
 RESP=$(mktemp)
 trap 'rm -f "$RESP"' EXIT
@@ -50,44 +55,49 @@ download_url() {
 if [ "${DASHSCOPE_MODE:-async}" = "compatible" ]; then
 	# OpenAI 兼容模式（同步，部分模型支持）
 	BASE="${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}"
-	BODY=$(jq -n --arg m "$MODEL" --arg p "$PROMPT" --arg s "$SIZE" \
-		'{model:$m, prompt:$p, size:$s}')
+	BODY=$(python "$JSONPY" body openai "$MODEL" "$PROMPT" "$SIZE")
 	curl -fsS --max-time 300 \
 		"$BASE/images/generations" \
 		-H "Authorization: Bearer $DASHSCOPE_API_KEY" \
 		-H "Content-Type: application/json" \
 		-d "$BODY" >"$RESP"
-	if jq -e '.error' "$RESP" >/dev/null 2>&1; then
-		echo "API error:" >&2
-		jq '.error' "$RESP" >&2
+	if ERR=$(python "$JSONPY" has-error "$RESP"); then
+		:
+	else
+		echo "API error: $ERR" >&2
 		exit 1
 	fi
-	if jq -er '.data[0].url // empty' "$RESP" 2>/dev/null | grep -q .; then
-		download_url "$(jq -er '.data[0].url' "$RESP")"
-	elif jq -er '.data[0].b64_json // empty' "$RESP" 2>/dev/null | grep -q .; then
-		jq -er '.data[0].b64_json // empty' "$RESP" | base64 --decode >"$OUT"
-	else
+	IMGFMT=$(python "$JSONPY" first-image "$RESP")
+	case "$IMGFMT" in
+	url:*)
+		download_url "${IMGFMT#url:}"
+		;;
+	b64:*)
+		printf '%s' "${IMGFMT#b64:}" | base64 --decode >"$OUT"
+		;;
+	*)
 		echo "响应无 url 也无 b64_json：" >&2
 		head -c 300 "$RESP" >&2
 		exit 1
-	fi
+		;;
+	esac
 else
 	# 原生异步：提交任务 → 轮询 /api/v1/tasks/{task_id}
 	BASE="${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/api/v1}"
-	BODY=$(jq -n --arg m "$MODEL" --arg p "$PROMPT" --arg s "$SIZE" \
-		'{model:$m, input:{prompt:$p}, parameters:{size:$s, n:1}}')
+	BODY=$(python "$JSONPY" body dashscope "$MODEL" "$PROMPT" "$SIZE")
 	curl -fsS --max-time 120 \
 		"$BASE/services/aigc/text2image/image-synthesis" \
 		-H "Authorization: Bearer $DASHSCOPE_API_KEY" \
 		-H "Content-Type: application/json" \
 		-H "X-DashScope-Async: enable" \
 		-d "$BODY" >"$RESP"
-	if jq -e '.code or .message' "$RESP" >/dev/null 2>&1 && ! jq -e '.output.task_id' "$RESP" >/dev/null 2>&1; then
-		echo "API error:" >&2
-		head -c 300 "$RESP" >&2
+	if ERR=$(python "$JSONPY" has-error "$RESP" dashscope); then
+		:
+	else
+		echo "API error: $ERR" >&2
 		exit 1
 	fi
-	TASK_ID=$(jq -er '.output.task_id // empty' "$RESP")
+	TASK_ID=$(python "$JSONPY" task-id "$RESP")
 	[ -n "$TASK_ID" ] || {
 		echo "响应缺 task_id：" >&2
 		head -c 300 "$RESP" >&2
@@ -101,10 +111,10 @@ else
 		curl -fsS --max-time 30 \
 			"$BASE/tasks/$TASK_ID" \
 			-H "Authorization: Bearer $DASHSCOPE_API_KEY" >"$TASK_RESP"
-		STATUS=$(jq -er '.output.task_status // empty' "$TASK_RESP")
+		STATUS=$(python "$JSONPY" task-status "$TASK_RESP")
 		case "$STATUS" in
 		SUCCEEDED)
-			URL=$(jq -er '.output.results[0].url // empty' "$TASK_RESP")
+			URL=$(python "$JSONPY" field "$TASK_RESP" "output.results.0.url")
 			[ -n "$URL" ] || {
 				echo "任务成功但无结果 url：" >&2
 				head -c 300 "$TASK_RESP" >&2
@@ -131,5 +141,15 @@ fi
 	echo "输出为空: $OUT" >&2
 	exit 1
 }
-printf '%s\n' "$PROMPT" >"${OUT%.png}.prompt.txt"
+
+# 按实际格式修正扩展名（云后端可能返回 JPEG/WebP 而非 PNG）
+NEWEXT=$(python "$JSONPY" fix-ext "$OUT" 2>/dev/null || true)
+if [ -n "$NEWEXT" ]; then
+	NEWOUT="${OUT%.*}.$NEWEXT"
+	mv "$OUT" "$NEWOUT"
+	echo "格式修正：实际为 $NEWEXT，已存为 $NEWOUT" >&2
+	OUT="$NEWOUT"
+fi
+
+printf '%s\n' "$PROMPT" >"${OUT%.*}.prompt.txt"
 echo "OK: $OUT"

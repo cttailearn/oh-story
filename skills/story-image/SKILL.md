@@ -1,6 +1,6 @@
 ---
 name: story-image
-version: 2.0.0
+version: 2.1.0
 description: "故事图像生成。生成小说封面、人物形象图（立绘）、角色三视图、场景图四类图像，支持多后端（GPT-Image-2、火山方舟 Seedream、阿里通义万相、本地 ComfyUI），自动探测已配置后端。触发方式：/skill:story-image、/封面、/人物图、/立绘、/三视图、/场景图、「帮我做个封面」「生成封面图」「做个小说封面」「封面设计」「生成人物形象图」「生成三视图」「生成场景图」。"
 ---
 
@@ -17,18 +17,18 @@ description: "故事图像生成。生成小说封面、人物形象图（立绘
 | `GPT_IMAGE_API_KEY` | openai | ✅ | OpenAI 或兼容代理的 API Key |
 | `GPT_IMAGE_BASE_URL` | openai | | 兼容代理时改；默认 `https://api.openai.com/v1` |
 | `ARK_API_KEY` | volcengine | ✅ | 火山方舟 Key（字节 Seedream） |
-| `ARK_IMAGE_MODEL` | volcengine | | 默认 `doubao-seedream-4-0-250828` |
+| `ARK_IMAGE_MODEL` | volcengine | | 默认 `doubao-seedream-4-0-250828`（最兼容，实测通过）；可用模型 `GET /api/v3/models` 查询。**模型 size 语义不同**：4.0 支持 `1K/2K/4K` 或任意 `宽x高`；5.0/4.5 只支持 `2k/3k/4k`（小写）或 `宽x高`（像素 ≥ 3686400，如 1440x2560） |
 | `DASHSCOPE_API_KEY` | dashscope | ✅ | 阿里云百炼 Key（通义万相） |
 | `DASHSCOPE_IMAGE_MODEL` | dashscope | | 默认 `wanx2.1-t2i-turbo` |
 | `DASHSCOPE_MODE` | dashscope | | `async`（默认，原生异步+轮询）/ `compatible`（OpenAI 兼容同步） |
-| `COMFYUI_URL` | comfyui | | 默认 `http://127.0.0.1:8188` |
+| `COMFYUI_URL` | comfyui | | 默认 `http://127.0.0.1:8188`；本机整合包（FaboroHacks 版）端口为 **8198**，需设置 `COMFYUI_URL=http://127.0.0.1:8198` |
 | `COMFY_CKPT` | comfyui | | 检查点名（不设则用工作流内已有配置或 `--ckpt`） |
 | `COMFYUI_WORKFLOW_DIR` | comfyui | | 本地工作流 JSON 目录，默认 `~/ComfyUI/user/default/workflows/`（`--list-workflows` 列出） |
 | `IMG_BACKEND` | 全局 | | 显式指定后端，跳过探测 |
 | `UPLOAD_SIZE` | 封面 | | 平台固定上传像素（番茄 `600x800`），生成后居中裁剪导出 |
 | `REF_IMAGE` | openai | | 参考图本地路径或 URL（图生图） |
 
-**外部依赖**：curl、jq（解析响应；Windows Git Bash 默认无 jq，用 scoop/choco 或包管理器安装）、base64（openai 后端）；ComfyUI 后端另需 uuidgen。脚本入口有前置检查，缺依赖会给出中文提示。
+**外部依赖**：curl；JSON 处理内置 Python 脚本（`api-json.py` 云后端 / `comfyui-json.py` ComfyUI 后端，均无需 jq）；ComfyUI 后端用 Python 生成 client_id（无需 uuidgen）；openai/dashscope 后端另需 base64。脚本入口有前置检查，缺依赖会给出中文提示。**已实测环境**：Windows Git Bash + 本地 Python 3.13 + ComfyUI 0.30（FaboroHacks 整合包，端口 8198）；火山方舟 Seedream 4.0（720x1280 竖版实测通过）。
 
 ## 生成流程
 
@@ -60,6 +60,23 @@ description: "故事图像生成。生成小说封面、人物形象图（立绘
 
 风格/题材/光效/构图关键词统一取自 visual-styles.md。全英文提示词写入临时文件（`mktemp`），调用脚本时传 `--prompt-file`。
 
+**内置提示词模板（推荐）**：用 `scripts/prompt-template.py` 一键生成标准化英文提示词，避免手写拼接出错。接受角色描述串（`--desc`，逗号分隔，可加 `hair:`/`face:`/`outfit:`/`accessory:` 前缀）与画风（`jinjin`/`qidian`/`fanqie`/`yan`/`qimao`/`general`）：
+
+```bash
+# portrait 半身/全身单图
+python <skill-dir>/scripts/prompt-template.py portrait jinjin \
+  --desc "hair: long black hair straight bangs covering eyebrows, \
+          face: almond eyes with a small tear mole under left eye, \
+          outfit: red and white hanfu crossed collars wide sleeves, \
+          accessory: silver hairpin and white jade earring"
+
+# turnaround 三视图（front/side/back，纯白背景，水平 triptych）
+python <skill-dir>/scripts/prompt-template.py turnaround jinjin \
+  --desc "hair: ..., face: ..., outfit: ..., accessory: ..."
+```
+
+> **三视图局限**：单图三格提示词对当前主流模型（Krea2/Seedream 4.0）是**能力边界**——三格布局+纯白背景难两全。优化提示词能稳住横版（aspect 3:1）与多数白底（实测字节 Seedream 4.0 白底 ~56%），但人物+服饰仍会占据一部分画面。最稳的方案是 **ComfyUI 专用三格布局工作流**（用户自选）；本仓库在 `tests/comfyui/` 提供了 1536x512 的精简横版工作流 `krea2_turnaround_api.json` 作为默认起点。
+
 ### Step 4：调用后端
 
 统一入口 `scripts/imagegen.sh`，先探测后端（`IMG_BACKEND` 显式指定优先）：
@@ -76,17 +93,18 @@ bash <skill-dir>/scripts/imagegen.sh auto \
 | 后端 | size 语义 | 专属 |
 | :----- | :---------- | :----- |
 | openai | 像素 `1024x1536` 等 | `--ref` 图生图（REF_IMAGE） |
-| volcengine | 规格串 `2K`/`4K` 或像素（透传） | 响应 url 下载 |
+| volcengine | 规格串 `1K`/`2K`/`4K` 或像素（透传；4.0 任意，5.0/4.5 需 ≥3686400 像素或 2k/3k/4k） | 响应 url 下载；**输出为 JPEG**，脚本按实际格式自动修正扩展名（传 `.png` 也会改为 `.jpg`） |
 | dashscope | 规格串 `1024*1024`、`720*1280`（星号分隔） | 异步轮询（默认） |
 | comfyui | 不适用（尺寸在工作流里） | `--workflow <API格式JSON> --prompt <文本> --negative <文本> [--ckpt]` |
 
 **ComfyUI 工作流：不内置模板，查询本地已有工作流由用户自主选择**：
 
-1. 先列出本地工作流：`bash <skill-dir>/scripts/imagegen-comfyui.sh --list-workflows`（默认列 `~/ComfyUI/user/default/workflows/`，可用 `COMFYUI_WORKFLOW_DIR` 指向其它目录）；用户自己保存/下载的工作流 JSON 也可直接给路径
+1. 先列出本地工作流：`bash <skill-dir>/scripts/imagegen-comfyui.sh --list-workflows`。目录自动探测（全通用规则，无本机路径硬编码）：显式参数 > `COMFYUI_WORKFLOW_DIR` > `~/ComfyUI` 默认路径 > 便携版常见位置 > **从正在运行的 ComfyUI 进程反推安装目录**（先启动 ComfyUI 有助探测）；探测失败会提示手动输入路径或设置 `COMFYUI_WORKFLOW_DIR`。列表自动标注类型（文生图/图生图/视频/其他）；用户自己保存/下载的工作流 JSON 也可直接给路径
 2. 列出清单让用户选一个（用 AskUserQuestion）；选好把路径传给 `--workflow`
-3. 只接受 **API 格式**（ComfyUI 里菜单 Workflow → Export (API) 导出）；传了界面格式（UI format）脚本会提示转换，不静默失败
+3. 只接受 **API 格式**（ComfyUI 里菜单 Workflow → Export (API) 导出）；传了界面格式（UI format）脚本会提示转换，不静默失败。本地工作流目录里如果全是 UI 格式，可用配套转换工具：`python <skill-dir>/scripts/ui2api.py --url "$COMFYUI_URL" --input <UI格式.json> --output <输出.json>`（实验性：标准节点可靠；旧版自定义节点参数可能错位，转换时会按节点定义校验并警告，需人工核对后再用）
 4. 提示词注入：工作流里把提示词节点文本设为 `__PROMPT__`（负向 `__NEGATIVE__`、检查点 `__CKPT__`）最可控；未设占位符时脚本自动注入到 CLIPTextEncode 节点（ID 最小=正向、次小=负向）并打印注入位置供核对
 5. 需要本地 ComfyUI 已启动；检查点名可用 `--ckpt` 或 `COMFY_CKPT` 指定，或在工作流里用 `__CKPT__` 占位
+6. **出图耗时提示**：含放大/重绘环节的工作流（如 UltimateSDUpscale）单张可能超过默认 300s，用 `--timeout <秒>` 调大；已实测精简文生图（8 步 Krea2）约 20s 出图
 
 **输出路径约定**（自增版本号，不覆盖历史版本）：
 

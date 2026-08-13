@@ -14,3 +14,10 @@ __pycache__/
 # pi 运行时与工具缓存：含子代理 transcript 等敏感内容，绝不入库
 .pi/
 .ruff_cache/
+
+# story-image 测试产物：环境生成的 PNG/JPG 二进制不入库（.md/.py/.json/.txt/.sh 入库）
+skills/story-image/tests/**/*.png
+skills/story-image/tests/**/*.jpg
+skills/story-image/tests/**/*.jpeg
+skills/story-image/tests/**/*.webp
+skills/story-image/tests/**/*.gif

@@ -1,3 +1,32 @@
+## v1.4.0
+
+> story-image 生图后端实测与工程化批：本地 ComfyUI 全流程实测打通（含工作流自动探测/UI→API 转换/多输出修复）、云后端 jq 依赖清零（api-json.py）、火山方舟 Seedream 实测与模型 size 语义文档化、输出格式自动修正。兼容性：既有 CLI/环境变量/输出路径约定全部保持，agents bundle 不变（agents_version 仍为 25）。
+
+### story-image 本地 ComfyUI 后端（实测验证）
+
+- **全流程实测**：工作流选择 → 提示词注入（`__PROMPT__` 占位符 / CLIPTextEncode 自动注入）→ 提交 → 轮询 → 下载全部打通；精简 Krea2 文生图 ~20s 出图，USDU 放大（tiled_decode）3-4 分钟；已实测整合包环境（ComfyUI 0.30，端口 8198）
+- **jq/uuidgen 依赖清零**：新增 `scripts/comfyui-json.py`（format/inject/nodeinfo/firstimage/discover-workflows/wf-kind），imagegen-comfyui.sh 改为 curl + python，Windows Git Bash 零第三方依赖
+- **工作流目录自动探测**：`--list-workflows` 无参自动发现（显式参数 > COMFYUI_WORKFLOW_DIR > ~/ComfyUI 默认 > 便携版常见位置 > **从运行中 ComfyUI 进程反推**），多候选可交互选择、失败提示手动输入；列表自动标注类型（文生图/图生图/视频/其他）。全通用规则，无本机路径硬编码
+- **UI→API 转换工具**：新增 `scripts/ui2api.py`（实验性）——按 object_info 映射 widgets_values（含 KSampler/USDU seed 后 randomize toggle 跳过）、Reroute 透传内联、SetNode/GetNode 配对、转换后按 spec 校验值合法性；标准节点转换 100% 正确，旧版节点错位自动警告
+- **多输出下载修复**：history 输出顺序不稳定（并行执行），改取节点 ID 最大的输出（流程末端最终产物）
+
+### story-image 云后端（火山方舟实测）
+
+- **jq 依赖清零（全后端）**：新增 `scripts/api-json.py`（body/has-error/field/first-image/task-id/task-status/fix-ext），volcengine/openai/dashscope 三脚本全部改造，jq 依赖清零；dashscope 原生异步（task 轮询）同步改造
+- **输出格式自动修正**：云后端返回 JPEG/WebP 时按 magic bytes 检测并自动改名（`fix-ext`），不再出现 `.png` 装 JPEG 内容
+- **火山方舟实测**：Seedream 4.0 出图/竖版 720x1280/auto 分发全部通过；5.0 可用（size 需 `2k/3k/4k` 或 ≥3686400 像素），5.0-pro 未开通（404）；模型 size 语义差异写入 SKILL.md
+
+### 修复
+
+- **USDU 大尺寸陷阱**（文档化）：888x1336 全图 2.5x + tiled_decode=False 60min+ 未完成；建议 tiled_decode=True 并控制放大倍数
+- **Git Bash 路径兼容**：python 输出 Windows 反斜杠路径经 cygpath 转 MSYS 风格（无 cygpath 环境原样）；powershell 探测输出强制 UTF-8（GBK 中文路径损坏问题）
+
+### 兼容性说明
+
+- 既有 CLI 参数（--workflow/--prompt/--size/--out/--timeout）、环境变量（COMFYUI_URL/ARK_API_KEY 等）、输出路径约定（covers/characters/scenes 自增版本）全部保持不变
+- agents bundle 无改动：agents_version 25、setup_skill_version 1.4.0；已部署项目重跑 `/skill:story-setup` 按既有版本门禁刷新
+- story-image 技能版本 2.0.0 → 2.1.0（frontmatter，无外部消费方）
+
 ## v1.3.2
 
 > 拆解成本与写作质量双优化批：拆解子代理批处理（成本降 2/3）、角色卡契约重构（分时期特征/自定义维度/分层密度）、开书阶段门控（Gate A/B/C）、大纲目录分层与角色线卡去表格化。
