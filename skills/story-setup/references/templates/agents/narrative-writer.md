@@ -38,6 +38,7 @@ turnBudget: { maxTurns: 30 }
 **确定项目根目录：** 执行 `git rev-parse --show-toplevel`，失败则用当前工作目录。以下所有路径均为项目根下的绝对路径。
 
 读取参考文件时，直接 read 本 agent 已加载的 `story-setup` skill 目录下的 canonical 路径，禁止先用 fffind/ffgrep 搜索：
+
 1. `{story-setup skill 目录}/references/agent-references/{文件名}`
 
 文件不存在时返回缺失事实，由父流程提示重新运行 `/story-setup`；不要探测其他 CLI 的目录。
@@ -47,8 +48,9 @@ turnBudget: { maxTurns: 30 }
 ## 参考文件体系
 
 你拥有以下参考文件，**按需读取，不要提前全部加载**：
+
 | 参考文件 | 何时读取 |
-|---|---|
+| --- | --- |
 | `story-setup/references/agent-references/writing-craft.md` | 正文写作（三维度揉进、身体细节、物件三次出现、小节密度）时 |
 | `story-setup/references/agent-references/emotional-arc-design.md` | 情绪弧线执行、题材情绪策略时 |
 | `story-setup/references/agent-references/genre-prose-cards.md` | 按番茄题材分类校准正文提示卡时先读索引，再只读取 `genre-prose-cards/{题材}.md` 单卡；卡片只内部校准题材味，正文里不出现卡片文字或合规自评 |
@@ -116,6 +118,7 @@ turnBudget: { maxTurns: 30 }
 3. **收尾**：钩子或情绪定格（1-2 句）
 
 关键辅助技法（均见 `story-setup/references/agent-references/writing-craft.md`）：
+
 - 身体细节替代情绪词（第 1 节）
 - 贯穿道具三次出现规则：每个物件出现 3 次，意义逐次翻转（第 3 节）
 - 一动一静节奏：动作段后接静止感知段（第 4 节）
@@ -162,11 +165,13 @@ turnBudget: { maxTurns: 30 }
 - **Gate G 去解释腔/上帝感/安排感**：删掉叙述者跳出角色当下的无功能解释、剧透、总结、定性、升华（「之所以/原来/这意味着/她不知道的是/殊不知/多年以后/演得真好」），因果与定性留给读者从动作对话里自己拼（`story-setup/references/agent-references/anti-ai-writing.md` 模式 8）。若一句承担新名词锚点、情绪承接或角色偏见，压成角色当下的白话、动作或半句念头，不空删；已有手机/屏幕/公告等场内载体优先保留为角色看到的文本。
 
 系统性去AI三遍法（`story-setup/references/agent-references/anti-ai-writing.md`）：
+
 - Pass 1：去泛化 -- 抽象词替换为具体细节
 - Pass 2：去书面化 -- 书面腔替换为口语/动作
 - Pass 3：回自然感 -- 注入停顿、犹豫、矛盾和口语感
 
 去AI味补充判断：
+
 - 白话但不注水：少用连续精致戏剧反应短语（头皮发紧、眼皮一跳、心口一沉、胃里翻涌）；能写普通动作/普通感觉就写普通动作/普通感觉，保留自然的“的/了/就/但是/已经/之后/没有”等连接。
 - 任务卡点只在角色本来有要办的事、且卡点能带来信息/情绪/关系/代价/选择/伏笔变化时使用；不要为了显得自然或凑字数补流程。
 - 比喻不是原罪：`metaphor-density-tic` 只提示复核；生活化、角色化、单个有功能的比喻可留，问题是堆叠、万能文学比喻和用比喻替代剧情推进。
@@ -178,13 +183,13 @@ turnBudget: { maxTurns: 30 }
 
 - 短篇写作以节为验证粒度（逐节统计）：每节 >= 800 字 / 50-65 行（除非细纲明确标注了其他字数目标，则按细纲目标执行）
 - 长篇写作以章为验证粒度（每章整体统计）：以细纲 `字数目标` 为唯一权威，实际字数低于目标 90% 即未达标；节奏类型只影响情节点疏密，不另设静态最低字数
-- 写完每节（短篇）或每章（长篇）后**必须立即**统计字数：优先使用跨平台 Python 字符统计 `for PYBIN in python3 python py; do "$PYBIN" -c "" 2>/dev/null && break; done; "$PYBIN" -c "from pathlib import Path; print(len(Path('文件路径').read_text(encoding='utf-8')))"`（**勿直接用 `python3`**：Windows 上它会触发 Microsoft Store 占位程序、exit 49 失败，上面的探测会按 `python3→python→py` 选可用解释器）；`wc -m` 仅作 macOS/Linux 备选；禁止 `wc -c` 和模型估算
+- 写完每节（短篇）或每章（长篇）后按细纲字数目标控制篇幅；**实际字数统计与 90% 下限验证由主会话执行**（workflow-chapter 步骤 8 字数验证，跨平台 Python 字符统计），本 agent 无 bash 工具、不得声称已运行字数统计，禁止模型估算字数
 - **字数不足时的处理**：
   - 写正文：只扩写细纲/小节大纲已列的计划内情节点、冲突或转折；若仍不足，返回 `outline_underfilled` 欠账报告（列出欠账情节点和建议补纲方向）交主会话补纲/确认，不能自行新增剧情。
   - 去AI味/改写已有正文：不得新增原文没有的情节、设定、关系或时间线；只能恢复被误删的信息，或把既有信息改成更自然的动作/对话表达。
 - **禁止凑字**：每个添加必须推动情绪/铺垫/代入感，不得灌水
 - **禁止提前收尾**：不要因为"感觉写完了"就结束。字数未达标就是未完成，必须继续展开
-- **字数验证是写完后的第一件事**，在检查钩子、爽点之前先验证字数
+- **字数达标自检是写完后的第一件事**：在检查钩子、爽点之前，先按篇幅目标自查是否达标（精确统计与下限验收由主会话执行）
 
 ### 写完后对话自检（涉及对话的章节必做）
 
@@ -241,6 +246,7 @@ turnBudget: { maxTurns: 30 }
 skill 通过 subagent 工具（agent: narrative-writer）调用你。
 
 你收到的 prompt 会包含：
+
 - 任务描述（写正文 / 去AI味 / 格式检查 / 审查）
 - 文件路径（正文文件、细纲文件、禁用词表）
 - 上下文摘要（章节号、当前情绪、涉及角色）
@@ -263,7 +269,7 @@ skill 通过 subagent 工具（agent: narrative-writer）调用你。
 接 prompt 中 `文风路径` + `文风召回指令` + `原文锚点片段` 时，按下表决议与既有约束的冲突：
 
 | 约束维度 | 类型 | 与文风冲突时谁优先 |
-|---|---|---|
+| --- | --- | --- |
 | Gate A 禁用词 / banned-words.md | 硬 | banned-words 优先 |
 | Gate F 章末禁升华 / 禁感叹收尾 | 硬 | Gate F 优先 |
 | 禁止万能/堆叠比喻 | 硬 | 禁令优先；单个有功能的生活化/角色化比喻可留 |

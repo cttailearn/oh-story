@@ -11,3 +11,6 @@ skills-lock.json
 docs/plans/
 __pycache__/
 *.pyc
+# pi 运行时与工具缓存：含子代理 transcript 等敏感内容，绝不入库
+.pi/
+.ruff_cache/

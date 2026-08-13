@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.2.2
+
+> 双视角审阅后的 P0 修复批：热路径执行歧义、agent 回退链退化、内部矛盾与隐私兑底。
+
+- **workflow-chapter.md 步骤重排**：单章流程重新连续编号 1-13（原编号 6 重复、11/10/11 错乱），修正自引用「回步骤 8」→「回步骤 6」，修正「先抑后扬，；」标点笔误；其余 4 处交叉引用在新编号下自动归位，与 workflow-daily「步骤 1-13」声明对齐
+- **agent 回退链修复（10 处）**：`.pi/agents/` 同一目录查三遍的退化链改为两跳 `.pi/agents/{agent}.md` → `~/.pi/agent/agents/{agent}.md`（与 story-review 既有语义一致）；清理 story-deslop/story-long-analyze 两处 codex 时代 `.toml` 残留
+- **narrative-writer 字数验证矛盾**：模板无 bash 工具却要求跑 bash 数字数 → 职责收敛主会话（workflow-chapter 步骤 8），净减热路径字符（正文 agent 上下文余量 133→303）
+- **.gitignore**：新增 `.pi/`、`.ruff_cache/`（子代理 transcript 等敏感内容不入库）
+- **story-image 工程化**：imagegen.sh 校验 IMG_BACKEND 非法值；openai/volcengine/dashscope 三脚本补 jq 前置检查（openai 另补 base64）；SKILL.md 声明外部依赖
+
 ## v1.2.1
 
 > ComfyUI 工作流改为用户自主选择：不内置模板。

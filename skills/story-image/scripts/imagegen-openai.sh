@@ -40,6 +40,8 @@ BASE_URL="${GPT_IMAGE_BASE_URL:-https://api.openai.com/v1}"
 MODEL="${GPT_IMAGE_MODEL:-gpt-image-2}"
 SIZE="${SIZE:-1024x1536}"
 
+command -v jq >/dev/null 2>&1 || { echo "需要 jq（JSON 解析），请先安装：Linux/macOS 用包管理器，Windows 用 scoop/choco 或 Git Bash 自带" >&2; exit 1; }
+command -v base64 >/dev/null 2>&1 || { echo "需要 base64" >&2; exit 1; }
 mkdir -p "$(dirname "$OUT")"
 RESP=$(mktemp)
 trap 'rm -f "$RESP"' EXIT

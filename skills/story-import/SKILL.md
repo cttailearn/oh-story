@@ -548,7 +548,7 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 
 - 设置 `.active-book` 指向导入的书名/标题目录
 - 确认项目可以被对应写作 skill 识别（长篇 → story-long-write，短篇 → story-short-write）
-- 可选验证：如果项目已部署 story-explorer agent（优先检查 `.pi/agents/` 下的 `story-explorer.md` 是否存在；不存在时再检查 `.pi/agents/`，再不存在时检查 `.pi/agents/`），可 spawn `子代理`story-explorer`（subagent 工具，task："项目目录：{dir}\n查询类型：progress\n查询参数：导入验证"）` 交叉验证迁移数据完整性
+- 可选验证：如果项目已部署 story-explorer agent（优先检查 `.pi/agents/` 下的 `story-explorer.md` 是否存在；不存在时检查 `~/.pi/agent/agents/`），可 spawn `子代理`story-explorer`（subagent 工具，task："项目目录：{dir}\n查询类型：progress\n查询参数：导入验证"）` 交叉验证迁移数据完整性
 
 > setup 环境检测已在 Phase 1「环境检测前置」完成，此处不再重复检测。
 

@@ -9,10 +9,15 @@ set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 detect_backend() {
-	[ -n "${IMG_BACKEND:-}" ] && {
-		echo "$IMG_BACKEND"
-		return
-	}
+	if [ -n "${IMG_BACKEND:-}" ]; then
+		case "$IMG_BACKEND" in
+		openai | volcengine | dashscope | comfyui) echo "$IMG_BACKEND"; return ;;
+		*)
+			echo "IMG_BACKEND 非法值: $IMG_BACKEND（可选 auto/openai/volcengine/dashscope/comfyui）" >&2
+			exit 2
+			;;
+		esac
+	fi
 	[ -n "${GPT_IMAGE_API_KEY:-}" ] && {
 		echo openai
 		return

@@ -268,7 +268,7 @@ Stage 2 使用 chapter-extractor agent 并行处理每章，替代原来的串�
 
 以下任一情况，Stage 2 自动退回串行模式，由主线程逐章处理（质量不受影响，只是改为串行、速度略慢）。**两条路径的要求是同一份**：串行时概要写法、情节点白描、原文引用精选规则和输出自检都按 [output-templates.md](references/output-templates.md)「Stage 2 章节摘要+情节点」执行；上面的机械硬检查串行同样要跑。串行没有 pro 升级重试这条路——硬检查命中时由主线程按失败项重写本章摘要 1 次，仍不过按 `⚠️ 跳过` 记入 `_progress.md` 「失败记录」表。
 
-- **agent 未部署**：agent 目录（优先 `.pi/agents/`，其次 `.pi/agents/`，再检查 `.pi/agents/`）下的 `chapter-extractor.md` 或 `.pi/agents/chapter-extractor.toml` 不存在。`.pi/agents/` 通常不随仓库提交，应重新运行 `/skill:story-setup` 完成当前适配器部署，不跨 Skill 读取模板源。
+- **agent 未部署**：agent 目录（优先 `.pi/agents/`，其次 `~/.pi/agent/agents/`）下的 `chapter-extractor.md` 不存在。`.pi/agents/` 通常不随仓库提交，应重新运行 `/skill:story-setup` 完成当前适配器部署，不跨 Skill 读取模板源。
 - **环境不支持 spawn 子代理**：本 skill 正运行在某个子代理上下文中，无法再起下一层 agent。
 
 ### Stage 2 收尾：合并章节摘要（_章节摘要汇总.md）

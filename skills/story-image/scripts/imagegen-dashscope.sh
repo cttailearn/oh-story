@@ -37,6 +37,7 @@ PROMPT=$(cat "$PROMPT_FILE")
 MODEL="${DASHSCOPE_IMAGE_MODEL:-wanx2.1-t2i-turbo}"
 SIZE="${SIZE:-1024*1024}"
 
+command -v jq >/dev/null 2>&1 || { echo "需要 jq（JSON 解析），请先安装：Linux/macOS 用包管理器，Windows 用 scoop/choco 或 Git Bash 自带" >&2; exit 1; }
 mkdir -p "$(dirname "$OUT")"
 RESP=$(mktemp)
 trap 'rm -f "$RESP"' EXIT

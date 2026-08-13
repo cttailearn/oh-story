@@ -28,6 +28,8 @@ description: "故事图像生成。生成小说封面、人物形象图（立绘
 | `UPLOAD_SIZE` | 封面 | | 平台固定上传像素（番茄 `600x800`），生成后居中裁剪导出 |
 | `REF_IMAGE` | openai | | 参考图本地路径或 URL（图生图） |
 
+**外部依赖**：curl、jq（解析响应；Windows Git Bash 默认无 jq，用 scoop/choco 或包管理器安装）、base64（openai 后端）；ComfyUI 后端另需 uuidgen。脚本入口有前置检查，缺依赖会给出中文提示。
+
 ## 生成流程
 
 ### Step 1：确定图像类型与收集信息

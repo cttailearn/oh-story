@@ -40,6 +40,7 @@ MODEL="${ARK_IMAGE_MODEL:-doubao-seedream-4-0-250828}"
 SIZE_ARG="null"
 if [ -n "${SIZE:-}" ]; then SIZE_ARG="\"$SIZE\""; fi
 
+command -v jq >/dev/null 2>&1 || { echo "需要 jq（JSON 解析），请先安装：Linux/macOS 用包管理器，Windows 用 scoop/choco 或 Git Bash 自带" >&2; exit 1; }
 mkdir -p "$(dirname "$OUT")"
 RESP=$(mktemp)
 trap 'rm -f "$RESP"' EXIT
