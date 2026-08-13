@@ -13,7 +13,7 @@ systemPromptMode: replace
 inheritProjectContext: true
 skills: story-setup
 memory: { scope: project, path: story-story-architect }
-turnBudget: { maxTurns: 30 }
+turnBudget: {"maxTurns": 30}
 ---
 # Story Architect -- 故事架构师
 

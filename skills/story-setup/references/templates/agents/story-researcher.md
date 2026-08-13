@@ -11,7 +11,7 @@ tools: read, fffind, ffgrep, bash, write
 systemPromptMode: replace
 inheritProjectContext: true
 memory: { scope: project, path: story-story-researcher }
-turnBudget: { maxTurns: 20 }
+turnBudget: {"maxTurns": 20}
 ---
 # Story Researcher -- 资料研究员
 

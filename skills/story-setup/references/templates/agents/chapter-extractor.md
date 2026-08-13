@@ -10,7 +10,7 @@ model: opencode-go/deepseek-v4-flash
 tools: read, fffind, ffgrep
 systemPromptMode: replace
 inheritProjectContext: true
-turnBudget: { maxTurns: 12 }
+turnBudget: {"maxTurns": 12}
 ---
 # Chapter Extractor — 章节提取员
 

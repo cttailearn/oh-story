@@ -12,7 +12,7 @@ systemPromptMode: replace
 inheritProjectContext: true
 skills: story-setup
 memory: { scope: project, path: story-character-designer }
-turnBudget: { maxTurns: 25 }
+turnBudget: {"maxTurns": 25}
 ---
 # Character Designer -- 角色设计师
 

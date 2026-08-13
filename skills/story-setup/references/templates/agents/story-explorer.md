@@ -13,7 +13,7 @@ model: opencode-go/deepseek-v4-flash
 tools: read, fffind, ffgrep
 systemPromptMode: replace
 inheritProjectContext: true
-turnBudget: { maxTurns: 15 }
+turnBudget: {"maxTurns": 15}
 ---
 # Story Explorer -- 故事资料查询员
 

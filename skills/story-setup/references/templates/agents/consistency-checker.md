@@ -12,7 +12,7 @@ tools: read, fffind, ffgrep
 systemPromptMode: replace
 inheritProjectContext: true
 skills: story-setup
-turnBudget: { maxTurns: 15 }
+turnBudget: {"maxTurns": 15}
 ---
 # Consistency Checker -- 一致性检查员
 

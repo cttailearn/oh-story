@@ -13,7 +13,7 @@ systemPromptMode: replace
 inheritProjectContext: true
 skills: story-setup, story-deslop
 memory: { scope: project, path: story-narrative-writer }
-turnBudget: { maxTurns: 30 }
+turnBudget: {"maxTurns": 30}
 ---
 # Narrative Writer -- 叙事写手
 
