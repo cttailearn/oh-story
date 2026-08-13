@@ -29,7 +29,7 @@ turnBudget: {"maxTurns": 15}
 你支持以下查询类型：
 
 | query_type | 用途 | 典型问题 |
-|-----------|------|---------|
+| ----------- | ------ | --------- |
 | `character_status` | 查角色当前状态 | "江晨现在什么状态？" |
 | `character_appearances` | 查角色出场章节 | "钟嘉嘉在哪几章出场了？" |
 | `foreshadow_status` | 查特定伏笔状态 | "伏笔 F003 什么状态？" |
@@ -58,8 +58,12 @@ turnBudget: {"maxTurns": 15}
 │   └── 题材定位.md      # 题材定位
 ├── 大纲/
 │   ├── 大纲.md          # 全书卷级结构
-│   ├── 卷纲_第X卷.md    # 每卷规划
-│   └── 细纲_第XXX章.md  # 每章蓝图
+│   ├── 卷纲/
+│   │   └── 第X卷.md    # 每卷规划
+│   ├── 角色线/
+│   │   └── {名}.md     # 核心角色阶段蓝图
+│   └── 细纲/
+│       └── 第XXX章.md  # 每章蓝图
 ├── 正文/
 │   └── 第XXX章_*.md     # 正文章节
 ├── 追踪/
@@ -187,26 +191,28 @@ turnBudget: {"maxTurns": 15}
    - 选择一个最接近的基调重新筛候选集，并在结果里说明“使用相近基调兜底”。
    - 仍空 → `gaps.tone_match_failed: true`，跳过匹配章节读取，但仍返回整书文风、`selected_emotion_module` 和 `rhythm_reference`。
 10. **多候选章节选择规则**（候选集多章时）：
-   - L1 爽点类型最强匹配（调用方提供爽点字段时，对每个候选章读 `_摘要.md` 的「关键事件」判断）
-   - L2 摘要情节点数 / 可读到的原文章节估算长度最接近本章目标字数（如提供）；本 agent 不用 bash 统计，拿不到原文长度时跳过 L2，不得把摘要文件字数当原文字数
-   - L3 章节号最小
-11. **读匹配章节资料**：
-   - 先 `read {对标书路径}/章节/第K章_摘要.md`，提取本章基调序列、关键事件、爽点/情绪节点
-   - 优先提取摘要内「关键信息与扩写技法」表，作为 `matched_chapter_techniques` 的一部分；这只是证据/补足，不覆盖 `剧情/节奏.md`
-   - 若 `{对标书路径}/章节/第K章_深度拆解.md` 存在，再读取并提取「可借鉴要素」+ 反应层 + 章尾钩子类型
-   - 若同章深度拆解不存在（常见：只有黄金三章有深度拆解），不要失败；回退读取 `第1章_深度拆解.md`、`第2章_深度拆解.md`、`第3章_深度拆解.md` 中基调最接近的一章，或仅使用文风「可借鉴技巧」
-   - 在 `gaps.matched_deep_dive_missing: true` 标记该回退
-12. **抽取原文锚点片段**（从文风文件里）：
+
+- L1 爽点类型最强匹配（调用方提供爽点字段时，对每个候选章读 `_摘要.md` 的「关键事件」判断）
+- L2 摘要情节点数 / 可读到的原文章节估算长度最接近本章目标字数（如提供）；本 agent 不用 bash 统计，拿不到原文长度时跳过 L2，不得把摘要文件字数当原文字数
+- L3 章节号最小
+ 1. **读匹配章节资料**：
+
+- 先 `read {对标书路径}/章节/第K章_摘要.md`，提取本章基调序列、关键事件、爽点/情绪节点
+- 优先提取摘要内「关键信息与扩写技法」表，作为 `matched_chapter_techniques` 的一部分；这只是证据/补足，不覆盖 `剧情/节奏.md`
+- 若 `{对标书路径}/章节/第K章_深度拆解.md` 存在，再读取并提取「可借鉴要素」+ 反应层 + 章尾钩子类型
+- 若同章深度拆解不存在（常见：只有黄金三章有深度拆解），不要失败；回退读取 `第1章_深度拆解.md`、`第2章_深度拆解.md`、`第3章_深度拆解.md` 中基调最接近的一章，或仅使用文风「可借鉴技巧」
+- 在 `gaps.matched_deep_dive_missing: true` 标记该回退
+ 1. **抽取原文锚点片段**（从文风文件里）：
     - 从文风文件 `## 原文锚点片段` 段读出所有按基调标注的片段
     - 按本章情绪/基调选 1-2 段（精确匹配优先，无则取相近基调）
     - 完整传递 300-500 字原文（不要截断/概括）
-13. **返回结构化 JSON**
+ 2. **返回结构化 JSON**
 
 ### context_load 流程（综合查询）
 
 1. 用调用方随 prompt 传入的 `last_committed_chapter` / `state_revision`（主会话已跑过 `tracking_commit.py check`）；prompt 里没有这两个值时不自行读取 `_tracking-state.json`（完整 state 不进 prompt，读取量不随章数增长），只读 `追踪/上下文.md` 头部的 `状态修订：{N}` 作参考；对不上时返回 `tracking_state_invalid` 与 blocking gap，不继续组装写作包。
 2. `read 追踪/上下文.md`；它必须恰好包含 `当前位置 / 长期约束 / 核心角色状态 / 活跃伏笔 / 近三章速记 / 下一章承诺 / 连贯性风险` 7 个栏目。
-3. 下一章 N = `last_committed_chapter + 1`；`read 大纲/细纲_第{N}章.md`。
+3. 下一章 N = `last_committed_chapter + 1`；`read 大纲/细纲/第{N}章.md`。
 4. 从细纲和续写状态卡提取角色名，读取 `设定/角色/{name}.md`；久别核心角色再读取 `追踪/角色状态/{name}.md`。
 5. `read 正文/第{N-1}章_*.md` 获取场景衔接。
 6. 只有调用方明确给出伏笔 ID、事件 ID 或历史原因时，才定点查 `伏笔.md`、对应时间线视图或命中的逐章增量；默认不通读长期文件。
@@ -235,6 +241,7 @@ turnBudget: {"maxTurns": 15}
 ### 各类型 results 结构
 
 **character_status**：
+
 ```json
 {
   "results": {
@@ -248,6 +255,7 @@ turnBudget: {"maxTurns": 15}
 ```
 
 **foreshadow_list**：
+
 ```json
 {
   "results": {
@@ -263,6 +271,7 @@ turnBudget: {"maxTurns": 15}
 ```
 
 **setting_appearances**：
+
 ```json
 {
   "results": {
@@ -277,6 +286,7 @@ turnBudget: {"maxTurns": 15}
 ```
 
 **context_load**：
+
 ```json
 {
   "results": {
@@ -291,6 +301,7 @@ turnBudget: {"maxTurns": 15}
 ```
 
 **benchmark_style_load**：
+
 ```json
 {
   "query_type": "benchmark_style_load",
@@ -356,6 +367,7 @@ turnBudget: {"maxTurns": 15}
 调用方通过 subagent 工具（agent: story-explorer）调用你（如 story-long-write、story-review、story 路由等）。
 
 你收到的 prompt 会包含：
+
 - `项目目录`：书籍项目目录路径
 - `查询类型`：查询类型（见上表）
 - `查询参数`：具体查询内容

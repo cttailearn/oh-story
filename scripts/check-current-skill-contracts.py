@@ -1377,7 +1377,7 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
             )
 
     outline_dir = repo_root / "demo/长篇/让你管账号，你高燃混剪炸全网/大纲"
-    outlines = sorted(outline_dir.glob("细纲_第*.md"))
+    outlines = sorted(outline_dir.glob("细纲/第*.md"))
     if len(outlines) != manifest.expected_demo_outline_count:
         findings.append(
             Finding(

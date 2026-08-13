@@ -328,9 +328,9 @@ story-short-analyze 的拆解管道（Stage 2-6）本身**无 Stage 1 停靠点*
 - 起始状态 → 结束状态：{从角色弧线推断}
 ```
 
-**卷纲**：卷划分确认后，从剧情文件聚合生成 `大纲/卷纲_第X卷.md`，按 [structure-mapping-long.md](references/structure-mapping-long.md)「卷纲反推」模板格式。
+**卷纲**：卷划分确认后，从剧情文件聚合生成 `大纲/卷纲/第X卷.md`，按 [structure-mapping-long.md](references/structure-mapping-long.md)「卷纲反推」模板格式。
 
-**细纲**：从章节摘要反推生成 `大纲/细纲_第XXX章.md`，模板见 [import-templates.md](references/import-templates.md)「细纲反推模板」。
+**细纲**：从章节摘要反推生成 `大纲/细纲/第XXX章.md`，模板见 [import-templates.md](references/import-templates.md)「细纲反推模板」。
 
 > 钩子、人物关系变化、辅线/感情线、行动成本/收益归属等无法由原文摘要稳定判断的字段统一标 `[待补充]`；story-import 只反推有证据的蓝图，不为补齐字段编造关系或副线。
 
