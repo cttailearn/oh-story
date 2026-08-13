@@ -56,7 +56,7 @@ def test_valid_contract() -> None:
             "---\nname: demo\ndescription: Demo skill\n---\n"
             "# Demo\n\n"
             "Read [the guide](references/guide.md#details).\n\n"
-            "Use `references/data/` and spawn `subagent_type: \"helper\"`.\n",
+            'Use `references/data/` and spawn `subagent_type: "helper"`.\n',
         )
         write(
             root / "skills/demo/references/guide.md",
@@ -85,7 +85,7 @@ def test_structural_failures_are_not_hidden_by_prose() -> None:
             "This prose contains description: but frontmatter does not.\n\n"
             "[missing](references/missing.md)\n\n"
             "[bad anchor](references/guide.md#does-not-exist)\n\n"
-            "`subagent_type: \"ghost\"`\n",
+            '`subagent_type: "ghost"`\n',
         )
         write(
             root / "skills/broken/references/guide.md",
@@ -173,7 +173,7 @@ def test_fenced_examples_do_not_leak_into_validation() -> None:
             "```markdown\n"
             "```python\n"
             "[example only](references/missing.md)\n"
-            "`subagent_type: \"ghost\"`\n"
+            '`subagent_type: "ghost"`\n'
             "```\n",
         )
 
@@ -355,7 +355,7 @@ def test_templates_and_web_assets_are_scanned_for_cross_skill_paths() -> None:
         )
         write(
             root / "skills/demo/references/opencode.json.patch",
-            "+  \"instructions\": \"story-setup/references/generic/AGENTS.md.tmpl\"\n",
+            '+  "instructions": "story-setup/references/generic/AGENTS.md.tmpl"\n',
         )
         write(
             root / "skills/demo/assets/index.html",
@@ -374,7 +374,9 @@ def test_templates_and_web_assets_are_scanned_for_cross_skill_paths() -> None:
             "assets/index.html:1",
             "assets/styles.css:1",
         ):
-            assert f"[cross-skill-reference] skills/demo/{asset}" in result.stdout, result.stdout
+            assert f"[cross-skill-reference] skills/demo/{asset}" in result.stdout, (
+                result.stdout
+            )
 
 
 def test_emphasized_paths_are_still_existence_checked() -> None:
@@ -394,13 +396,15 @@ def test_emphasized_paths_are_still_existence_checked() -> None:
 
         result = run(root)
         assert result.returncode == 1, result.stdout + result.stderr
-        assert (
-            "[broken-inline-path] skills/demo/SKILL.md:7" in result.stdout
-        ), result.stdout
+        assert "[broken-inline-path] skills/demo/SKILL.md:7" in result.stdout, (
+            result.stdout
+        )
         assert "references/definitely-missing.md" in result.stdout, result.stdout
         # 真通配符仍按父目录校验，不能因为剥强调符而被截断成断链
         assert result.stdout.count("[broken-inline-path]") == 1, result.stdout
-        assert "[broken-inline-path] skills/demo/SKILL.md:9" not in result.stdout, result.stdout
+        assert "[broken-inline-path] skills/demo/SKILL.md:9" not in result.stdout, (
+            result.stdout
+        )
 
 
 def test_wildcard_mentions_do_not_hide_dead_references() -> None:
@@ -419,11 +423,16 @@ def test_wildcard_mentions_do_not_hide_dead_references() -> None:
 
         result = run(root)
         assert result.returncode == 0, result.stdout + result.stderr
-        assert "[dead-reference] skills/demo/references/orphan.md" in result.stdout, result.stdout
+        assert "[dead-reference] skills/demo/references/orphan.md" in result.stdout, (
+            result.stdout
+        )
         assert (
-            "[dead-reference] skills/demo/references/nested/deep-orphan.md" in result.stdout
+            "[dead-reference] skills/demo/references/nested/deep-orphan.md"
+            in result.stdout
         ), result.stdout
-        assert "[dead-reference] skills/demo/references/guide.md" not in result.stdout, result.stdout
+        assert (
+            "[dead-reference] skills/demo/references/guide.md" not in result.stdout
+        ), result.stdout
 
 
 def test_brace_enumerations_name_each_file() -> None:
@@ -448,9 +457,10 @@ def test_brace_enumerations_name_each_file() -> None:
             "[dead-reference] skills/demo/references/rubrics/orphan.md" in result.stdout
         ), result.stdout
         for reached in ("fanqie.md", "qidian.md"):
-            assert f"[dead-reference] skills/demo/references/rubrics/{reached}" not in result.stdout, (
-                result.stdout
-            )
+            assert (
+                f"[dead-reference] skills/demo/references/rubrics/{reached}"
+                not in result.stdout
+            ), result.stdout
 
 
 def test_launcher_reports_missing_git_repository() -> None:
@@ -473,7 +483,9 @@ def test_launcher_reports_missing_git_repository() -> None:
             encoding="utf-8",
         )
         # `set -e` 曾让裸赋值直接中断脚本：退出码 128 且无任何提示
-        assert proc.returncode == 1, f"exit={proc.returncode}\n{proc.stdout}{proc.stderr}"
+        assert proc.returncode == 1, (
+            f"exit={proc.returncode}\n{proc.stdout}{proc.stderr}"
+        )
         assert "not in a git repository" in proc.stderr, proc.stdout + proc.stderr
 
 

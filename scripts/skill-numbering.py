@@ -25,9 +25,7 @@ from urllib.parse import unquote
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-ATX_HEADING_RE = re.compile(
-    r"^[ ]{0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+[ \t]*)?$"
-)
+ATX_HEADING_RE = re.compile(r"^[ ]{0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+[ \t]*)?$")
 FENCE_OPEN_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
 # 编号标签的统一收尾条件，替代原来枚举 `:：.、)]—–-` 的终止符白名单：
 #   * `(?!\.?[0-9])` 禁止标签被回溯截断，`Step 1.5甲` 不会退化成 `Step 1`；
@@ -56,9 +54,7 @@ DOTTED_BULLET_RE = re.compile(
     r"(?P<label>[0-9]+\.[0-9]+(?:\.[0-9]+)*)" + LABEL_END
 )
 MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]\n]*\]\((?P<target>[^)\n]+)\)")
-REFERENCE_LINK_RE = re.compile(
-    r"^[ ]{0,3}\[[^\]\n]+\]:[ \t]*(?P<target><[^>\n]+>|\S+)"
-)
+REFERENCE_LINK_RE = re.compile(r"^[ ]{0,3}\[[^\]\n]+\]:[ \t]*(?P<target><[^>\n]+>|\S+)")
 INLINE_CODE_RE = re.compile(r"(?<!`)`[^`\n]+`(?!`)")
 EXTERNAL_SCHEMES = ("http://", "https://", "mailto:", "data:", "tel:")
 
@@ -137,7 +133,9 @@ def parse_document(path: Path, root: Path) -> Document:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise ValueError(f"{display_path(path, root)} is not valid UTF-8: {exc}") from exc
+        raise ValueError(
+            f"{display_path(path, root)} is not valid UTF-8: {exc}"
+        ) from exc
 
     lines = text.splitlines(keepends=True)
     if text and not lines:
@@ -276,7 +274,9 @@ def discover_markdown(root: Path, requested: Sequence[str]) -> list[Path]:
     else:
         skills_dir = root / "skills"
         if not skills_dir.is_dir():
-            raise FileNotFoundError(f"canonical skills directory not found: {skills_dir}")
+            raise FileNotFoundError(
+                f"canonical skills directory not found: {skills_dir}"
+            )
         candidates.extend(skills_dir.rglob("*.md"))
 
     unique: dict[str, Path] = {}
@@ -346,7 +346,9 @@ def assign_step_numbers(document: Document) -> tuple[list[Issue], list[Replaceme
     return issues, replacements
 
 
-def group_scope_contains(document: Document, step: StepHeading, line_index: int) -> bool:
+def group_scope_contains(
+    document: Document, step: StepHeading, line_index: int
+) -> bool:
     if step.parent_index is None:
         return True
     parent = document.headings[step.parent_index]
@@ -362,7 +364,8 @@ def containing_workflow_parent(document: Document, line_index: int) -> int | Non
     containing = [
         parent_index
         for parent_index in parent_indexes
-        if document.headings[parent_index].line_index <= line_index
+        if document.headings[parent_index].line_index
+        <= line_index
         < document.headings[parent_index].section_end
     ]
     if not containing:
@@ -377,7 +380,9 @@ def bind_step_references(document: Document) -> tuple[list[Issue], list[Replacem
     heading_spans: dict[int, set[tuple[int, int]]] = {}
     for step in document.steps:
         candidates_by_label.setdefault(step.old_label, []).append(step)
-        heading_spans.setdefault(step.line_index, set()).add((step.label_start, step.label_end))
+        heading_spans.setdefault(step.line_index, set()).add(
+            (step.label_start, step.label_end)
+        )
 
     for line_index, line in enumerate(document.lines):
         content = strip_line_ending(line)
@@ -505,9 +510,7 @@ def strip_link_title(target: str) -> str:
     return (match.group(1) if match else target).strip()
 
 
-def link_destination(
-    raw: str, source: Path, root: Path
-) -> tuple[Path, str] | None:
+def link_destination(raw: str, source: Path, root: Path) -> tuple[Path, str] | None:
     target = strip_link_title(raw)
     if not target or target.lower().startswith(EXTERNAL_SCHEMES):
         return None
@@ -534,9 +537,7 @@ def repository_markdown(root: Path) -> list[Path]:
     )
 
 
-def anchor_reference_issues(
-    documents: Sequence[Document], root: Path
-) -> list[Issue]:
+def anchor_reference_issues(documents: Sequence[Document], root: Path) -> list[Issue]:
     """Fail closed when renumbering would invalidate an existing fragment link.
 
     Sources are scanned repository-wide rather than only inside the requested
@@ -734,7 +735,9 @@ def render_document(document: Document, replacements: Sequence[Replacement]) -> 
                 )
         line = rendered[line_index]
         for replacement in reversed(ordered):
-            line = line[: replacement.start] + replacement.value + line[replacement.end :]
+            line = (
+                line[: replacement.start] + replacement.value + line[replacement.end :]
+            )
         rendered[line_index] = line
     return "".join(rendered)
 
@@ -812,7 +815,9 @@ def command_check(analysis: Analysis, root: Path) -> int:
 
 def print_diffs(analysis: Analysis, transformed: dict[Path, str]) -> None:
     documents_by_path = {document.path: document for document in analysis.documents}
-    for path in sorted(transformed, key=lambda item: documents_by_path[item].display_path):
+    for path in sorted(
+        transformed, key=lambda item: documents_by_path[item].display_path
+    ):
         document = documents_by_path[path]
         diff = difflib.unified_diff(
             document.text.splitlines(keepends=True),
@@ -872,7 +877,9 @@ def transactional_write(changes: dict[Path, str]) -> None:
                 rollback_errors.append(f"{path}: {rollback_exc}")
         if rollback_errors:
             details = "; ".join(rollback_errors)
-            raise RuntimeError(f"write failed ({exc}); rollback also failed: {details}") from exc
+            raise RuntimeError(
+                f"write failed ({exc}); rollback also failed: {details}"
+            ) from exc
         raise
     finally:
         for temporary in list(staged.values()) + list(backups.values()):
@@ -922,7 +929,9 @@ def command_fix(analysis: Analysis, root: Path, write: bool) -> int:
 
     if not write:
         print_diffs(analysis, transformed)
-        print(f"DRY-RUN: {len(transformed)} file(s) would change; no files were written")
+        print(
+            f"DRY-RUN: {len(transformed)} file(s) would change; no files were written"
+        )
         if manual_issues:
             print(f"NOTE: {len(manual_issues)} check-only issue(s) would remain")
         return 0
@@ -962,17 +971,27 @@ def build_parser() -> argparse.ArgumentParser:
             help="optional Markdown files/directories relative to --root",
         )
 
-    audit = subparsers.add_parser("audit", help="report groups and issues without failing")
+    audit = subparsers.add_parser(
+        "audit", help="report groups and issues without failing"
+    )
     add_scope_options(audit)
 
-    check = subparsers.add_parser("check", help="fail when numbering policy is violated")
+    check = subparsers.add_parser(
+        "check", help="fail when numbering policy is violated"
+    )
     add_scope_options(check)
 
-    fix = subparsers.add_parser("fix", help="renumber explicit Step headings and bound refs")
+    fix = subparsers.add_parser(
+        "fix", help="renumber explicit Step headings and bound refs"
+    )
     add_scope_options(fix)
     mode = fix.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--dry-run", action="store_true", help="print a diff without writing")
-    mode.add_argument("--write", action="store_true", help="write all validated changes")
+    mode.add_argument(
+        "--dry-run", action="store_true", help="print a diff without writing"
+    )
+    mode.add_argument(
+        "--write", action="store_true", help="write all validated changes"
+    )
     return parser
 
 

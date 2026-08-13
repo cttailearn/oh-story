@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.0.0
+
+> pi 专属版首发。oh-story 从多端适配包（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）迁移为 pi 专属包：13 个 skills + 7 个 pi-subagents 子代理 + `/story` 命令别名扩展，经 npm 与 git 双通道分发（`pi install npm:oh-story-pi`）。
+
+### 迁移（多端 → pi）
+
+- **删除六端适配**：`.claude-plugin/`、`.zcode-plugin/`、marketplace 与 reasonix manifest、4 个多端 workflow、25 个适配器/hook 检查脚本、story-setup 的 codex/opencode/zcode/openclaw/reasonix references（references 1.4MB → 650KB）。
+- **12 个技能正文 pi 化**：删除 openclaw metadata；触发词统一 `/skill:story-*`；agent 查找链 `.claude/.opencode/.codex` → `.pi/agents/`；spawn 语法改 subagent 工具 + pi-subagents；更新指令 `npx skills add` → `pi update --extensions`；版本检查仓库改 `cttailearn/oh-story-pi`。
+- **story-setup 重写**（v1.3.0）：495 行多端部署 → 85 行 pi 项目初始化（包完整性验证、子代理部署到 `.pi/agents/`、AGENTS.md 合并、书目录创建、sentinel `target_cli: pi`）。旧多端项目迁移路径见 `skills/story-setup/UPGRADING.md`。
+- **7 个专业子代理转 pi-subagents 格式**：tools 白名单、`systemPromptMode: replace`、`turnBudget`、`memory: {scope: project}`；model 不写死（继承 pi 默认，agentOverrides 可固定）。
+- **hooks 等价物**：pi 无 hooks，写正文守卫由 skill 内检查点（tracking check fail-closed、细纲边界）与确定性脚本（check-ai-patterns / check-degeneration / normalize-punctuation）承担。
+- **浏览器**：browser-cdp 增补 pi 原生 `agent_browser` 优先说明，CDP 直连作为复用登录态备选。
+
+### 打包与分发
+
+- package.json：`pi` manifest（extensions + skills + 画廊图）、`pi-package` 关键词、peer 依赖提示。
+- 新增 `extensions/index.ts`：`/story`、`/story dashboard` 命令别名（转发 `/skill:story`）。
+- 新增 `tests/dashboard-trigger-contract.test.mjs` 的 pi 包 manifest 断言；dashboard.yml 去除平台引用。
+- README / README_EN / CONTRIBUTING / scripts README 全量改写为 pi 版。
+
+**升级**：旧多端用户先 `pi install npm:oh-story-pi`，在写作项目重跑 `/skill:story-setup`（迁移 sentinel 与子代理），新开会话生效。
+
 ## v0.7.5
 
 > 这版没有新功能，都是修问题和减开销。最要紧的一条：Claude Code 上写正文一直不检查追踪状态，而另外三端从 v0.7.3 起就检查，于是同一个工程在 Claude Code 上能一路写出没有追踪的章节。本版把这道检查补上，**代价是旧追踪的长篇项目在 Claude Code 上会开始被拦，必须先迁移 `追踪/` 才能继续写**，处置方式见下方升级须知。另外长篇写作每次触发都要整份加载的那份 SKILL.md 从 699 行降到 455 行，只有开书才用得上的三个阶段移成按需读取；正文规则里还有一条把普通的「他说」判成违规，与其余 11 处口径冲突，也一并改掉。**本版 `agents_version` 为 24**（v0.7.4 是 23），已部署的项目要重新跑 `/story-setup` 并新开会话。
@@ -35,6 +57,7 @@ npx skills add worldwonderer/oh-story-claudecode -y -g
 ### 维护
 
 - 写正文守卫的 bash 那一面纳入跨端一致性断言。此前只锁 Codex 的 Python 与 JS 核，bash 侧没有任何断言，上面那处四端不一致正是从这个缺口漏过去的。新增断言按「同一个工程、同一次写入，两边拦不拦必须一致」比对十组工程状态，并逐个写明该拦还是该放行。
+
 ## v0.7.4
 
 > 这版全是修问题，没有新功能。最影响使用的是三件事：导入自己的书以后，「对标」目录里装的是自己的设定；多端部署的项目每次开会话都被告知参考资料包缺了；拆文跑到文风统计那一步，Windows 上直接报错退出。另外把 spawn 的版本检查从硬门禁改成提示，版本对不上不再整体退回单线程。**本版 `agents_version` 为 23**（v0.7.3 是 22），已部署的项目要重新跑 `/story-setup` 并新开会话。

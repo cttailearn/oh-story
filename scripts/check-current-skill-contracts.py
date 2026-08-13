@@ -255,7 +255,7 @@ PROHIBITION_RE = re.compile(
 def primary_term_pattern(primary_artifacts: Sequence[str]) -> str:
     """Build artifact terms from the manifest, including common local shorthand."""
 
-    terms = set(PRIMARY_GAP_TERMS)
+    terms: set[str] = set(PRIMARY_GAP_TERMS)
     for artifact in primary_artifacts:
         normalized = artifact.replace("\\", "/")
         basename = normalized.rsplit("/", 1)[-1]
@@ -277,22 +277,42 @@ def load_manifest(path: Path) -> Tuple[Optional[ContractManifest], List[Finding]
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return None, [Finding("manifest-missing", "current contract manifest is missing", path)]
+        return None, [
+            Finding("manifest-missing", "current contract manifest is missing", path)
+        ]
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        return None, [Finding("manifest-invalid-json", "cannot parse manifest: {}".format(exc), path)]
+        return None, [
+            Finding(
+                "manifest-invalid-json", "cannot parse manifest: {}".format(exc), path
+            )
+        ]
 
     if not isinstance(raw, dict):
-        return None, [Finding("manifest-type", "manifest root must be a JSON object", path)]
+        return None, [
+            Finding("manifest-type", "manifest root must be a JSON object", path)
+        ]
 
     keys = set(raw)
     for missing in sorted(EXPECTED_MANIFEST_KEYS - keys):
-        findings.append(Finding("manifest-key-missing", "missing manifest key: {}".format(missing), path))
+        findings.append(
+            Finding(
+                "manifest-key-missing", "missing manifest key: {}".format(missing), path
+            )
+        )
     for unknown in sorted(keys - EXPECTED_MANIFEST_KEYS):
-        findings.append(Finding("manifest-key-unknown", "unknown manifest key: {}".format(unknown), path))
+        findings.append(
+            Finding(
+                "manifest-key-unknown", "unknown manifest key: {}".format(unknown), path
+            )
+        )
 
     if "manifest_version" in raw:
         if not _is_int(raw["manifest_version"]):
-            findings.append(Finding("manifest-value-type", "manifest_version has the wrong type", path))
+            findings.append(
+                Finding(
+                    "manifest-value-type", "manifest_version has the wrong type", path
+                )
+            )
         elif raw["manifest_version"] != SUPPORTED_MANIFEST_VERSION:
             findings.append(
                 Finding(
@@ -307,9 +327,17 @@ def load_manifest(path: Path) -> Tuple[Optional[ContractManifest], List[Finding]
     setup_version = raw.get("setup_skill_version")
     if not isinstance(setup_version, str):
         if "setup_skill_version" in raw:
-            findings.append(Finding("manifest-value-type", "setup_skill_version has the wrong type", path))
+            findings.append(
+                Finding(
+                    "manifest-value-type",
+                    "setup_skill_version has the wrong type",
+                    path,
+                )
+            )
     elif not SEMVER_RE.fullmatch(setup_version):
-        findings.append(Finding("manifest-value-format", "setup_skill_version must be x.y.z", path))
+        findings.append(
+            Finding("manifest-value-format", "setup_skill_version must be x.y.z", path)
+        )
 
     for key in (
         "agents_version",
@@ -320,17 +348,47 @@ def load_manifest(path: Path) -> Tuple[Optional[ContractManifest], List[Finding]
         if key not in raw:
             continue
         if not _is_int(raw[key]):
-            findings.append(Finding("manifest-value-type", "{} has the wrong type".format(key), path))
+            findings.append(
+                Finding(
+                    "manifest-value-type", "{} has the wrong type".format(key), path
+                )
+            )
         elif raw[key] < 1:
-            findings.append(Finding("manifest-value-range", "{} must be a positive integer".format(key), path))
+            findings.append(
+                Finding(
+                    "manifest-value-range",
+                    "{} must be a positive integer".format(key),
+                    path,
+                )
+            )
 
     artifacts = raw.get("primary_benchmark_artifacts")
-    if not isinstance(artifacts, list) or any(not isinstance(item, str) for item in artifacts):
-        findings.append(Finding("manifest-artifact-type", "primary_benchmark_artifacts must be a string array", path))
+    if not isinstance(artifacts, list) or any(
+        not isinstance(item, str) for item in artifacts
+    ):
+        findings.append(
+            Finding(
+                "manifest-artifact-type",
+                "primary_benchmark_artifacts must be a string array",
+                path,
+            )
+        )
     elif not artifacts:
-        findings.append(Finding("manifest-artifact-empty", "primary_benchmark_artifacts must not be empty", path))
+        findings.append(
+            Finding(
+                "manifest-artifact-empty",
+                "primary_benchmark_artifacts must not be empty",
+                path,
+            )
+        )
     elif len(set(artifacts)) != len(artifacts):
-        findings.append(Finding("manifest-artifact-duplicate", "primary_benchmark_artifacts must be unique", path))
+        findings.append(
+            Finding(
+                "manifest-artifact-duplicate",
+                "primary_benchmark_artifacts must be unique",
+                path,
+            )
+        )
     elif any(ARTIFACT_PATH_RE.fullmatch(item) is None for item in artifacts):
         findings.append(
             Finding(
@@ -341,12 +399,18 @@ def load_manifest(path: Path) -> Tuple[Optional[ContractManifest], List[Finding]
         )
 
     sections = raw.get("required_outline_sections")
-    valid_sections = isinstance(sections, list) and bool(sections) and all(
-        isinstance(item, dict)
-        and set(item) == {"rule", "demo"}
-        and isinstance(item.get("rule"), str) and bool(item["rule"].strip())
-        and isinstance(item.get("demo"), str) and bool(item["demo"].strip())
-        for item in sections or []
+    valid_sections = (
+        isinstance(sections, list)
+        and bool(sections)
+        and all(
+            isinstance(item, dict)
+            and set(item) == {"rule", "demo"}
+            and isinstance(item.get("rule"), str)
+            and bool(item["rule"].strip())
+            and isinstance(item.get("demo"), str)
+            and bool(item["demo"].strip())
+            for item in sections or []
+        )
     )
     if not valid_sections:
         findings.append(
@@ -356,7 +420,7 @@ def load_manifest(path: Path) -> Tuple[Optional[ContractManifest], List[Finding]
                 path,
             )
         )
-    elif (
+    elif isinstance(sections, list) and (
         len({item["rule"] for item in sections}) != len(sections)
         or len({item["demo"] for item in sections}) != len(sections)
     ):
@@ -380,7 +444,9 @@ def load_manifest(path: Path) -> Tuple[Optional[ContractManifest], List[Finding]
         topic_decision_phase=raw["topic_decision_phase"],
         progress_schema_version=raw["progress_schema_version"],
         primary_benchmark_artifacts=tuple(artifacts),
-        required_outline_sections=tuple((item["rule"], item["demo"]) for item in sections),
+        required_outline_sections=tuple(
+            (item["rule"], item["demo"]) for item in sections
+        ),
         expected_demo_outline_count=raw["expected_demo_outline_count"],
     )
     return manifest, []
@@ -524,7 +590,7 @@ def check_absent_rule(repo_root: Path, rule: AbsentRule) -> List[Finding]:
         root = repo_root / relative_root
         for path in iter_files(root):
             for hit in regex_hits(path, compiled):
-                if exempt is not None:
+                if exempt is not None and hit.excerpt is not None:
                     # 只看命中行本身：显式容忍标记须与旧格式措辞同处一行才算「有据可查」，
                     # 避免相邻的静默降级借上一行的标记蒙混过关
                     if exempt.search(hit.excerpt):
@@ -696,7 +762,9 @@ def rubric_dimension_names(repo_root: Path) -> Tuple[List[str], List[str]]:
     """取 quality-rubric.md「核心维度」表与 SKILL.md 内置 fallback 的维度名。"""
 
     table: List[str] = []
-    rubric_text = read_text(repo_root / "skills/story-review/references/quality-rubric.md") or ""
+    rubric_text = (
+        read_text(repo_root / "skills/story-review/references/quality-rubric.md") or ""
+    )
     in_table = False
     for line in rubric_text.splitlines():
         if line.startswith("| 维度 |"):
@@ -852,7 +920,9 @@ def extract_sentinel_fields(text: str) -> Optional[dict[str, str]]:
     section_start: Optional[int] = None
     heading_level = 0
     for index, line in enumerate(lines):
-        match = re.match(r"^(#{2,6})\s+Step\s+[A-Za-z0-9]+[：:]\s*创建部署标记\s*$", line)
+        match = re.match(
+            r"^(#{2,6})\s+Step\s+[A-Za-z0-9]+[：:]\s*创建部署标记\s*$", line
+        )
         if match:
             section_start = index + 1
             heading_level = len(match.group(1))
@@ -941,7 +1011,9 @@ def sentinel_contract_findings(
             findings.append(
                 Finding(
                     "setup-sentinel-field",
-                    "generated sentinel {} must be {!r}, got {!r}".format(key, value, actual),
+                    "generated sentinel {} must be {!r}, got {!r}".format(
+                        key, value, actual
+                    ),
                     path,
                 )
             )
@@ -996,7 +1068,9 @@ def outline_rule_contract_findings(
     return [
         Finding(
             "outline-rule-section",
-            "outline rule is missing structured blueprint fields: {}".format(", ".join(missing)),
+            "outline rule is missing structured blueprint fields: {}".format(
+                ", ".join(missing)
+            ),
             path,
         )
     ]
@@ -1087,7 +1161,14 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
     findings.extend(
         progress_schema_pin_findings(repo_root, manifest.progress_schema_version)
     )
-    findings.extend(require_pattern(pipeline, r"章节边界", "chapter-boundary-table", "progress must keep the canonical chapter-boundary table"))
+    findings.extend(
+        require_pattern(
+            pipeline,
+            r"章节边界",
+            "chapter-boundary-table",
+            "progress must keep the canonical chapter-boundary table",
+        )
+    )
 
     setup_skill = repo_root / "skills/story-setup/SKILL.md"
     actual_setup_version = parse_frontmatter_version(setup_skill)
@@ -1134,9 +1215,13 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
     findings.extend(
         require_pattern(
             scan_skill,
-            r"^#{{2,6}}\s+Phase\s+{}[：:]\s*选题决策\s*$".format(manifest.topic_decision_phase),
+            r"^#{{2,6}}\s+Phase\s+{}[：:]\s*选题决策\s*$".format(
+                manifest.topic_decision_phase
+            ),
             "topic-decision-phase-heading",
-            "story-long-scan must expose topic decision as Phase {}".format(manifest.topic_decision_phase),
+            "story-long-scan must expose topic decision as Phase {}".format(
+                manifest.topic_decision_phase
+            ),
         )
     )
     for path in iter_files(repo_root / "skills"):
@@ -1169,14 +1254,51 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
     findings.extend(rubric_parity_findings(repo_root))
 
     long_analyze = repo_root / "skills/story-long-analyze/SKILL.md"
-    findings.extend(require_pattern(long_analyze, r"invalid_topic_decision_contract", "invalid-topic-contract", "invalid topic-decision artifacts must fail explicitly"))
+    findings.extend(
+        require_pattern(
+            long_analyze,
+            r"invalid_topic_decision_contract",
+            "invalid-topic-contract",
+            "invalid topic-decision artifacts must fail explicitly",
+        )
+    )
     # 章节边界表是 Stage 1/2/6 的唯一切片真值：原文开头的目录块会让每个章号命中两次，
     # 不剔就一路错到底。剔除步骤和落表前的连续性校验都必须留在 Stage 0。
-    findings.extend(require_pattern(long_analyze, r"先剔掉目录块", "stage0-toc-block-removal", "Stage 0 must drop the leading table-of-contents block before building the chapter table"))
-    findings.extend(require_pattern(long_analyze, r"落表前校验章号连续", "stage0-chapter-table-validation", "Stage 0 must validate chapter numbers before writing the boundary table"))
-    explorer = repo_root / "skills/story-setup/references/templates/agents/story-explorer.md"
-    findings.extend(require_pattern(explorer, r"missing_primary_contract", "explorer-primary-failure", "story-explorer must fail closed on missing current benchmark artifacts"))
-    findings.extend(require_pattern(explorer, r"repair_action", "explorer-repair-action", "story-explorer must return an explicit repair action"))
+    findings.extend(
+        require_pattern(
+            long_analyze,
+            r"先剔掉目录块",
+            "stage0-toc-block-removal",
+            "Stage 0 must drop the leading table-of-contents block before building the chapter table",
+        )
+    )
+    findings.extend(
+        require_pattern(
+            long_analyze,
+            r"落表前校验章号连续",
+            "stage0-chapter-table-validation",
+            "Stage 0 must validate chapter numbers before writing the boundary table",
+        )
+    )
+    explorer = (
+        repo_root / "skills/story-setup/references/templates/agents/story-explorer.md"
+    )
+    findings.extend(
+        require_pattern(
+            explorer,
+            r"missing_primary_contract",
+            "explorer-primary-failure",
+            "story-explorer must fail closed on missing current benchmark artifacts",
+        )
+    )
+    findings.extend(
+        require_pattern(
+            explorer,
+            r"repair_action",
+            "explorer-repair-action",
+            "story-explorer must return an explicit repair action",
+        )
+    )
 
     long_write = repo_root / "skills/story-long-write/SKILL.md"
     for artifact in manifest.primary_benchmark_artifacts:
@@ -1230,7 +1352,9 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
             )
         )
 
-    explorer_template = repo_root / "skills/story-setup/references/templates/agents/story-explorer.md"
+    explorer_template = (
+        repo_root / "skills/story-setup/references/templates/agents/story-explorer.md"
+    )
     findings.extend(
         require_pattern(
             explorer_template,
@@ -1240,7 +1364,9 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
         )
     )
 
-    outline_rule = repo_root / "skills/story-setup/references/templates/rules/story-outline.md"
+    outline_rule = (
+        repo_root / "skills/story-setup/references/templates/rules/story-outline.md"
+    )
     outline_rule_text = read_text(outline_rule) or ""
     findings.extend(
         outline_rule_contract_findings(outline_rule_text, manifest, outline_rule)
@@ -1255,7 +1381,11 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
             has_content = False
         if not has_content:
             findings.append(
-                Finding("demo-primary-artifact", "demo deconstruction is missing non-empty {}".format(artifact), artifact_path)
+                Finding(
+                    "demo-primary-artifact",
+                    "demo deconstruction is missing non-empty {}".format(artifact),
+                    artifact_path,
+                )
             )
 
     outline_dir = repo_root / "demo/长篇/让你管账号，你高燃混剪炸全网/大纲"
@@ -1282,7 +1412,9 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
             findings.append(
                 Finding(
                     "demo-outline-section",
-                    "demo outline is missing current blueprint sections: {}".format(", ".join(missing)),
+                    "demo outline is missing current blueprint sections: {}".format(
+                        ", ".join(missing)
+                    ),
                     outline,
                 )
             )
@@ -1345,7 +1477,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print("  [PASS] legacy/path guards")
     print("  [PASS] version, phase, progress, and artifact contracts")
     print("  [PASS] primary-artifact fallback semantics")
-    print("  [PASS] demo primary artifacts and {} outlines".format(manifest.expected_demo_outline_count))
+    print(
+        "  [PASS] demo primary artifacts and {} outlines".format(
+            manifest.expected_demo_outline_count
+        )
+    )
     print("\nResult: all current-contract checks passed")
     return 0
 

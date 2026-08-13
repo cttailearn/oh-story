@@ -60,7 +60,9 @@ def manifest_with(**overrides: object) -> _Manifest:
         bumped_path = Path(tmp) / "bumped.json"
         bumped_path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
         manifest, findings = VALIDATOR.load_manifest(bumped_path)
-    require(not findings and manifest is not None, "bumped manifest must stay well-formed")
+    require(
+        not findings and manifest is not None, "bumped manifest must stay well-formed"
+    )
     assert manifest is not None
     return manifest
 
@@ -69,7 +71,8 @@ def flagged_paths(manifest: _Manifest, code: str) -> set[str]:
     return {
         Path(str(finding.path)).relative_to(REPO_ROOT).as_posix()
         for finding in VALIDATOR.validate_repository(REPO_ROOT, manifest)
-        if getattr(finding, "code") == code and getattr(finding, "path", None) is not None
+        if getattr(finding, "code") == code
+        and getattr(finding, "path", None) is not None
     }
 
 
@@ -78,7 +81,10 @@ def test_manifest_contract() -> None:
     manifest, findings = VALIDATOR.load_manifest(manifest_path)
     require(not findings, "repository manifest should validate: {}".format(findings))
     require(manifest is not None, "repository manifest should load")
-    require(not VALIDATOR.validate_repository(REPO_ROOT, manifest), "manifest and repository must agree")
+    require(
+        not VALIDATOR.validate_repository(REPO_ROOT, manifest),
+        "manifest and repository must agree",
+    )
 
     raw = json.loads(manifest_path.read_text(encoding="utf-8"))
     with tempfile.TemporaryDirectory() as tmp:
@@ -87,7 +93,9 @@ def test_manifest_contract() -> None:
         wrong_type = dict(raw)
         wrong_type["agents_version"] = "18"
         wrong_type_path = tmpdir / "wrong-type.json"
-        wrong_type_path.write_text(json.dumps(wrong_type, ensure_ascii=False), encoding="utf-8")
+        wrong_type_path.write_text(
+            json.dumps(wrong_type, ensure_ascii=False), encoding="utf-8"
+        )
         _, wrong_type_findings = VALIDATOR.load_manifest(wrong_type_path)
         require(
             "manifest-value-type" in finding_codes(wrong_type_findings),
@@ -104,16 +112,17 @@ def test_manifest_contract() -> None:
             "a well-formed manifest remains the source of truth",
         )
         require(
-            "topic-decision-phase" in finding_codes(
-                VALIDATOR.validate_repository(REPO_ROOT, stale_manifest)
-            ),
+            "topic-decision-phase"
+            in finding_codes(VALIDATOR.validate_repository(REPO_ROOT, stale_manifest)),
             "repository drift from the manifest must be rejected",
         )
 
         malformed_sections = dict(raw)
         malformed_sections["required_outline_sections"] = [{"rule": "阶段位置"}]
         malformed_path = tmpdir / "malformed-sections.json"
-        malformed_path.write_text(json.dumps(malformed_sections, ensure_ascii=False), encoding="utf-8")
+        malformed_path.write_text(
+            json.dumps(malformed_sections, ensure_ascii=False), encoding="utf-8"
+        )
         _, malformed_findings = VALIDATOR.load_manifest(malformed_path)
         require(
             "manifest-outline-type" in finding_codes(malformed_findings),
@@ -121,9 +130,14 @@ def test_manifest_contract() -> None:
         )
 
         duplicate_artifacts = dict(raw)
-        duplicate_artifacts["primary_benchmark_artifacts"] = ["剧情/节奏.md", "剧情/节奏.md"]
+        duplicate_artifacts["primary_benchmark_artifacts"] = [
+            "剧情/节奏.md",
+            "剧情/节奏.md",
+        ]
         duplicate_path = tmpdir / "duplicate-artifacts.json"
-        duplicate_path.write_text(json.dumps(duplicate_artifacts, ensure_ascii=False), encoding="utf-8")
+        duplicate_path.write_text(
+            json.dumps(duplicate_artifacts, ensure_ascii=False), encoding="utf-8"
+        )
         _, duplicate_findings = VALIDATOR.load_manifest(duplicate_path)
         require(
             "manifest-artifact-duplicate" in finding_codes(duplicate_findings),
@@ -205,7 +219,9 @@ def test_fail_fast_prose_passes() -> None:
 
 def test_sibling_bullets_do_not_lend_the_missing_condition() -> None:
     """相邻条目各自是独立契约：fail-fast 兄弟条目不得把「主产物缺失」借给正确的读取条目。"""
-    fail_fast = "- `剧情/节奏.md` → 缺失时停止导入，不得以 `拆文报告.md`、章节摘要或故事线代替"
+    fail_fast = (
+        "- `剧情/节奏.md` → 缺失时停止导入，不得以 `拆文报告.md`、章节摘要或故事线代替"
+    )
     good_neighbours = {
         "benign read after a fail-fast sibling": "- 两个主产物都存在时读取 `拆文报告.md`，仅作人类可读概览。",
         "human-readable overview bullet": "- 故事线（人类可读概览）→ 从 `剧情/故事线.md` 读取；缺失时留空",
@@ -341,7 +357,9 @@ def test_stale_scan_phase_reference_accepts_backticks() -> None:
     ):
         require(
             relative in stale,
-            "{} 的选题决策阶段引用必须被扫到，实际命中 {}".format(relative, sorted(stale)),
+            "{} 的选题决策阶段引用必须被扫到，实际命中 {}".format(
+                relative, sorted(stale)
+            ),
         )
 
 
@@ -504,7 +522,9 @@ def test_deeply_nested_fallback_keeps_all_governing_ancestors() -> None:
 def test_old_artifact_prose_silent_only() -> None:
     """keep C：带显式标记的旧格式大纲容忍放行，无标记的静默降级仍拦（drop A/B 不受影响）。"""
     rule = next(r for r in VALIDATOR.LEGACY_RULES if r.code == "old-artifact-prose")
-    require(rule.exempt_when is not None, "old-artifact-prose must narrow to silent-only")
+    require(
+        rule.exempt_when is not None, "old-artifact-prose must narrow to silent-only"
+    )
     flagged = [
         "旧版细纲缺这些字段不阻塞读取，未知项写 `[待补充]`。",
         "旧版细纲回退读取核心事件、情节点序列、目标情绪。",
@@ -558,7 +578,9 @@ def test_story_import_keeps_self_out_of_benchmarks() -> None:
             target.write_text(content, encoding="utf-8")
             rule = next(r for r in VALIDATOR.LEGACY_RULES if r.code == code)
             found = VALIDATOR.check_absent_rule(root, rule)
-            require(found, "{} must reject imported-work benchmark leakage".format(code))
+            require(
+                found, "{} must reject imported-work benchmark leakage".format(code)
+            )
 
         guard_rule = next(
             r
@@ -739,7 +761,9 @@ def test_rubric_parity_guard() -> None:
         "|---|---|\n"
         "| 无 S1/S2 | PASS |\n"
     )
-    embedded = "通用网文内容 rubric：\n- 核心卖点：x\n- 标点节奏：y\n\nAI 味 fallback：\n"
+    embedded = (
+        "通用网文内容 rubric：\n- 核心卖点：x\n- 标点节奏：y\n\nAI 味 fallback：\n"
+    )
 
     def build(root: Path, rubric_body: str, skill_body: str) -> None:
         r = root / "skills/story-review/references/quality-rubric.md"
@@ -764,20 +788,23 @@ def test_rubric_parity_guard() -> None:
 
         build(root, rubric.replace("| 标点节奏 |", "| 标点节奏X |", 1), embedded)
         require(
-            finding_codes(VALIDATOR.rubric_parity_findings(root)) == {"rubric-dimension-drift"},
+            finding_codes(VALIDATOR.rubric_parity_findings(root))
+            == {"rubric-dimension-drift"},
             "a dimension present only in the embedded fallback must fail",
         )
 
         build(root, rubric, embedded.replace("- 标点节奏：y\n", "", 1))
         require(
-            finding_codes(VALIDATOR.rubric_parity_findings(root)) == {"rubric-dimension-drift"},
+            finding_codes(VALIDATOR.rubric_parity_findings(root))
+            == {"rubric-dimension-drift"},
             "a dimension present only in the file must fail",
         )
 
         # 整块删掉时两边都是空列表——空集相等，必须显式拦成读取失败而不是静默通过
         build(root, rubric, "没有内置 rubric 了\n")
         require(
-            finding_codes(VALIDATOR.rubric_parity_findings(root)) == {"rubric-parity-unreadable"},
+            finding_codes(VALIDATOR.rubric_parity_findings(root))
+            == {"rubric-parity-unreadable"},
             "a missing embedded rubric must not pass vacuously",
         )
 
@@ -785,9 +812,9 @@ def test_rubric_parity_guard() -> None:
 def test_issue_315_333_343_prompt_contracts() -> None:
     """写作引号、Stage 6 切片真值、跨批 review 持久化必须有单一明确契约。"""
 
-    anti_ai = (REPO_ROOT / "skills/story-long-write/references/anti-ai-writing.md").read_text(
-        encoding="utf-8"
-    )
+    anti_ai = (
+        REPO_ROOT / "skills/story-long-write/references/anti-ai-writing.md"
+    ).read_text(encoding="utf-8")
     writer = (
         REPO_ROOT / "skills/story-setup/references/templates/agents/narrative-writer.md"
     ).read_text(encoding="utf-8")
@@ -808,7 +835,10 @@ def test_issue_315_333_343_prompt_contracts() -> None:
         "#333: Stage 6 must read the persisted chapter-boundary table",
     )
     for stale in ("正确 Grep 模式", "相应调整 regex", "拿到 grep 的", "用 Step 4 grep"):
-        require(stale not in style, f"#333: Stage 6 still instructs a second slice via: {stale}")
+        require(
+            stale not in style,
+            f"#333: Stage 6 still instructs a second slice via: {stale}",
+        )
 
     review = (REPO_ROOT / "skills/story-review/SKILL.md").read_text(encoding="utf-8")
     for anchor in (

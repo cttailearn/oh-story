@@ -31,7 +31,10 @@ def test_transaction_is_the_only_tracking_writer() -> None:
         "skills/story-import/SKILL.md",
         "skills/story-review/SKILL.md",
     ):
-        require("tracking_commit.py" in read(path), f"{path} must route writes through tracking_commit.py")
+        require(
+            "tracking_commit.py" in read(path),
+            f"{path} must route writes through tracking_commit.py",
+        )
 
     protocol = read("skills/story-long-write/references/tracking-transaction.md")
     require_all(
@@ -65,13 +68,19 @@ def test_authority_model_matches_the_implementation() -> None:
         ),
         "tracking authority model",
     )
-    require("基线_截至第N章.md" not in protocol, "tracking protocol still creates a redundant baseline file")
+    require(
+        "基线_截至第N章.md" not in protocol,
+        "tracking protocol still creates a redundant baseline file",
+    )
     for path in (
         "skills/story-long-write/references/state-tracking.md",
         "skills/story-import/references/state-tracking.md",
         "skills/story-long-write/references/workflow-daily.md",
     ):
-        require("core: true" not in read(path), f"{path} still instructs callers to use the removed core field")
+        require(
+            "core: true" not in read(path),
+            f"{path} still instructs callers to use the removed core field",
+        )
 
 
 def test_failed_commit_retries_the_same_external_transaction() -> None:
@@ -123,7 +132,10 @@ def test_import_records_a_cutoff_without_fabricated_old_deltas() -> None:
         "story-import tracking",
     )
     # 迁移可以描述，但只能「存档旧结构后按当前协议重建」，不得声称解析/转换旧追踪文件。
-    require("_旧追踪存档" in text, "story-import migration must archive the old tracking structure")
+    require(
+        "_旧追踪存档" in text,
+        "story-import migration must archive the old tracking structure",
+    )
     require(
         "解析旧" not in text and "兼容层" not in text,
         "story-import must not claim to parse or convert old tracking structures",
@@ -142,7 +154,9 @@ def test_reader_timeline_is_kept_separate_from_author_truth() -> None:
         ),
         "story-explorer timeline",
     )
-    checker = read("skills/story-setup/references/templates/agents/consistency-checker.md")
+    checker = read(
+        "skills/story-setup/references/templates/agents/consistency-checker.md"
+    )
     require_all(
         checker,
         (
@@ -201,7 +215,9 @@ def test_retired_tracking_architecture_is_absent() -> None:
     for path in paths:
         text = read(path)
         found = [term for term in retired if term in text]
-        require(not found, f"{path} still contains retired tracking architecture: {found}")
+        require(
+            not found, f"{path} still contains retired tracking architecture: {found}"
+        )
 
     require(
         not (ROOT / "skills/story-setup/references/templates/上下文.md.tmpl").exists(),
@@ -215,7 +231,10 @@ def test_no_tracking_fallback_or_context_style_fingerprint_remains() -> None:
         "角色状态文件缺失** → 从角色设定文件和前文推断当前状态",
         "伏笔/时间线文件缺失** → 不检查",
     ):
-        require(forbidden not in long_write, f"story-long-write still has tracking fallback: {forbidden}")
+        require(
+            forbidden not in long_write,
+            f"story-long-write still has tracking fallback: {forbidden}",
+        )
     require_all(
         long_write,
         (
@@ -225,9 +244,18 @@ def test_no_tracking_fallback_or_context_style_fingerprint_remains() -> None:
         "fail-closed tracking reads",
     )
     writer = read("skills/story-setup/references/templates/agents/narrative-writer.md")
-    require("`上下文.md` 文风指纹" not in writer, "narrative-writer still reads a removed context style fingerprint")
-    require("追踪/上下文.md`「文风指纹」" not in writer, "narrative-writer still treats context as style storage")
-    require("续写状态卡不存文风" in writer, "narrative-writer must keep style out of tracking context")
+    require(
+        "`上下文.md` 文风指纹" not in writer,
+        "narrative-writer still reads a removed context style fingerprint",
+    )
+    require(
+        "追踪/上下文.md`「文风指纹」" not in writer,
+        "narrative-writer still treats context as style storage",
+    )
+    require(
+        "续写状态卡不存文风" in writer,
+        "narrative-writer must keep style out of tracking context",
+    )
 
 
 def test_pi_tracking_enforcement_fails_closed_on_invalid_checkpoints() -> None:
@@ -263,8 +291,15 @@ def test_daily_quality_repairs_close_tracking_before_batch_finish() -> None:
     text = read("skills/story-long-write/references/workflow-daily.md")
     revision = text.index("若本步修文改变了会影响后续的事实")
     step_four = text.index("## Step 4：批末收尾")
-    require(revision < step_four, "quality repair revision invariant must appear before Step 4")
-    require_all(text[revision:step_four], ("mode=revision", "通过 `check`", "纯措辞调整不重复提交"), "daily quality repair closure")
+    require(
+        revision < step_four,
+        "quality repair revision invariant must appear before Step 4",
+    )
+    require_all(
+        text[revision:step_four],
+        ("mode=revision", "通过 `check`", "纯措辞调整不重复提交"),
+        "daily quality repair closure",
+    )
 
 
 def test_tracking_examples_use_the_demo_novel() -> None:
@@ -310,7 +345,8 @@ def test_init_archives_a_pre_protocol_tracking_directory() -> None:
         "init archive contract",
     )
     require(
-        "追踪/_旧追踪存档/" in read("skills/story-long-write/references/workflow-daily.md"),
+        "追踪/_旧追踪存档/"
+        in read("skills/story-long-write/references/workflow-daily.md"),
         "workflow-daily must state where a pre-protocol tracking directory goes",
     )
     tool = read("skills/story-long-write/scripts/tracking_commit.py")

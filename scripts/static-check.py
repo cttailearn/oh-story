@@ -66,9 +66,7 @@ FOUNDATION_SKILL_REFERENCES = frozenset({"browser-cdp"})
 # 变更日志按定义记录历史状态：其内联路径是「当时」的引用（含已删/已移动/跨 skill 的旧文件），
 # 不是当前运行时依赖，不作跨 skill / 死链校验（与 check-current-skill-contracts.py 的跳过一致）。
 CHANGELOG_DOCS = frozenset({"UPGRADING.md", "CHANGELOG.md"})
-EXTERNAL_URL_RE = re.compile(
-    r"(?i)\b(?:https?|ftp)://[^\s<>\"'`]+"
-)
+EXTERNAL_URL_RE = re.compile(r"(?i)\b(?:https?|ftp)://[^\s<>\"'`]+")
 # 花括号枚举（含逗号）是「逐个点名」，可以展开成具体路径；`{题材}` 这种单占位符不是枚举。
 BRACE_LIST_RE = re.compile(r"\{([^{}/]*,[^{}/]*)\}")
 # 跨 skill 扫描覆盖全部文本资产。模板（*.md.tmpl / *.json.patch）与前端资产同样会被
@@ -190,7 +188,9 @@ def normalize_path_token(raw: str) -> tuple[str, bool]:
     token = raw.rstrip(".,;:!?，。；：！？|）】」』")
     dynamic = any(char in token for char in "*?{[")
     if dynamic:
-        cut = min((token.find(char) for char in "*?{[" if char in token), default=len(token))
+        cut = min(
+            (token.find(char) for char in "*?{[" if char in token), default=len(token)
+        )
         token = token[:cut]
         if token and not token.endswith("/"):
             token = token.rsplit("/", 1)[0] + "/"
@@ -243,7 +243,9 @@ def parse_document(path: Path) -> Document:
 
         for match in LINK_RE.finditer(line):
             document.refs.append(
-                SourceRef(line=line_number, raw=strip_link_title(match.group(1)), kind="link")
+                SourceRef(
+                    line=line_number, raw=strip_link_title(match.group(1)), kind="link"
+                )
             )
 
         # 外部 URL 命名远程资源，不是仓库内 skill 路径（与 cross_skill_path_issues 同一约定）：
@@ -252,7 +254,8 @@ def parse_document(path: Path) -> Document:
         # 让它被误判成通配符并截断到父目录，从而跳过存在性校验。行内代码内不作强调还原——
         # 反引号里的 `*` 是字面通配符。
         prose_without_code = EMPHASIS_PATH_RE.sub(
-            r"\g<path>", EXTERNAL_URL_RE.sub("", LINK_RE.sub("", INLINE_CODE_RE.sub("", line)))
+            r"\g<path>",
+            EXTERNAL_URL_RE.sub("", LINK_RE.sub("", INLINE_CODE_RE.sub("", line))),
         )
         for match in SKILL_PATH_RE.finditer(prose_without_code):
             document.refs.extend(
@@ -271,7 +274,9 @@ def parse_document(path: Path) -> Document:
                 raw = path_match.group("path")
                 base = Path(raw).name
                 if ASCII_MD_RE.fullmatch(base) and not base.startswith("_"):
-                    document.refs.append(SourceRef(line=line_number, raw=raw, kind="inline-md"))
+                    document.refs.append(
+                        SourceRef(line=line_number, raw=raw, kind="inline-md")
+                    )
 
         prose = strip_inline_markup(line)
         document.unlinked_sections.extend(
@@ -286,7 +291,14 @@ def parse_frontmatter(path: Path) -> tuple[dict[str, str], int | None]:
     lines = path.read_text(encoding="utf-8").splitlines()
     if not lines or lines[0].strip() != "---":
         return {}, None
-    closing = next((index for index, line in enumerate(lines[1:], start=1) if line.strip() == "---"), None)
+    closing = next(
+        (
+            index
+            for index, line in enumerate(lines[1:], start=1)
+            if line.strip() == "---"
+        ),
+        None,
+    )
     if closing is None:
         return {}, None
     values: dict[str, str] = {}
@@ -347,10 +359,16 @@ def resolve_ref(
                 root / "skills" / decoded,
             ]
 
-    unique_candidates = list(dict.fromkeys(candidate.resolve() for candidate in candidates))
-    local_candidates = [candidate for candidate in unique_candidates if inside_root(candidate, root)]
+    unique_candidates = list(
+        dict.fromkeys(candidate.resolve() for candidate in candidates)
+    )
+    local_candidates = [
+        candidate for candidate in unique_candidates if inside_root(candidate, root)
+    ]
     selectable = local_candidates or unique_candidates
-    target = next((candidate for candidate in selectable if candidate.exists()), selectable[0])
+    target = next(
+        (candidate for candidate in selectable if candidate.exists()), selectable[0]
+    )
 
     if target.suffix.lower() == ".md" and target.is_file() and target not in documents:
         documents[target] = parse_document(target)
@@ -366,15 +384,19 @@ def is_deployed_runtime_ref(
     normalized = ref.raw.strip().replace("\\", "/")
     if normalized.startswith(DEPLOYED_RUNTIME_PREFIXES):
         return True
-    if ref.kind == "inline-md" and "/" not in normalized and Path(normalized).stem in agent_names:
+    if (
+        ref.kind == "inline-md"
+        and "/" not in normalized
+        and Path(normalized).stem in agent_names
+    ):
         return True
     try:
         relative = document.path.resolve().relative_to(skill_dir.resolve()).as_posix()
     except ValueError:
         return False
-    return (
-        normalized.startswith("scripts/")
-        and ("/agents/" in f"/{relative}" or relative.startswith("references/templates/agents/"))
+    return normalized.startswith("scripts/") and (
+        "/agents/" in f"/{relative}"
+        or relative.startswith("references/templates/agents/")
     )
 
 
@@ -445,9 +467,25 @@ def validate_skill(
     issues: list[Issue] = []
     frontmatter, closing_line = parse_frontmatter(skill_file)
     if closing_line is None:
-        issues.append(Issue("error", "frontmatter-block", skill_file, 1, "missing closed frontmatter block"))
+        issues.append(
+            Issue(
+                "error",
+                "frontmatter-block",
+                skill_file,
+                1,
+                "missing closed frontmatter block",
+            )
+        )
     if not frontmatter.get("name"):
-        issues.append(Issue("error", "frontmatter-name", skill_file, 1, "frontmatter requires a non-empty name"))
+        issues.append(
+            Issue(
+                "error",
+                "frontmatter-name",
+                skill_file,
+                1,
+                "frontmatter requires a non-empty name",
+            )
+        )
     elif frontmatter["name"] != skill_dir.name:
         issues.append(
             Issue(
@@ -460,14 +498,22 @@ def validate_skill(
         )
     if not frontmatter.get("description"):
         issues.append(
-            Issue("error", "frontmatter-description", skill_file, 1, "frontmatter requires a non-empty description")
+            Issue(
+                "error",
+                "frontmatter-description",
+                skill_file,
+                1,
+                "frontmatter requires a non-empty description",
+            )
         )
 
     issues.extend(cross_skill_path_issues(skill_dir, root))
 
     markdown_paths = sorted(path for path in skill_dir.rglob("*.md") if path.is_file())
     documents = {path.resolve(): parse_document(path) for path in markdown_paths}
-    resolved_by_document: dict[Path, set[Path]] = {path.resolve(): set() for path in markdown_paths}
+    resolved_by_document: dict[Path, set[Path]] = {
+        path.resolve(): set() for path in markdown_paths
+    }
 
     for document in list(documents.values()):
         # 变更日志的历史内联路径不作死链/跨 skill 校验（仍可作为其它文件的链接目标）
@@ -520,7 +566,9 @@ def validate_skill(
                 issues.append(
                     Issue(
                         "error",
-                        "broken-link-path" if ref.kind == "link" else "broken-inline-path",
+                        "broken-link-path"
+                        if ref.kind == "link"
+                        else "broken-inline-path",
                         document.path,
                         ref.line,
                         f"{ref.raw!r} resolves to missing {display(target, root)}",
@@ -531,7 +579,9 @@ def validate_skill(
             # 任何文件；把它解析出的目录当作可达起点会把整棵子树标成「已被引用」，
             # dead-reference 检查对该 skill 就永久失效。点名枚举已在 path_alternatives 展开。
             if not (dynamic and target.is_dir()):
-                resolved_by_document.setdefault(document.path.resolve(), set()).add(target)
+                resolved_by_document.setdefault(document.path.resolve(), set()).add(
+                    target
+                )
             if fragment:
                 target_document = documents.get(target)
                 if target_document is None or fragment not in target_document.anchors:
@@ -583,7 +633,11 @@ def validate_skill(
                 target.relative_to(references_dir.resolve())
             except ValueError:
                 return
-            candidates = [target] if target.is_file() else sorted(path for path in target.rglob("*") if path.is_file())
+            candidates = (
+                [target]
+                if target.is_file()
+                else sorted(path for path in target.rglob("*") if path.is_file())
+            )
             for candidate in candidates:
                 resolved = candidate.resolve()
                 if not is_reference_content(candidate) or resolved in reached:
@@ -599,7 +653,9 @@ def validate_skill(
             for target in resolved_by_document.get(source, set()):
                 add_target(target)
 
-        for candidate in sorted(path for path in references_dir.rglob("*") if path.is_file()):
+        for candidate in sorted(
+            path for path in references_dir.rglob("*") if path.is_file()
+        ):
             if not is_reference_content(candidate) or candidate.resolve() in reached:
                 continue
             issues.append(
@@ -614,13 +670,20 @@ def validate_skill(
 
     return sorted(
         issues,
-        key=lambda issue: (display(issue.path, root), issue.line, issue.severity, issue.code),
+        key=lambda issue: (
+            display(issue.path, root),
+            issue.line,
+            issue.severity,
+            issue.code,
+        ),
     )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument(
+        "--root", type=Path, default=Path(__file__).resolve().parents[1]
+    )
     return parser
 
 
@@ -633,8 +696,12 @@ def main() -> int:
         return 2
 
     agent_dir = skills_dir / "story-setup/references/templates/agents"
-    agent_names = {path.stem for path in agent_dir.glob("*.md")} if agent_dir.is_dir() else set()
-    skill_dirs = sorted(path for path in skills_dir.iterdir() if (path / "SKILL.md").is_file())
+    agent_names = (
+        {path.stem for path in agent_dir.glob("*.md")} if agent_dir.is_dir() else set()
+    )
+    skill_dirs = sorted(
+        path for path in skills_dir.iterdir() if (path / "SKILL.md").is_file()
+    )
     if not skill_dirs:
         print("ERROR: no skill entrypoints found", file=sys.stderr)
         return 2
@@ -655,7 +722,9 @@ def main() -> int:
         errors = [issue for issue in issues if issue.severity == "error"]
         warnings = [issue for issue in issues if issue.severity == "warning"]
         if not issues:
-            print("  [PASS] structured frontmatter, links, anchors, agents, and references")
+            print(
+                "  [PASS] structured frontmatter, links, anchors, agents, and references"
+            )
         for issue in issues:
             label = "FAIL" if issue.severity == "error" else "WARN"
             print(
@@ -673,7 +742,9 @@ def main() -> int:
                 print("  Result: PASS")
 
     print("\n==================")
-    print(f"Total: {len(skill_dirs)} | Pass: {passed} | Fail: {failed} | Warn: {warned}")
+    print(
+        f"Total: {len(skill_dirs)} | Pass: {passed} | Fail: {failed} | Warn: {warned}"
+    )
     return 1 if failed else 0
 
 
