@@ -135,6 +135,17 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
 
 **.story-review/** 只保存审查状态，不属于小说事实追踪；不得借此修改正文、设定、大纲或 `追踪/`。
 
+### findings 结构化落盘（所有模式，单批也落）
+
+每批审查结束，把本批 findings 追加写入 **{项目根}/.story-review/findings.jsonl**（每 finding 一行 JSON，双引号转义）：
+
+```text
+{"batch":批号, "date":ISO日期, "mode":full|lean|solo, "agent":architect|character-designer|narrative-writer|consistency-checker|main, "severity":S1-S4, "category":prose|structure|character|consistency|factual|format|causal|rule_boundary, "location":文件+章节, "issue":问题一句话, "status":open|resolved}
+```
+
+- 与 state.md 互补：state.md 是跨批摘要，findings.jsonl 是全量结构记录，供后续写作画像/教训库消费
+- 上一批「未解决」findings 的复核结果以新行追加（`status` 标记），不修改历史行；已解决/用户不处理的也要追加一条带 `resolved` 状态的行
+
 ---
 
 ## Phase 1：收集待审查内容
