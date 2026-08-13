@@ -1,3 +1,34 @@
+## v1.5.0
+
+> 角色卡架构重构批：角色卡与角色线卡整合为单文件 6 大标题制（基础信息/形象与能力/说话方式/角色线/写作红线/本书专属），基础信息字段采用「结论（补充）」单层格式（消除硬事实区重复），移除旧项目兼容（一律按新格式重构生成），附最小完整卡真实范例。agents bundle 同步（agents_version 26：character-designer/consistency-checker/story-architect/story-explorer 模板更新）。
+
+### 角色卡架构重构（character-basics / artifact-protocols）
+
+- **单文件整合**：角色卡+角色线卡合并为 `设定/角色/{角色名}.md`；不再建 `大纲/角色线/` 独立卡；细纲「本章设定引用」引用格式 `角色线:{名}·阶段N`
+- **6 大标题制**：不设复杂字段——基础信息/形象与能力/说话方式/角色线（阶段小节式+交织点+进度指针）/写作红线/本书专属；每标题有「填写什么」描述，内容自由填写；龙套可只写基础信息+角色线两句
+- **基础信息「结论（补充）」格式**：字段行=括号前短结论（consistency-checker 事实锚点）+ 括号内长描述（支持时期变化/解释）；替代旧双层「描述字段+硬事实区」，消除重复维护与漂移
+- **两个软锚点**：①基础信息字段行（checker 取结论值）②角色线 `### 阶段 N` 小节标题（细纲引用定位）
+- **最小完整卡范例**：模板后附沈栀 40 行真实范例（6 标题全含最简形态），锚定 agent 格式预期
+- **旧机制清理**：特征维度库/「特征启用」行 → 精简为可选维度参考短节；「语言风格档案」→「说话方式」；硬事实 key 建议清单 → 基础信息字段清单
+
+### 移除旧项目兼容
+
+- artifact-protocols/consistency-checker/workflow-chapter/workflow-setup/story-import 中全部「存量项目继续可读/旧路径回退」逻辑删除——以后开发必须按 6 大标题单文件格式重构生成角色卡
+- story-import 导入老项目时旧角色线文件内容一次性重构并入角色卡「角色线」标题，原文件不保留
+- consistency-checker 第零步：角色卡=基础信息字段行（取括号前结论值）；势力/世界观卡=「硬事实表」小节
+
+### agents bundle（agents_version 25→26）
+
+- character-designer：6 大标题制落盘规范 + 对标素材前置读取 + 标题定位括号 + 动机/弱点非空硬约束
+- consistency-checker：第零步硬事实 diff 改「结论（补充）」格式 + 角色卡内「角色线」阶段↔「形象与能力」分时期对齐检查
+- story-architect / story-explorer：角色线抽卡改角色卡内「角色线」标题 + 结构树更新
+- narrative-writer：对话差异化引用改「说话方式」
+
+### 修复
+
+- workflow-setup 落盘校验：必查项改 6 大标题齐全（含 H1 定位括号、三项无待补充、结论（补充）格式禁表格）
+- 修复 consistency-checker.md 空文件事故（edit 与 git add 并行竞态导致提交 0 字节）
+
 ## v1.4.0
 
 > story-image 生图后端实测与工程化批：本地 ComfyUI 全流程实测打通（含工作流自动探测/UI→API 转换/多输出修复）、云后端 jq 依赖清零（api-json.py）、火山方舟 Seedream 实测与模型 size 语义文档化、输出格式自动修正。兼容性：既有 CLI/环境变量/输出路径约定全部保持，agents bundle 不变（agents_version 仍为 25）。

@@ -1,6 +1,6 @@
 ---
 name: story-setup
-version: 1.4.0
+version: 1.5.0
 description: "网文写作工具集（pi 专属）项目初始化。验证 oh-story-pi 包完整性、部署专业子代理到 .pi/agents/、写入 AGENTS.md、创建标准书目录结构并打部署标记。触发方式：/skill:story-setup、「准备写书」「帮我搭一下环境」「配置写作项目」。"
 ---
 
@@ -25,15 +25,15 @@ description: "网文写作工具集（pi 专属）项目初始化。验证 oh-st
 有缺即包没装全，**立即停止，不写任何部署文件**，报告里区分「缺目录」和「目录为空」，并给修复指令：
 
 > 「story-setup 参考资料包不完整，缺 {目录名}。重新安装 oh-story-pi 后再执行：
-> git 安装 → `pi install git:github.com/cttailearn/oh-story-pi@v1.4.0`；更新 → `pi update --extensions`。」
+> git 安装 → `pi install git:github.com/cttailearn/oh-story-pi@v1.5.0`；更新 → `pi update --extensions`。」
 
 ### 1.2 检测项目状态
 
 1. 读 `.story-deployed`：
    - 不存在 → 全新项目，继续
-   - `agents_version` 缺失、非整数或小于 `25` → 标记为待更新，继续执行当前部署
-   - `agents_version: 25` → 用 AskUserQuestion 确认是否重新部署；提示里写明重新部署只用**当前本地包**刷新项目文件（`.pi/agents/`、AGENTS.md 段），要拿新版本得先 `pi update --extensions`
-   - `agents_version` 大于 `25` → 当前包比项目部署旧；停止以避免降级覆盖，提示先更新 oh-story-pi，不写任何部署文件
+   - `agents_version` 缺失、非整数或小于 `26` → 标记为待更新，继续执行当前部署
+   - `agents_version: 26` → 用 AskUserQuestion 确认是否重新部署；提示里写明重新部署只用**当前本地包**刷新项目文件（`.pi/agents/`、AGENTS.md 段），要拿新版本得先 `pi update --extensions`
+   - `agents_version` 大于 `26` → 当前包比项目部署旧；停止以避免降级覆盖，提示先更新 oh-story-pi，不写任何部署文件
    - `target_cli` 非空且非 `pi`（如 `claude`、`codex`、`zcode` 等旧多端标记）→ 迁移场景：提示「检测到旧多端部署（{target_cli}），本版只按 pi 初始化 `.pi/agents/` 与 AGENTS.md；旧端目录（.claude/、.codex/ 等）不删也不动，如需清理请自行处理。」
 2. 检查运行时是否暴露 subagent 工具（pi-subagents），**记录检测结果供 Phase 3 报告分支使用**。机制说明：pi-subagents 每次 spawn 都实时从磁盘重新发现 `.pi/agents/` 下的 agent 文件，不存在「部署后要新开会话才注册」的缓存；只有扩展本身未加载（工具未暴露）才需要安装并新开会话。可用 → 子代理部署后**立即生效**；不可用 → 继续部署文件，但提示「当前 pi 环境未安装 pi-subagents，部署后需 `pi install npm:pi-subagents` 并新开会话，否则写作/审查 skill 会走 solo 降级。」
 3. 检查 `.active-book` 是否存在；列出已有书目录（包含 `追踪/` 或 `设定/` 子目录的目录 = 长篇；含 `正文.md` 且同时含 `小节大纲.md` 或 `设定.md` 的目录 = 短篇）。
@@ -74,8 +74,8 @@ description: "网文写作工具集（pi 专属）项目初始化。验证 oh-st
 
 ```yaml
 deployed_at: {ISO8601 时间}
-agents_version: 25
-setup_skill_version: 1.4.0
+agents_version: 26
+setup_skill_version: 1.5.0
 target_cli: pi
 resolver_strategy: project-local-skill-reference
 references_dir: package-skill-dir（skill 本体随 oh-story-pi 包加载，项目不复制 references）
@@ -91,7 +91,7 @@ references_dir: package-skill-dir（skill 本体随 oh-story-pi 包加载，项�
 1. `.pi/agents/` 下 7 个 agent 文件存在，且 frontmatter 可解析（`name:`、`description:` 非空，`name` 与文件名一致）。
 2. `AGENTS.md` 含「网文写作工具集（pi）」段，且段内路由表命令为 `/skill:story-*` 形式。
 3. 书目录结构与 `.active-book` 指向一致。
-4. `.story-deployed` 的 `agents_version: 25`、`target_cli: pi`。
+4. `.story-deployed` 的 `agents_version: 26`、`target_cli: pi`。
 
 全部通过后报告（按 Phase 1.2 第 2 步记录的运行时检测结果分支）：
 
