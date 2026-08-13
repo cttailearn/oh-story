@@ -99,12 +99,6 @@ LEGACY_RULES = (
         exempt_when=r"不阻塞|\[待补充\]|回退|只核对|记录|保留或映射|仍可续写|仍可用|仍要保留",
     ),
     AbsentRule(
-        "removed-hook-alias",
-        "removed hook alias stays removed",
-        r"discover_book_dir\s*\(",
-        ("skills/story-setup/references/templates/hooks",),
-    ),
-    AbsentRule(
         "obsolete-short-benchmark-path",
         "short writing uses only current benchmark paths",
         r"\{短篇标题\}/拆文库/\{书名\}",
@@ -204,8 +198,6 @@ LEGACY_RULES = (
         (
             "skills/story-long-write/SKILL.md",
             "skills/story-setup/references/templates/agents/narrative-writer.md",
-            "skills/story-setup/references/opencode/agents/narrative-writer.md",
-            "skills/story-setup/references/codex/agents/narrative-writer.toml",
         ),
     ),
     AbsentRule(
@@ -678,7 +670,7 @@ def spawn_preflight_findings(
             "surface the version mismatch notice",
         ),
         (
-            r"大于 {} 时额外提示先更新 oh-story-claudecode".format(current),
+            r"大于 {} 时额外提示先更新 oh-story-pi".format(current),
             "tell future deployments to update the package first",
         ),
         (

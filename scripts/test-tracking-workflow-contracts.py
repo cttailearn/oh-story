@@ -230,23 +230,33 @@ def test_no_tracking_fallback_or_context_style_fingerprint_remains() -> None:
     require("续写状态卡不存文风" in writer, "narrative-writer must keep style out of tracking context")
 
 
-def test_hooks_fail_closed_on_invalid_tracking_checkpoints() -> None:
-    js = read("skills/story-setup/references/templates/hooks/story_hook_core.js")
-    py = read("skills/story-setup/references/codex/hooks/story_codex_hook.py")
-    for label, text in (("JS hook", js), ("Codex hook", py)):
-        require_all(
-            text,
-            (
-                "_tracking-state.json 缺失",
-                "schema_version=4",
-                "state_revision",
-                "mode=revision 事务重建派生视图",
-                "重新 /story-import",
-                "last_committed_chapter",
-                "必须先提交",
-            ),
-            label,
-        )
+def test_pi_tracking_enforcement_fails_closed_on_invalid_checkpoints() -> None:
+    """pi 版无 hooks：fail-closed 追踪检查点由 workflow 指令 + tracking_commit.py 承担。"""
+    daily = read("skills/story-long-write/references/workflow-daily.md")
+    tool = read("skills/story-long-write/scripts/tracking_commit.py")
+    require_all(
+        daily,
+        (
+            "`_tracking-state.json` 不存在",
+            "state_revision",
+            "mode=revision",
+            "story-import",
+            "last_committed_chapter",
+            "不得手改 Markdown 或继续写下一章",
+        ),
+        "daily workflow",
+    )
+    require_all(
+        tool,
+        (
+            "tracking state",
+            "schema_version",
+            "state_revision",
+            "mode must be append or revision",
+            "last_committed_chapter",
+        ),
+        "tracking_commit.py",
+    )
 
 
 def test_daily_quality_repairs_close_tracking_before_batch_finish() -> None:

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -21,12 +22,16 @@ def write(path: Path, text: str) -> None:
 
 
 def run(root: Path) -> subprocess.CompletedProcess[str]:
+    # 强制子进程输出 UTF-8：中文 Windows 默认控制台编码（GBK）会让本测试的
+    # reader 线程解码失败，stdout 变成 None。
+    env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
     return subprocess.run(
         [sys.executable, str(CHECKER), "--root", str(root)],
         check=False,
         capture_output=True,
         text=True,
         encoding="utf-8",
+        env=env,
     )
 
 

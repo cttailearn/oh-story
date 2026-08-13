@@ -58,7 +58,7 @@ UNLINKED_SECTION_RE = re.compile(
     r"[^，。；;\n]*"
 )
 EXTERNAL_SCHEMES = ("http://", "https://", "ftp://", "mailto:", "data:", "tel:")
-DEPLOYED_RUNTIME_PREFIXES = (".claude/", ".codex/", ".opencode/")
+DEPLOYED_RUNTIME_PREFIXES = (".pi/",)
 # browser-cdp is the repository's explicit infrastructure skill.  Business
 # skills may reference its launcher; every other cross-skill file path remains
 # forbidden so domain workflows stay self-contained.
@@ -173,9 +173,9 @@ def strip_inline_markup(line: str) -> str:
 def path_alternatives(raw: str) -> list[str]:
     """把点名枚举 `{a,b,c}` 展开成逐条路径。
 
-    `{story_codex_hook.py,run-story-hook.sh,run-story-hook.cmd}` 是作者逐个点名的文件，
-    等价于分别写三条引用：展开后每条都参与存在性与可达性校验。`{题材}` 这类单占位符
-    不是枚举（没有点名任何文件），保持原样交给 normalize_path_token 当通配处理。
+    `{a,b,c}` 形态是作者逐个点名的文件，等价于分别写三条引用：展开后每条都参与
+    存在性与可达性校验。`{题材}` 这类单占位符不是枚举（没有点名任何文件），保持原样
+    交给 normalize_path_token 当通配处理。
     """
 
     match = BRACE_LIST_RE.search(raw)
