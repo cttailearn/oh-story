@@ -5,7 +5,7 @@ Web-novel writing toolkit (pi-exclusive edition): ranking research, deconstructi
 ## Install
 
 ```bash
-pi install git:github.com/cttailearn/oh-story-pi@v1.1.0
+pi install git:github.com/cttailearn/oh-story-pi@v1.1.1
 ```
 
 Update / uninstall:

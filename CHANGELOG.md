@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### 模型 deepseek 化（P0）
 
-- 7 个 pi-subagents 模板写死 `model`：`deepseek/deepseek-v4-flash`（chapter-extractor / consistency-checker / story-explorer，只读高频）与 `deepseek/deepseek-v4-pro`（story-architect / character-designer / narrative-writer / story-researcher，创作推理）
+- 7 个 pi-subagents 模板写死 `model`：`opencode-go/deepseek-v4-flash`（chapter-extractor / consistency-checker / story-explorer，只读高频）与 `opencode-go/deepseek-v4-pro`（story-architect / character-designer / narrative-writer / story-researcher，创作推理）
 - 模板注释去除 claude 示例；story-long-analyze 的 sonnet/haiku 升级重试语义改 deepseek-v4-pro / flash；chapter-extractor 正文同改
 - 覆盖方式仍支持：`~/.pi/agent/settings.json` 的 `subagents.agentOverrides` 按 name 指定
 

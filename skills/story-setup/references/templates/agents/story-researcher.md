@@ -6,7 +6,7 @@ description: |
   被 story-long-write（Phase 4）、story-review、story skill 路由调用。
 # 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
 # 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
-model: deepseek/deepseek-v4-pro
+model: opencode-go/deepseek-v4-pro
 tools: read, fffind, ffgrep, bash, write
 systemPromptMode: replace
 inheritProjectContext: true

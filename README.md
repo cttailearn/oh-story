@@ -19,7 +19,7 @@
 ### git 安装（当前唯一发布通道）
 
 ```bash
-pi install git:github.com/cttailearn/oh-story-pi@v1.1.0
+pi install git:github.com/cttailearn/oh-story-pi@v1.1.1
 ```
 
 更新 / 卸载：
@@ -149,8 +149,11 @@ flowchart LR
 | `story-explorer` | 项目结构化查询：角色/伏笔/进度（只读） | 日更上下文加载 / 审查 / 路由 |
 | `story-researcher` | 资料研究，带来源引用的参考文件 | 写作资料研究 / 审查事实核查 |
 
-- 全部 agent 都是**模型不写死**：继承 pi 子代理默认模型；想固定时在
-  `~/.pi/agent/settings.json` 的 `subagents.agentOverrides` 里按 name 指定。
+- 模型分工（随模板部署，opencode-go 提供商）：只读高频 agent（story-explorer /
+  chapter-extractor / consistency-checker）钉 `opencode-go/deepseek-v4-flash`，创作推理
+  agent（story-architect / character-designer / narrative-writer / story-researcher）钉
+  `opencode-go/deepseek-v4-pro`；想换模型时在 `~/.pi/agent/settings.json` 的
+  `subagents.agentOverrides` 里按 name 指定。
 - 子代理不可用（未部署/未装 pi-subagents/运行时未暴露）时，相关 skill 自动降级
   solo/direct 并报告 `Fallback: ... -> solo`，写作流程不中断。
 
@@ -192,7 +195,7 @@ pi 无 hooks 机制，原多端版的运行时硬拦截由两层等价物承担�
 
 ## 适用平台
 
-- **pi**：原生支持（本包）。`pi install git:github.com/cttailearn/oh-story-pi@v1.1.0` 后 13 个 skill 自动可用，
+- **pi**：原生支持（本包）。`pi install git:github.com/cttailearn/oh-story-pi@v1.1.1` 后 13 个 skill 自动可用，
   `/story` 命令别名由包内扩展注册。npm 发布因账号 2FA 策略暂缓，待条件允许后补充（包名 `oh-story-pi` 已预留）。
 - 旧多端版（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）见上游仓库
   [oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) 的 v0.7.5

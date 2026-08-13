@@ -237,7 +237,7 @@ Stage 2 使用 chapter-extractor agent 并行处理每章，替代原来的串�
 **两类失败**：
 
 1. **执行失败**（agent crash / 超时 / 空输出）→ 同模型（flash）重试 1 次
-2. **质量失败**（输出落盘后跑 chapter-extractor.md「质量检查」12 条自检，任一不达标——典型：情节点 < 10、P 行缺白描、概要写成条目罗列或整段「因为…所以…」串联、类型/基调/主题标签超出枚举、`基调：` 漏全角冒号、角色名为昵称/通用称呼）→ **升级到 deepseek-v4-pro 重试 1 次**
+2. **质量失败**（输出落盘后跑 chapter-extractor.md「质量检查」12 条自检，任一不达标——典型：情节点 < 10、P 行缺白描、概要写成条目罗列或整段「因为…所以…」串联、类型/基调/主题标签超出枚举、`基调：` 漏全角冒号、角色名为昵称/通用称呼）→ **升级到 opencode-go/deepseek-v4-pro 重试 1 次**
 
 **可机械校验的硬检查**（主线程落盘后直接 grep，命中即判质量失败，不依赖 agent 自报）：
 
@@ -250,7 +250,7 @@ Stage 2 使用 chapter-extractor agent 并行处理每章，替代原来的串�
 
 **升级重试调用方式**（主线程在校验失败后执行）：
 
-用 subagent 工具 spawn `chapter-extractor`，`model` 覆盖为 deepseek/deepseek-v4-pro（显式覆盖 agent 默认的 flash），task 传：
+用 subagent 工具 spawn `chapter-extractor`，`model` 覆盖为 opencode-go/deepseek-v4-pro（显式覆盖 agent 默认的 opencode-go/deepseek-v4-flash），task 传：
 
 ```text
 "章节编号：第{N}章\n...（同首次 prompt，含开头的「材料声明」前缀，可追加：'上次校验失败原因：{自检失败项}'）"

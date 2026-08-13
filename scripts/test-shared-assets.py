@@ -109,8 +109,16 @@ with tempfile.TemporaryDirectory(prefix="shared-assets-") as tmp:
         root,
         manifest,
         [
-            {"name": "one", "source": "src/tool.js", "targets": ["skills/one/scripts/tool.js"]},
-            {"name": "two", "source": "src/tool.js", "targets": ["skills/one/scripts/tool.js"]},
+            {
+                "name": "one",
+                "source": "src/tool.js",
+                "targets": ["skills/one/scripts/tool.js"],
+            },
+            {
+                "name": "two",
+                "source": "src/tool.js",
+                "targets": ["skills/one/scripts/tool.js"],
+            },
         ],
         "ambiguous managed source",
     )
@@ -118,13 +126,27 @@ with tempfile.TemporaryDirectory(prefix="shared-assets-") as tmp:
     assert_manifest_error(
         root,
         manifest,
-        [{"name": "escape", "source": "../outside", "targets": ["skills/one/scripts/tool.js"]}],
+        [
+            {
+                "name": "escape",
+                "source": "../outside",
+                "targets": ["skills/one/scripts/tool.js"],
+            }
+        ],
         "escapes repository root",
     )
 
     duplicate_target_groups = [
-        {"name": "one", "source": "src/tool.js", "targets": ["skills/one/scripts/tool.js"]},
-        {"name": "two", "source": "src/other.js", "targets": ["skills/one/scripts/tool.js"]},
+        {
+            "name": "one",
+            "source": "src/tool.js",
+            "targets": ["skills/one/scripts/tool.js"],
+        },
+        {
+            "name": "two",
+            "source": "src/other.js",
+            "targets": ["skills/one/scripts/tool.js"],
+        },
     ]
     assert_manifest_error(
         root,
@@ -209,8 +231,16 @@ with tempfile.TemporaryDirectory(prefix="shared-assets-") as tmp:
         root,
         manifest,
         [
-            {"name": "one", "source": "src/tool.js", "targets": ["skills/one/scripts/tool.js"]},
-            {"name": "two", "source": "other/tool.js", "targets": ["skills/two/scripts/tool.js"]},
+            {
+                "name": "one",
+                "source": "src/tool.js",
+                "targets": ["skills/one/scripts/tool.js"],
+            },
+            {
+                "name": "two",
+                "source": "other/tool.js",
+                "targets": ["skills/two/scripts/tool.js"],
+            },
         ],
         "duplicate canonical basename tool.js",
     )
