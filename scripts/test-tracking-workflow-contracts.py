@@ -181,7 +181,7 @@ def test_retired_tracking_architecture_is_absent() -> None:
         "skills/story-import/SKILL.md",
         "skills/story-import/references/structure-mapping-long.md",
         "skills/story-review/SKILL.md",
-        "skills/story-setup/references/templates/CLAUDE.md.tmpl",
+        "skills/story-setup/references/templates/AGENTS.md.tmpl",
         "skills/story-setup/references/templates/agents/story-explorer.md",
         "skills/story-setup/references/templates/rules/story-consistency.md",
     )
@@ -220,7 +220,7 @@ def test_no_tracking_fallback_or_context_style_fingerprint_remains() -> None:
         long_write,
         (
             "视为当前语义检查点损坏",
-            "已有正文但 `_tracking-state.json` 缺失时重新 `/story-import`",
+            "已有正文但 `_tracking-state.json` 缺失时重新 `/skill:story-import`",
         ),
         "fail-closed tracking reads",
     )

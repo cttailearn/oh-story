@@ -7,7 +7,23 @@ import importlib.util
 import json
 import sys
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Protocol, cast
+
+
+class _Finding(Protocol):
+    code: str
+    path: Path | None
+
+
+class _Manifest(Protocol):
+    agents_version: int
+    setup_skill_version: str
+    progress_schema_version: int
+    topic_decision_phase: int
+    primary_benchmark_artifacts: tuple[str, ...]
+    required_outline_sections: tuple[tuple[str, str], ...]
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -25,17 +41,18 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
-def finding_codes(findings: list[object]) -> set[str]:
-    return {finding.code for finding in findings}
+def finding_codes(findings: Sequence[object]) -> set[str]:
+    return {str(getattr(finding, "code")) for finding in findings}
 
 
-def repository_manifest() -> object:
+def repository_manifest() -> _Manifest:
     manifest, findings = VALIDATOR.load_manifest(SCRIPT_DIR / "current-contract.json")
     require(not findings and manifest is not None, "repository manifest must load")
+    assert manifest is not None
     return manifest
 
 
-def manifest_with(**overrides: object) -> object:
+def manifest_with(**overrides: object) -> _Manifest:
     """按正常加载路径构造一个改过值的当前契约，用来演练 bump。"""
     raw = json.loads((SCRIPT_DIR / "current-contract.json").read_text(encoding="utf-8"))
     raw.update(overrides)
@@ -44,14 +61,15 @@ def manifest_with(**overrides: object) -> object:
         bumped_path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
         manifest, findings = VALIDATOR.load_manifest(bumped_path)
     require(not findings and manifest is not None, "bumped manifest must stay well-formed")
+    assert manifest is not None
     return manifest
 
 
-def flagged_paths(manifest: object, code: str) -> set[str]:
+def flagged_paths(manifest: _Manifest, code: str) -> set[str]:
     return {
-        finding.path.relative_to(REPO_ROOT).as_posix()
+        Path(str(finding.path)).relative_to(REPO_ROOT).as_posix()
         for finding in VALIDATOR.validate_repository(REPO_ROOT, manifest)
-        if finding.code == code and finding.path is not None
+        if getattr(finding, "code") == code and getattr(finding, "path", None) is not None
     }
 
 
@@ -126,6 +144,7 @@ def test_manifest_contract() -> None:
             not renamed_findings and renamed_manifest is not None,
             "renamed current artifacts must remain manifest-driven",
         )
+        assert renamed_manifest is not None
         renamed_semantic = semantic_findings(
             "- 若 `剧情/主节奏.md` 缺失，回退读取 `拆文报告.md`。",
             renamed_manifest.primary_benchmark_artifacts,
@@ -137,14 +156,17 @@ def test_manifest_contract() -> None:
 
 
 def semantic_findings(
-    text: str, primary_artifacts: tuple[str, ...] | None = None
-) -> list[object]:
+    text: str, primary_artifacts: Sequence[str] | None = None
+) -> list[_Finding]:
     if primary_artifacts is None:
         primary_artifacts = repository_manifest().primary_benchmark_artifacts
-    return VALIDATOR.semantic_primary_fallback_findings(
-        text,
-        Path("fixture.md"),
-        primary_artifacts,
+    return cast(
+        "list[_Finding]",
+        VALIDATOR.semantic_primary_fallback_findings(
+            text,
+            Path("fixture.md"),
+            primary_artifacts,
+        ),
     )
 
 
@@ -572,8 +594,8 @@ def test_spawn_preflight_uses_agents_version_not_file_existence() -> None:
     current = manifest.agents_version
     current_contract = """
 读取 `.story-deployed` 的 `agents_version: {current}`；不一致时照常按文件存在性检查并 spawn，
-报告 `Notice: agents bundle 版本不匹配（项目 {{N}}，本版 {current}）` 并提示重跑 `/story-setup`。
-大于 {current} 时额外提示先更新 oh-story-claudecode。
+报告 `Notice: agents bundle 版本不匹配（项目 {{N}}，本版 {current}）` 并提示重跑 `/skill:story-setup`。
+大于 {current} 时额外提示先更新 oh-story-pi。
 只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 """.format(current=current)
     require(
