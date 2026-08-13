@@ -82,7 +82,7 @@ description: "网络小说工具箱主入口。根据用户需求自动路由到
 
 「查故事资料」「查资料」走 agent 前先做轻量可用性检查（路由只做这一层，不承担全局部署策略）：当前不在子代理上下文、subagent 工具可用（pi-subagents）、且 `.pi/agents/{story-explorer|story-researcher}.md` 存在 → 可尝试 spawn。任一不满足，或运行时未暴露 custom-agent registry，则降级，不硬失败：
 
-- `story-explorer` 不可用 → 主线程直接用 Read/Grep 从项目文件检索（角色状态/伏笔/进度/设定），回答前标注 `Fallback: agent unavailable -> direct lookup`；项目尚未部署时提示先 `/skill:story-setup`。
+- `story-explorer` 不可用 → 主线程直接用 read/ffgrep 从项目文件检索（角色状态/伏笔/进度/设定），回答前标注 `Fallback: agent unavailable -> direct lookup`；项目尚未部署时提示先 `/skill:story-setup`。
 - `story-researcher` 不可用 → 主线程用现有检索/回答能力完成，或提示用户改用 `/skill:browser-cdp` 采集，同样标注 `Fallback: agent unavailable -> direct lookup`。
 
 ## 项目状态感知

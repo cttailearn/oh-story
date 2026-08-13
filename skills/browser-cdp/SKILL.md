@@ -1,6 +1,6 @@
 ---
 name: browser-cdp
-description: "Use this skill when you need to control a Chrome browser via CDP (Chrome DevTools Protocol) to reuse existing login sessions. Covers: launching Chrome in debug mode, opening URLs, waiting for page load, evaluating JavaScript, taking snapshots, and extracting auth tokens. Trigger phrases: browser automation, CDP, agent-browser, 浏览器操作, 操作浏览器, Chrome CDP, 复用登录态, extract token from browser."
+description: "浏览器 CDP 操控。通过 CDP 协议控制 Chrome、复用已有登录态，覆盖：启动 debug 模式 Chrome、打开页面、等待加载、执行 JavaScript、截图快照、提取登录 token。注意：pi 内置 agent_browser 优先，本 skill 只用于需要复用已有 debug 实例登录态的场景。触发方式：/skill:browser-cdp、browser automation、CDP、agent-browser、浏览器操作、操作浏览器、复用登录态。"
 ---
 # Browser CDP 操作工具
 

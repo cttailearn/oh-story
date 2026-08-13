@@ -173,7 +173,7 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
    - 这三个预检脚本只读；`story-review` **不修改正文、设定或大纲文件**，需要自动修复正文时建议转 `/skill:story-deslop`。full / lean 模式只有下方「追踪文件维护」允许修改 `追踪/`；分批审查的所有模式都可按上方契约写 **.story-review/state.md**，solo 除该状态外不写项目内容。
    - 默认 `--quote-mode keep`，不把知乎盐言短篇的 `「」` 当作问题；只有项目明确指定引号风格时才检查对应转换建议。
 
-**story-explorer 预查询（可选）**。仅当 `Effective Mode` 仍为 `full`/`lean`、当前允许 spawn 且 subagent 工具可用时，才可检查 `.pi/agents/story-explorer.md` 是否存在并 spawn `story-explorer` 预查设定摘要；`solo` 或子代理递归保护场景下不得 spawn，只能直接 Read/Grep。Prompt 示例：
+**story-explorer 预查询（可选）**。仅当 `Effective Mode` 仍为 `full`/`lean`、当前允许 spawn 且 subagent 工具可用时，才可检查 `.pi/agents/story-explorer.md` 是否存在并 spawn `story-explorer` 预查设定摘要；`solo` 或子代理递归保护场景下不得 spawn，只能直接 read/ffgrep。Prompt 示例：
 
 ```text
 项目目录：{dir}

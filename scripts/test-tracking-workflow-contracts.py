@@ -118,7 +118,10 @@ def test_state_card_and_compact_delta_limits_are_explicit() -> None:
 
 
 def test_import_records_a_cutoff_without_fabricated_old_deltas() -> None:
-    text = read("skills/story-import/SKILL.md")
+    # v1.2.2 起导入完成报告模板拆分至 references/import-templates.md，契约校验跨两文件
+    text = read("skills/story-import/SKILL.md") + read(
+        "skills/story-import/references/import-templates.md"
+    )
     require_all(
         text,
         (
