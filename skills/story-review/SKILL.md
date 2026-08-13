@@ -277,7 +277,7 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
   相关角色文件：{角色设定文件路径}
   可选补充参考：本 Skill 的 `story-review/references/character-relations.md`、`story-review/references/dialogue-mastery.md`；若不可读，不影响审查。
   检查项：
-  1. 角色语言风格是否与语言风格档案一致？
+  1. 角色语言风格是否与角色卡「说话方式」一致？
   2. 对话是否千篇一律或信息过满？
   3. 人物弧线是否连贯？
   4. 角色行为是否符合其动机？
