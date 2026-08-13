@@ -7,13 +7,24 @@
     "预算超了怎么办：先删等量的旧文本，删不动再在本文件里调高 budget 并在 PR 里说明为什么",
     "这段新规则值得每个用户每次会话都付。调 budget 是允许的，但必须是一次显式决定。",
     "",
-    "新增热路径文件时把它加进来，否则它不受任何约束。"
+    "新增热路径文件时把它加进来，否则它不受任何约束。",
+    "",
+    "v1.4.0 预算调整（chore(pi): fix(pi) doc-budget 调高，v1.3.2 复杂度补账）：",
+    "  - workflow-setup.md: 12600→15000（+2400，承载 v1.3.2 Gate A/B/C、",
+    "    大纲安全七检与审查、角色线卡前移、卷纲/细纲提示词强化）",
+    "  - SKILL.md: 13200→13500（+300，承接 v1.3.2 阶段门控叙事增量）",
+    "  - paths.长篇开书: 25700→28500（同步两个文件上调后的合计）",
+    "  - paths.长篇日更主会话: 36100→36300（+200，SKILL.md 增量会同时影响此路径，",
+    "    实际合计 36205 低于新预算）",
+    "判断依据：CHANGELOG v1.3.2 明确记录这些是真实必需功能（不是冗余文本），",
+    "且每条都被 doc-budget 字段和 Gate 严格验证机制保护；缩比另择。",
+    "调高后如未来再增删，这些预算值都应该回到 1.0 以下的实质量级。"
   ],
   "files": [
     {
       "path": "skills/story-long-write/SKILL.md",
-      "budget": 13200,
-      "why": "长篇任一场景都无条件加载"
+      "budget": 13500,
+      "why": "长篇任一场景都无条件加载；v1.3.2 阶段门控与开书工作流概览增量"
     },
     {
       "path": "skills/story-long-write/references/workflow-daily.md",
@@ -27,8 +38,8 @@
     },
     {
       "path": "skills/story-long-write/references/workflow-setup.md",
-      "budget": 12600,
-      "why": "开书/补纲路径加载；v1.1 新增细纲「本章设定引用」锚点字段与世界观卡/角色线卡建档规则"
+      "budget": 15000,
+      "why": "开书/补纲路径加载；v1.1 新增细纲「本章设定引用」锚点字段与世界观卡/角色线卡建档规则；v1.3.2 增 Gate A/B/C 与大纲安全七检/审查、角色线卡前移、卷纲细纲提示词强化"
     },
     {
       "path": "skills/story-short-write/SKILL.md",
@@ -59,7 +70,7 @@
   "paths": [
     {
       "label": "长篇日更主会话",
-      "budget": 36100,
+      "budget": 36300,
       "files": [
         "skills/story-long-write/SKILL.md",
         "skills/story-long-write/references/workflow-daily.md",
@@ -68,7 +79,7 @@
     },
     {
       "label": "长篇开书",
-      "budget": 25700,
+      "budget": 28500,
       "files": [
         "skills/story-long-write/SKILL.md",
         "skills/story-long-write/references/workflow-setup.md"
