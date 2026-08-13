@@ -103,9 +103,10 @@ python3 scripts/skill-numbering.py check
 
 部分文件跨 skill 共享（如 banned-words.md、anti-ai-writing.md），修改时必须同步所有副本。
 
-- runtime 脚本的唯一源/目标定义在 `scripts/shared-assets.json`；先改 `source`，再运行 `python3 scripts/sync-shared-assets.py sync`。
-- 同名 runtime 脚本只能属于一个 canonical group，且每个 target 必须保留 source basename；禁止用改名 target 绕过单一 owner。
-- reference 文档的同步提示写在各副本首行注释（`sync-shared-assets.py`）；提交前统一运行 `python3 scripts/test-shared-assets.py`；未在 manifest 登记的重名 runtime 脚本会直接失败。
+- runtime 脚本与 reference 文档的唯一源/目标都定义在 `scripts/shared-assets.json`（v1.2.2 起 69 组覆盖 97 份副本）；先改 `source`，再运行 `python3 scripts/sync-shared-assets.py sync`。
+- 同名文件只能属于一个 canonical group，且每个 target 必须保留 source basename；禁止用改名 target 绕过单一 owner。
+- reference 文档的同步提示写在各副本首行注释（`sync-shared-assets.py`）；提交前统一运行 `python3 scripts/test-shared-assets.py`；未在 manifest 登记的重名副本会直接失败。
+- **有意分化的同名文件**（如 quality-checklist.md 各 skill 定制版）不登记入 manifest；分化前先确认不是漏同步。
 
 ### 知识库贡献
 
