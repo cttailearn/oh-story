@@ -4,8 +4,9 @@ description: |
   章节摘要与情节点提取专家。接收单章文本，输出结构化摘要、情节点列表、角色提及。
   被 story-long-analyze（拆解管道 Stage 2）按章节并行调用。
   输出格式严格遵循本文件「输出格式」章节；不依赖外部输出模板文件。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。model 不写死：继承 pi 子代理默认模型，
-# 需要固定时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定（如 opencode/claude-sonnet-4-5）。
+# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
+model: deepseek/deepseek-v4-flash
 tools: read, fffind, ffgrep
 systemPromptMode: replace
 inheritProjectContext: true
@@ -289,7 +290,7 @@ P{序号} **{标题}**：类型{转折点/信息揭示/冲突/解决/铺垫/行�
 
 ## 质量检查（输出前自检 + 主线程升级重试触发条件）
 
-下列 12 条**同时是主线程的「升级重试」触发条件**：你输出后，主线程会用本清单逐条校验；任一不达标 → 主线程会用 sonnet 覆盖本 agent 的默认 haiku，重新 spawn 一次（仅 1 次）。请在输出前认真自检，不要把校验责任甩给主线程。
+下列 12 条**同时是主线程的「升级重试」触发条件**：你输出后，主线程会用本清单逐条校验；任一不达标 → 主线程会用 deepseek/deepseek-v4-pro 覆盖本 agent 的默认 flash，重新 spawn 一次（仅 1 次）。请在输出前认真自检，不要把校验责任甩给主线程。
 
 1. 概要是否为按时序的连贯叙述，讲清了事件、原因、结果（不是条目罗列，也不靠同一连接词反复串联）
 2. 每个情节点是否使用了客观白描（无叙事框架词、无主观评价），且白描写全了事实、结果与原文给出的起因；标题是否为 ≤15 字短标签，没有和白描写成同一句

@@ -50,6 +50,13 @@
       "targets": [
         "skills/story-short-scan/scripts/cdp-utils.js"
       ]
+    },
+    {
+      "name": "worldbuilding-reference",
+      "source": "skills/story-setup/references/agent-references/worldbuilding.md",
+      "targets": [
+        "skills/story-long-write/references/worldbuilding.md"
+      ]
     }
   ]
 }

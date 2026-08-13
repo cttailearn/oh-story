@@ -4,8 +4,9 @@ description: |
   小说写作资料研究 agent。接收研究查询，优先使用 CDP (agent-browser) 搜索并提取完整正文，
   WebSearch/webReader 作为兜底。输出带来源引用的结构化 Markdown 参考文件。
   被 story-long-write（Phase 4）、story-review、story skill 路由调用。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。model 不写死：继承 pi 子代理默认模型，
-# 需要固定时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定（如 opencode/claude-sonnet-4-5）。
+# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
+model: deepseek/deepseek-v4-pro
 tools: read, fffind, ffgrep, bash, write
 systemPromptMode: replace
 inheritProjectContext: true

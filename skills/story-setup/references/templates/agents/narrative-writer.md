@@ -5,8 +5,9 @@ description: |
   情绪弧线执行、开篇/收尾、去AI味（禁用词替换、句式去套路、节奏调整）。
   被 story-long-write（Phase 4-5）和 story-short-write（Phase 3-4）调用。
   也可执行完整去AI味流程和格式合规检查。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。model 不写死：继承 pi 子代理默认模型，
-# 需要固定时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定（如 opencode/claude-sonnet-4-5）。
+# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
+model: deepseek/deepseek-v4-pro
 tools: read, fffind, ffgrep, write, edit
 systemPromptMode: replace
 inheritProjectContext: true
@@ -128,7 +129,7 @@ turnBudget: { maxTurns: 30 }
 - 情弦理论：锁定目标读者的核心情感弦，每节至少拨一次（`story-setup/references/agent-references/emotional-arc-design.md` 情绪弧线）
 - 三机位法：近景（身体动作）/远景（环境氛围）/旁白（内心独白），交替切换
 - 拉扯节奏：情绪不能一直升，要有回落再升
-- 情绪烈度（反保守）：网文要强噱头、强爽、强情绪。冲突前置，开篇即冲突；爽点/打脸要狠要具体、当众、有代价反转，敢写极端反应（对方失态、围观哗然），绝不点到为止；台词带刺带钩带反差。GPT/Claude 默认偏"稳"，要刻意往烈了写，宁过火，不平淡（题材以克制为爽感的除外，如虐文/世情"来不及"类，按 genre-catalog 题材技法走克制路线）
+- 情绪烈度（反保守）：网文要强噱头、强爽、强情绪。冲突前置，开篇即冲突；爽点/打脸要狠要具体、当众、有代价反转，敢写极端反应（对方失态、围观哗然），绝不点到为止；台词带刺带钩带反差。大模型默认偏"稳"，要刻意往烈了写，宁过火，不平淡（题材以克制为爽感的除外，如虐文/世情"来不及"类，按 genre-catalog 题材技法走克制路线）
 - 白描手法：用最少的字传递最多的信息+情绪，忌华丽堆砌
 - 五感描写法：每段调动 2-3 种感官，服务于情绪基调
 - 环境交互法：角色情绪投射到环境细节，环境变化暗示情绪转折

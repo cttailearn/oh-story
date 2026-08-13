@@ -25,7 +25,7 @@ description: "网文写作工具集（pi 专属）项目初始化。验证 oh-st
 有缺即包没装全，**立即停止，不写任何部署文件**，报告里区分「缺目录」和「目录为空」，并给修复指令：
 
 > 「story-setup 参考资料包不完整，缺 {目录名}。重新安装 oh-story-pi 后再执行：
-> git 安装 → `pi install git:github.com/cttailearn/oh-story-pi@v1.0.0`；更新 → `pi update --extensions`。」
+> git 安装 → `pi install git:github.com/cttailearn/oh-story-pi@v1.1.0`；更新 → `pi update --extensions`。」
 
 ### 1.2 检测项目状态
 

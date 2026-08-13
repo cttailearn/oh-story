@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.1.0
+
+> 设定层增强 + 模型 deepseek 化。三个目标：正文生成时“设定锚定”取代“模型记忆”、角色卡从纯人设升级为可 grep 的事实源、子代理模型按角色分工钉定 deepseek-v4（flash 高频只读 / pro 创作主力）。
+
+### 模型 deepseek 化（P0）
+
+- 7 个 pi-subagents 模板写死 `model`：`deepseek/deepseek-v4-flash`（chapter-extractor / consistency-checker / story-explorer，只读高频）与 `deepseek/deepseek-v4-pro`（story-architect / character-designer / narrative-writer / story-researcher，创作推理）
+- 模板注释去除 claude 示例；story-long-analyze 的 sonnet/haiku 升级重试语义改 deepseek-v4-pro / flash；chapter-extractor 正文同改
+- 覆盖方式仍支持：`~/.pi/agent/settings.json` 的 `subagents.agentOverrides` 按 name 指定
+
+### 细纲设定锚点（P1）
+
+- 细纲模板新增「本章设定引用」字段（角色卡/世界观/势力/角色线/物品清单）
+- workflow-chapter 写前准备 (4) 改为按清单精确加载；正文用到清单外设定 → 写后补登记
+
+### 角色卡 v2 + 世界观卡 + 硬事实表（P2）
+
+- 主角卡/配角卡新增：语言风格档案（7维+例句）、成长弧线设计（三阶段蓝图）、能力/金手指上限、红线与禁忌、项目专属设定、硬事实表（key: value grep 锚点）、剧情线指针
+- 静态/动态边界写明：位置/目标/状态归追踪快照，剧情进度归角色线卡
+- 新增 `worldbuilding.md`（力量体系三问、规则边界四要素、设定层级结构、硬事实表规范），经 shared-assets 同步到 story-long-write
+- artifact-protocols 新增「世界观卡」「角色线卡」模板；workflow-setup 建档规则升级（含角色线抽卡步骤）
+- story-architect 世界观/大纲能力同步新模板与方法论；character-designer 产出协议与角色卡 v2 字段对齐
+- consistency-checker 新增「第零步：硬事实表 diff」：机械核对硬事实、红线违反（S1）、金手指越级（S2）、弧线阶段错位（S2）
+
+### 工程
+
+- test-shared-assets.py 修复 Windows 兼容（executable-mode 断言 POSIX-only、路径分隔符归一化），并移除对已删 check-shared-files.sh 的残留测试块
+- doc-budget：workflow-setup 12600 / narrative-writer 12700 / 长篇开书 25700（设定锚点与建档规则的新增必读指令）
+
 ## v1.0.0
 
 > pi 专属版首发。oh-story 从多端适配包（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）迁移为 pi 专属包：13 个 skills + 7 个 pi-subagents 子代理 + `/story` 命令别名扩展，以 git 通道分发（`pi install git:github.com/cttailearn/oh-story-pi@v1.0.0`）。npm 发布因账号 2FA 策略暂缓，包名 `oh-story-pi` 已预留。

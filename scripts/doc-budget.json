@@ -27,8 +27,8 @@
     },
     {
       "path": "skills/story-long-write/references/workflow-setup.md",
-      "budget": 12300,
-      "why": "开书/补纲路径加载"
+      "budget": 12600,
+      "why": "开书/补纲路径加载；v1.1 新增细纲「本章设定引用」锚点字段与世界观卡/角色线卡建档规则"
     },
     {
       "path": "skills/story-short-write/SKILL.md",
@@ -37,8 +37,8 @@
     },
     {
       "path": "skills/story-setup/references/templates/agents/narrative-writer.md",
-      "budget": 12600,
-      "why": "正文 agent 的系统提示，每章每次 spawn 都付"
+      "budget": 12700,
+      "why": "正文 agent 系统提示每章 spawn 都付；v1.1 模型钉定 frontmatter 行"
     },
     {
       "path": "skills/story-long-write/references/writing-craft.md",
@@ -68,7 +68,7 @@
     },
     {
       "label": "长篇开书",
-      "budget": 25400,
+      "budget": 25700,
       "files": [
         "skills/story-long-write/SKILL.md",
         "skills/story-long-write/references/workflow-setup.md"

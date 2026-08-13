@@ -1,16 +1,29 @@
 {
   "name": "oh-story-pi",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "网络小说创作工具箱（pi 专属版）：扫榜、拆文、写作、审查、去AI味、封面生成，13 个 skills + 7 个 pi-subagents",
-  "keywords": ["pi-package", "novel", "writing", "web-novel", "story", "chinese", "网文", "小说"],
+  "keywords": [
+    "pi-package",
+    "novel",
+    "writing",
+    "web-novel",
+    "story",
+    "chinese",
+    "网文",
+    "小说"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/cttailearn/oh-story-pi.git"
   },
   "pi": {
-    "extensions": ["./extensions"],
-    "skills": ["./skills"],
+    "extensions": [
+      "./extensions"
+    ],
+    "skills": [
+      "./skills"
+    ],
     "image": "https://github.com/cttailearn/oh-story-pi/raw/main/demo/story-dashboard.png"
   },
   "scripts": {
