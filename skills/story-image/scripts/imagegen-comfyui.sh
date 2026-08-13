@@ -96,9 +96,9 @@ WF_JSON=$(jq --arg p "$PROMPT" --arg n "${NEGATIVE:-}" --arg c "$CKPT" \
         else . end)' "$WORKFLOW")
 
 # 2) 无占位符 → 自动注入 CLIPTextEncode（ID 最小=positive，次小=negative）
-HAS_PROMPT=$(jq --arg p "$PROMPT" '[.. | strings | select(. == $p)] | length > 0' <<<"$WF_JSON")
+HAS_PROMPT=$(printf '%s' "$WF_JSON" | jq --arg p "$PROMPT" '[.. | strings | select(. == $p)] | length > 0')
 if [ "$HAS_PROMPT" != "true" ]; then
-	WF_JSON=$(jq --arg p "$PROMPT" --arg n "${NEGATIVE:-}" '
+	WF_JSON=$(printf '%s' "$WF_JSON" | jq --arg p "$PROMPT" --arg n "${NEGATIVE:-}" '
 		. as $wf
 		| ($wf | to_entries | map(select(.value.class_type == "CLIPTextEncode")) | sort_by(.key | tonumber)) as $enc
 		| if ($enc | length) == 0 then
@@ -108,8 +108,8 @@ if [ "$HAS_PROMPT" != "true" ]; then
 				if $e.key == $enc[0].key then .[$e.key].inputs.text = $p
 				elif $e.key == ($enc[1].key // "") and ($n | length) > 0 then .[$e.key].inputs.text = $n
 				else . end)
-		  end' <<<"$WF_JSON")
-	INJECTED=$(jq -r 'to_entries | map(select(.value.class_type == "CLIPTextEncode")) | sort_by(.key | tonumber) | map(.key) | join(",")' <<<"$WF_JSON")
+		  end')
+	INJECTED=$(printf '%s' "$WF_JSON" | jq -r 'to_entries | map(select(.value.class_type == "CLIPTextEncode")) | sort_by(.key | tonumber) | map(.key) | join(",")')
 	echo "工作流无占位符，已自动注入提示词到 CLIPTextEncode 节点 [$INJECTED]（正向=最小ID，负向=次小ID），请核对生成效果"
 fi
 
