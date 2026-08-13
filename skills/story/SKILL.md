@@ -110,5 +110,5 @@ description: "网络小说工具箱主入口。根据用户需求自动路由到
 4. **告知**：
    - 已最新 → 「已是最新版 vX.Y.Z」。
    - 有新版 → 列出 当前 vA → 最新 vB + [Releases](https://github.com/cttailearn/oh-story-pi/releases)/[CHANGELOG](https://github.com/cttailearn/oh-story-pi/blob/main/CHANGELOG.md)（能拿到 release notes 就附本次要点），再用 AskUserQuestion 问「现在更新吗？」：
-     - 选更新 → 跑 `pi update --extensions`（更新 npm/git 包）；完成后提示：已部署过的项目在项目根重跑 `/skill:story-setup` 同步 agents/references，并**新开一个会话**让 agents 重新注册。
+     - 选更新 → 跑 `pi update --extensions`（git 源会同步到已固定 ref；新版本先 `pi install git:github.com/cttailearn/oh-story-pi@新ref`）；完成后提示：已部署过的项目在项目根重跑 `/skill:story-setup` 同步 agents/references，并**新开一个会话**让 agents 重新注册。
      - 选先不 → 不动，告知随时可再来。

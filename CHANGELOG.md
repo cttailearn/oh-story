@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## v1.0.0
 
-> pi 专属版首发。oh-story 从多端适配包（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）迁移为 pi 专属包：13 个 skills + 7 个 pi-subagents 子代理 + `/story` 命令别名扩展，经 npm 与 git 双通道分发（`pi install npm:oh-story-pi`）。
+> pi 专属版首发。oh-story 从多端适配包（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）迁移为 pi 专属包：13 个 skills + 7 个 pi-subagents 子代理 + `/story` 命令别名扩展，以 git 通道分发（`pi install git:github.com/cttailearn/oh-story-pi@v1.0.0`）。npm 发布因账号 2FA 策略暂缓，包名 `oh-story-pi` 已预留。
 
 ### 迁移（多端 → pi）
 
@@ -22,7 +22,7 @@ All notable changes to this project will be documented in this file.
 - 新增 `tests/dashboard-trigger-contract.test.mjs` 的 pi 包 manifest 断言；dashboard.yml 去除平台引用。
 - README / README_EN / CONTRIBUTING / scripts README 全量改写为 pi 版。
 
-**升级**：旧多端用户先 `pi install npm:oh-story-pi`，在写作项目重跑 `/skill:story-setup`（迁移 sentinel 与子代理），新开会话生效。
+**升级**：旧多端用户先 `pi install git:github.com/cttailearn/oh-story-pi@v1.0.0`，在写作项目重跑 `/skill:story-setup`（迁移 sentinel 与子代理），新开会话生效。
 
 ## v0.7.5
 

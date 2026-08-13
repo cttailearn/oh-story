@@ -54,8 +54,7 @@ v1.3.0 起 oh-story 为 pi 专属包。旧多端部署项目（`.story-deployed`
 
 ## 升级步骤
 
-1. 更新包：`pi update --extensions`（npm 源可用 `pi update npm:oh-story-pi`；git 源
-   `pi install git:github.com/cttailearn/oh-story-pi@<新 ref>`）。
+1. 更新包：`pi update --extensions`；或指定 ref 升级：`pi install git:github.com/cttailearn/oh-story-pi@<新 ref>`。
 2. 在项目根重跑 `/skill:story-setup`，确认 `.story-deployed` 写入
    `agents_version: 25` 与 `setup_skill_version: 1.3.0`。
 3. 已有拆文工程核对 `_progress.md` 的 `schema_version: 2`（当前拆文契约；不符则按

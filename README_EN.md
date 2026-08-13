@@ -5,10 +5,15 @@ Web-novel writing toolkit (pi-exclusive edition): ranking research, deconstructi
 ## Install
 
 ```bash
-pi install npm:oh-story-pi                       # npm (recommended)
-pi install git:github.com/cttailearn/oh-story-pi@v1.0.0   # git
-pi update --extensions                           # update
-pi remove npm:oh-story-pi                        # uninstall
+pi install git:github.com/cttailearn/oh-story-pi@v1.0.0
+```
+
+Update / uninstall:
+
+```bash
+pi update --extensions                                # update all packages (incl. oh-story-pi)
+pi install git:github.com/cttailearn/oh-story-pi@new-ref   # upgrade to a new ref
+pi remove git:github.com/cttailearn/oh-story-pi        # uninstall
 ```
 
 Run `/skill:story-setup` in your writing project to deploy the 7 professional subagents
@@ -39,6 +44,8 @@ Natural-language triggers work too (skill descriptions auto-match), e.g.
 "I want to write a novel", "this reads too AI", "import my book".
 
 ## Notes
+
+- The package is distributed via the git channel only (npm publish is on hold due to the account 2FA policy; the `oh-story-pi` package name is reserved).
 
 - pi has no hooks mechanism; the old multi-CLI runtime guards are covered by in-skill
   checkpoints (`tracking_commit.py check`, fail-closed tracking) and deterministic

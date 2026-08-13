@@ -89,15 +89,15 @@
 - 更新 `README.md`（pi 安装/更新/卸载、触发方式、story-setup 用法）
 - 保持 `tests/` dashboard 测试可运行（`npm test`）
 
-## Step 6：发布（npm + git 双通道）
+## Step 6：发布（git 为主，npm 暂缓）
 
-1. npm：`npm publish`（发布前查 `oh-story-pi` 包名占用；被占用则 `@worldwonderer/oh-story-pi`）
-2. git：GitHub Release 打 tag `v1.0.0`
-3. 验证矩阵：
-   - `pi install npm:oh-story-pi` → 新开会话 → `/skill:story` 触发
-   - `pi install git:github.com/cttailearn/oh-story-pi@v1.0.0`
+1. git：GitHub Release 打 tag `v1.0.0` ✅ 已完成；验证 `pi install git:github.com/cttailearn/oh-story-pi@v1.0.0` ✅ 已完成
+2. npm：**暂缓**——npm 账号 2FA 政策收紧（bypass 2FA token 受限），多次尝试发布被 E403/EOTP 拦截。包名 `oh-story-pi` 已确认未被占用并预留；待账号 2FA 就绪后补发（`npm publish --access public --otp=<码>` 或 bypass 权限 token）
+3. 验证矩阵（已完成）：
+   - `pi install git:github.com/cttailearn/oh-story-pi@v1.0.0` → 新开会话 → `/skill:story` 触发
    - `pi update --extensions` 升级路径
-4. 清理用户本地旧安装：移除 `~/.agents/skills/story*`（旧多端版），改由 pi 包管理
+   - `pi -e .` 整包加载（skills + /story 扩展）
+4. 清理用户本地旧安装：✅ 已移除 `~/.agents/skills/story*`（旧多端版），改由 pi 包管理
 
 ## 风险与注意
 
