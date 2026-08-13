@@ -22,7 +22,8 @@ description: "故事图像生成。生成小说封面、人物形象图（立绘
 | `DASHSCOPE_IMAGE_MODEL` | dashscope | | 默认 `wanx2.1-t2i-turbo` |
 | `DASHSCOPE_MODE` | dashscope | | `async`（默认，原生异步+轮询）/ `compatible`（OpenAI 兼容同步） |
 | `COMFYUI_URL` | comfyui | | 默认 `http://127.0.0.1:8188` |
-| `COMFY_CKPT` | comfyui | | 检查点名，默认 `sd_xl_base_1.0.safetensors` |
+| `COMFY_CKPT` | comfyui | | 检查点名（不设则用工作流内已有配置或 `--ckpt`） |
+| `COMFYUI_WORKFLOW_DIR` | comfyui | | 本地工作流 JSON 目录，默认 `~/ComfyUI/user/default/workflows/`（`--list-workflows` 列出） |
 | `IMG_BACKEND` | 全局 | | 显式指定后端，跳过探测 |
 | `UPLOAD_SIZE` | 封面 | | 平台固定上传像素（番茄 `600x800`），生成后居中裁剪导出 |
 | `REF_IMAGE` | openai | | 参考图本地路径或 URL（图生图） |
@@ -73,9 +74,15 @@ bash <skill-dir>/scripts/imagegen.sh auto \
 | openai | 像素 `1024x1536` 等 | `--ref` 图生图（REF_IMAGE） |
 | volcengine | 规格串 `2K`/`4K` 或像素（透传） | 响应 url 下载 |
 | dashscope | 规格串 `1024*1024`、`720*1280`（星号分隔） | 异步轮询（默认） |
-| comfyui | 不适用（尺寸在工作流里） | `--workflow <json> --prompt <文本> --negative <文本> [--ckpt]` |
+| comfyui | 不适用（尺寸在工作流里） | `--workflow <API格式JSON> --prompt <文本> --negative <文本> [--ckpt]` |
 
-ComfyUI 默认工作流：`<skill-dir>/workflows/{cover|portrait|turnaround|scene}.json`（API 格式，`__PROMPT__`/`__NEGATIVE__`/`__CKPT__` 占位符由脚本注入）；用户自备工作流时直接 `--workflow <自备JSON路径>` 覆盖。需要本地 ComfyUI 已启动且安装对应检查点。
+**ComfyUI 工作流：不内置模板，查询本地已有工作流由用户自主选择**：
+
+1. 先列出本地工作流：`bash <skill-dir>/scripts/imagegen-comfyui.sh --list-workflows`（默认列 `~/ComfyUI/user/default/workflows/`，可用 `COMFYUI_WORKFLOW_DIR` 指向其它目录）；用户自己保存/下载的工作流 JSON 也可直接给路径
+2. 列出清单让用户选一个（用 AskUserQuestion）；选好把路径传给 `--workflow`
+3. 只接受 **API 格式**（ComfyUI 里菜单 Workflow → Export (API) 导出）；传了界面格式（UI format）脚本会提示转换，不静默失败
+4. 提示词注入：工作流里把提示词节点文本设为 `__PROMPT__`（负向 `__NEGATIVE__`、检查点 `__CKPT__`）最可控；未设占位符时脚本自动注入到 CLIPTextEncode 节点（ID 最小=正向、次小=负向）并打印注入位置供核对
+5. 需要本地 ComfyUI 已启动；检查点名可用 `--ckpt` 或 `COMFY_CKPT` 指定，或在工作流里用 `__CKPT__` 占位
 
 **输出路径约定**（自增版本号，不覆盖历史版本）：
 

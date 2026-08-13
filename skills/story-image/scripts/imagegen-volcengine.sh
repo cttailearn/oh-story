@@ -6,14 +6,28 @@
 # 注意：Seedream 的 size 是规格串（1K/2K/4K 或宽x高），不是 gpt-image 的像素格式。
 set -euo pipefail
 
-PROMPT_FILE=""; SIZE=""; OUT=""
+PROMPT_FILE=""
+SIZE=""
+OUT=""
 while [ $# -gt 0 ]; do
-  case "$1" in
-    --prompt-file) PROMPT_FILE="$2"; shift 2 ;;
-    --size) SIZE="$2"; shift 2 ;;
-    --out) OUT="$2"; shift 2 ;;
-    *) echo "未知参数: $1" >&2; exit 2 ;;
-  esac
+	case "$1" in
+	--prompt-file)
+		PROMPT_FILE="$2"
+		shift 2
+		;;
+	--size)
+		SIZE="$2"
+		shift 2
+		;;
+	--out)
+		OUT="$2"
+		shift 2
+		;;
+	*)
+		echo "未知参数: $1" >&2
+		exit 2
+		;;
+	esac
 done
 
 : "${PROMPT_FILE:?缺少 --prompt-file}"
@@ -31,34 +45,37 @@ RESP=$(mktemp)
 trap 'rm -f "$RESP"' EXIT
 
 BODY=$(jq -n \
-  --arg m "$MODEL" \
-  --arg p "$PROMPT" \
-  --argjson s "$SIZE_ARG" \
-  '{model:$m, prompt:$p, response_format:"url", watermark:true}
+	--arg m "$MODEL" \
+	--arg p "$PROMPT" \
+	--argjson s "$SIZE_ARG" \
+	'{model:$m, prompt:$p, response_format:"url", watermark:true}
    + (if $s != null then {size:$s} else {} end)')
 
 curl -fsS --max-time 300 --retry 2 --retry-delay 5 \
-  "$BASE_URL/images/generations" \
-  -H "Authorization: Bearer $ARK_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d "$BODY" > "$RESP"
+	"$BASE_URL/images/generations" \
+	-H "Authorization: Bearer $ARK_API_KEY" \
+	-H "Content-Type: application/json" \
+	-d "$BODY" >"$RESP"
 
 if jq -e '.error' "$RESP" >/dev/null 2>&1; then
-  echo "API error:" >&2
-  jq '.error' "$RESP" >&2
-  exit 1
+	echo "API error:" >&2
+	jq '.error' "$RESP" >&2
+	exit 1
 fi
 
 if jq -er '.data[0].url // empty' "$RESP" 2>/dev/null | grep -q .; then
-  curl -fsSL --max-time 120 -o "$OUT" "$(jq -er '.data[0].url' "$RESP")"
+	curl -fsSL --max-time 120 -o "$OUT" "$(jq -er '.data[0].url' "$RESP")"
 elif jq -er '.data[0].b64_json // empty' "$RESP" 2>/dev/null | grep -q .; then
-  jq -er '.data[0].b64_json // empty' "$RESP" | base64 --decode > "$OUT"
+	jq -er '.data[0].b64_json // empty' "$RESP" | base64 --decode >"$OUT"
 else
-  echo "响应无 url 也无 b64_json：" >&2
-  head -c 300 "$RESP" >&2
-  exit 1
+	echo "响应无 url 也无 b64_json：" >&2
+	head -c 300 "$RESP" >&2
+	exit 1
 fi
-[ -s "$OUT" ] || { echo "输出为空: $OUT" >&2; exit 1; }
+[ -s "$OUT" ] || {
+	echo "输出为空: $OUT" >&2
+	exit 1
+}
 
-printf '%s\n' "$PROMPT" > "${OUT%.png}.prompt.txt"
+printf '%s\n' "$PROMPT" >"${OUT%.png}.prompt.txt"
 echo "OK: $OUT"

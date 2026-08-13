@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.2.1
+
+> ComfyUI 工作流改为用户自主选择：不内置模板。
+
+- 删除内置的 4 个工作流模板（workflows/*.json）
+- `imagegen-comfyui.sh` 新增 `--list-workflows` 模式：列出本地 ComfyUI 已保存工作流（默认 `~/ComfyUI/user/default/workflows/`，`COMFYUI_WORKFLOW_DIR` 可改），用户选定后 `--workflow <路径>` 提交
+- UI 格式检测：传入界面格式 JSON 时提示用 Export (API) 转换，不静默失败
+- 提示词注入规则：优先 `__PROMPT__/__NEGATIVE__/__CKPT__` 占位符；无占位符时自动注入 CLIPTextEncode 节点（ID 最小=正向、次小=负向）并打印注入位置供核对
+- `COMFY_CKPT` 默认值移除（改为工作流内配置或 `--ckpt` 指定），SKILL.md 环境变量表新增 `COMFYUI_WORKFLOW_DIR`
+
 ## v1.2.0
 
 > story-cover 升级为 story-image：从「封面生成」扩展为「故事图像生成」，四类图像 + 四个后端。
@@ -23,7 +33,7 @@ All notable changes to this project will be documented in this file.
   - `openai`：GPT-Image-2 文生图/图生图（原逻辑参数化改造，兼容 b64 与 url 响应）
   - `volcengine`：火山方舟 Seedream（`ARK_API_KEY`，size 规格串透传）
   - `dashscope`：阿里通义万相（原生异步+轮询，`DASHSCOPE_MODE=compatible` 可切同步）
-  - `comfyui`：本地 ComfyUI（`/prompt` → `/history` → `/view` 三步流；内置 4 个 API 格式工作流模板，`__PROMPT__/__NEGATIVE__/__CKPT__` 占位注入，`--workflow` 可覆盖自备 JSON）
+  - `comfyui`：本地 ComfyUI（`/prompt` → `/history` → `/view` 三步流；用户自选本地工作流，v1.2.1 起不内置模板）
 - 风格库升级：cover-styles.md → visual-styles.md（新增人物形象图/三视图/场景图规范），新增 image-types.md（类型模板/输出目录/质量检查表）
 
 ## v1.1.0

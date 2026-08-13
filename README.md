@@ -19,7 +19,7 @@
 ### git 安装（当前唯一发布通道）
 
 ```bash
-pi install git:github.com/cttailearn/oh-story-pi@v1.2.0
+pi install git:github.com/cttailearn/oh-story-pi@v1.2.1
 ```
 
 更新 / 卸载：
@@ -195,7 +195,7 @@ pi 无 hooks 机制，原多端版的运行时硬拦截由两层等价物承担�
 
 ## 适用平台
 
-- **pi**：原生支持（本包）。`pi install git:github.com/cttailearn/oh-story-pi@v1.2.0` 后 13 个 skill 自动可用，
+- **pi**：原生支持（本包）。`pi install git:github.com/cttailearn/oh-story-pi@v1.2.1` 后 13 个 skill 自动可用，
   `/story` 命令别名由包内扩展注册。npm 发布因账号 2FA 策略暂缓，待条件允许后补充（包名 `oh-story-pi` 已预留）。
 - 旧多端版（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）见上游仓库
   [oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) 的 v0.7.5

@@ -9,24 +9,43 @@ set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 detect_backend() {
-  [ -n "${IMG_BACKEND:-}" ] && { echo "$IMG_BACKEND"; return; }
-  [ -n "${GPT_IMAGE_API_KEY:-}" ] && { echo openai; return; }
-  [ -n "${ARK_API_KEY:-}" ] && { echo volcengine; return; }
-  [ -n "${DASHSCOPE_API_KEY:-}" ] && { echo dashscope; return; }
-  # ComfyUI 探测：显式配置了 URL，或默认端口有响应
-  COMFY_URL="${COMFYUI_URL:-http://127.0.0.1:8188}"
-  if [ -n "${COMFYUI_URL:-}" ] || curl -fsS --max-time 3 "$COMFY_URL/system_stats" >/dev/null 2>&1; then
-    echo comfyui; return
-  fi
-  echo "未探测到可用后端。请配置其一：GPT_IMAGE_API_KEY / ARK_API_KEY / DASHSCOPE_API_KEY / 本地 ComfyUI(COMFYUI_URL)；或 IMG_BACKEND 显式指定。" >&2
-  exit 1
+	[ -n "${IMG_BACKEND:-}" ] && {
+		echo "$IMG_BACKEND"
+		return
+	}
+	[ -n "${GPT_IMAGE_API_KEY:-}" ] && {
+		echo openai
+		return
+	}
+	[ -n "${ARK_API_KEY:-}" ] && {
+		echo volcengine
+		return
+	}
+	[ -n "${DASHSCOPE_API_KEY:-}" ] && {
+		echo dashscope
+		return
+	}
+	# ComfyUI 探测：显式配置了 URL，或默认端口有响应
+	COMFY_URL="${COMFYUI_URL:-http://127.0.0.1:8188}"
+	if [ -n "${COMFYUI_URL:-}" ] || curl -fsS --max-time 3 "$COMFY_URL/system_stats" >/dev/null 2>&1; then
+		echo comfyui
+		return
+	fi
+	echo "未探测到可用后端。请配置其一：GPT_IMAGE_API_KEY / ARK_API_KEY / DASHSCOPE_API_KEY / 本地 ComfyUI(COMFYUI_URL)；或 IMG_BACKEND 显式指定。" >&2
+	exit 1
 }
 
 BACKEND="${1:-auto}"
 case "$BACKEND" in
-  auto) BACKEND=$(detect_backend); shift || true ;;
-  openai|volcengine|dashscope|comfyui) shift ;;
-  *) echo "未知后端: $BACKEND（可选 auto/openai/volcengine/dashscope/comfyui）" >&2; exit 2 ;;
+auto)
+	BACKEND=$(detect_backend)
+	shift || true
+	;;
+openai | volcengine | dashscope | comfyui) shift ;;
+*)
+	echo "未知后端: $BACKEND（可选 auto/openai/volcengine/dashscope/comfyui）" >&2
+	exit 2
+	;;
 esac
 
 exec bash "$SCRIPT_DIR/imagegen-$BACKEND.sh" "$@"

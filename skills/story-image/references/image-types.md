@@ -98,7 +98,7 @@ Professional book cover, high detail digital painting, portrait [3:4|2:3] ratio,
 **后端差异**：
 
 - openai/volcengine/dashscope：单图三格提示词（`three-panel character turnaround sheet, front view / side view / back view`）
-- comfyui：使用 `workflows/turnaround.json`（三格布局节点控制，需本地 ComfyUI 安装对应节点）
+- comfyui：用户自选本地工作流（`--list-workflows` 列出，或直接给路径；三格布局工作流更可控，但依赖模型能力的三格提示词也可用）
 
 ### 质量检查
 
