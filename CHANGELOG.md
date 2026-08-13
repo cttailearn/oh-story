@@ -1,3 +1,12 @@
+## v1.3.1
+
+> 修复：agent 模板 `turnBudget` frontmatter 格式与 pi-subagents 0.47 不兼容，导致 subagent 全部不可用。
+
+### 修复
+
+- **agent 模板 turnBudget 格式修复**：`turnBudget: { maxTurns: N }`（YAML 内联对象风格）在 pi-subagents 0.47.1 的简易 frontmatter 解析器下被当作字符串存储，随后对 `turnBudget` 值执行 `JSON.parse` 时因 JSON 键未加双引号抛 `Expected property name or '}'` 错误，agent 注册表构建失败，`subagent` 工具的 list/get/models/run 全部不可用。已改为 JSON 风格 `turnBudget: {"maxTurns": N}`（键带双引号）。
+- 已部署项目重跑 `/skill:story-setup` 即可刷新 `.pi/agents/`，无需新开会话。
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
