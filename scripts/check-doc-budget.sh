@@ -9,6 +9,19 @@
 # 冷路径（story-setup 部署、UPGRADING、拆文库模板）不登记，不受限。
 set -euo pipefail
 
+WARN_MARGIN=""
+case "${1:-}" in
+	--warn-margin)
+		WARN_MARGIN="${2:?--warn-margin 需要一个数字参数（距上限多少字符内预警）}"
+		shift 2
+		;;
+	"") ;;
+	*)
+		echo "用法: check-doc-budget.sh [--warn-margin N]" >&2
+		exit 2
+		;;
+esac
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MANIFEST="$SCRIPT_DIR/doc-budget.json"
@@ -21,7 +34,8 @@ fi
 node -e '
 const fs = require("fs");
 const path = require("path");
-const [manifestPath, repoRoot] = process.argv.slice(1);
+const [manifestPath, repoRoot, warnMargin] = process.argv.slice(1);
+const warnN = warnMargin === "" ? 0 : Number(warnMargin);
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
 // 去空白字符数：改标点/换行/缩进不影响，加删正文才影响。
@@ -49,6 +63,8 @@ for (const entry of manifest.files) {
   console.log(`  ${String(used).padStart(6)} / ${String(entry.budget).padStart(6)} ${String(left).padStart(6)}  ${entry.path}  [${mark}]`);
   if (left < 0) {
     fail.push(`${entry.path} 超预算 ${-left} 字（${used} > ${entry.budget}）：${entry.why}`);
+  } else if (warnN > 0 && left < warnN) {
+    console.log(`  WARN 余量仅 ${left} 字（< ${warnN}）：${entry.path}`);
   } else if (left >= Math.ceil(entry.budget * 0.05)) {
     note.push(`${entry.path} 比预算低 ${left} 字，可把 budget 降到 ${Math.ceil(used / 100) * 100} 锁住这次精简`);
   }
@@ -93,4 +109,4 @@ if (fail.length) {
 
 console.log("");
 console.log("Result: 热路径文档预算检查通过");
-' "$MANIFEST" "$REPO_ROOT"
+' "$MANIFEST" "$REPO_ROOT" "$WARN_MARGIN"
