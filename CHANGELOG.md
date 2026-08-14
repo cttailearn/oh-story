@@ -31,6 +31,11 @@
 - **story-setup 工作流编号规范**：`### 1.1/1.2/2.1/2.2/2.3` 改为 `### Step N` 连续整数编号，`Phase 1.2` 引用改 `Phase 1 Step 2`，`skill-numbering.py check` 恢复 PASS
 - **CI 守卫门禁**：新增 `.github/workflows/guards.yml`，PR 与 main push 全量运行 19 个守卫/回归 step（此前 17 条守卫只在本地手动跑，导致 VERSION 漂移与编号违规入库）；CONTRIBUTING 更新 CI 说明
 - **僵尸 rules 模板清理**：删除 `skills/story-setup/references/templates/rules/` 4 个文件（story-consistency/story-format/story-narrative/story-outline，共 278 行）——v0.7 多端 hooks 时代的路径过滤规则文件，pi 版 story-setup 早已不部署，仅 contract 测试与回归测试还在强制引用。细纲必填项契约校验从 rules/story-outline.md 迁至热路径权威 `workflow-setup.md` 的「细纲（第 N 章）」模板（fence 内 bullet + heading 双形态提取，8 字段全命中），相关回归测试同步更新
+- **v1.5 术语残留清理（设定模板体系审查）**：① narrative-writer/story-short-write 两处「语言风格档案」→「说话方式」（v1.5 角色卡 6 大标题制的正式称呼）；② worldbuilding.md「硬事实表」范围修正为势力/世界观卡（角色卡 v1.5 起由基础信息「结论（补充）」字段承担事实锚点），副本经 shared-assets 同步
+- **细纲模板双轨消除**：story-architect 模板内缩减版细纲示例替换为与 workflow-setup.md 权威模板一致的完整字段结构（含阶段位置/章节定位/结构公式/禁止提前释放/契约风险/本章设定引用/预算合计），禁止事项同步补「预算合计」要求
+- **细纲顶层必填字段守卫（v1.5 新字段）**：current-contract.json 新增 `required_outline_header_fields`（单元ID/位置、主角目标/关键选择、契约风险、本章设定引用等 8 项），contract 校验 workflow-setup 权威模板必须声明全部字段（负面测试已验证拦截），demo 保持 8 项核心段校验不变
+- **角色线阶段编号连续性**：consistency-checker 第零步新增阶段 N 连续性机械校验（从 1 开始、无跳号/重复，[S1][stage_numbering]）；character-basics/workflow-setup 模板同步注明编号纪律
+- **细纲字段强度分层显式化**：workflow-setup 新增显式清单——13 项每章必填硬字段 + 4 项按需字段（高压章必配、低压章可弱化但须写占位结论），供生成/验收对照
 - workflow-setup 落盘校验：必查项改 6 大标题齐全（含 H1 定位括号、三项无待补充、结论（补充）格式禁表格）
 - 修复 consistency-checker.md 空文件事故（edit 与 git add 并行竞态导致提交 0 字节）
 

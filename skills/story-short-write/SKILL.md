@@ -177,7 +177,7 @@ description: "短篇网文写作。辅助短篇小说创作，从构思到成稿
 
 #### Agent 调用：character-designer
 
-设计任务完成后，如果项目已部署 character-designer agent（查找顺序见顶部），可 spawn `子代理`character-designer`（subagent 工具，task："项目目录：{dir}\n任务类型：角色设定\n查询参数：{人设速写+关系}"）` 辅助角色设定和语言风格档案。如 agent 不可用，由主线程直接执行。
+设计任务完成后，如果项目已部署 character-designer agent（查找顺序见顶部），可 spawn `子代理`character-designer`（subagent 工具，task："项目目录：{dir}\n任务类型：角色设定\n查询参数：{人设速写+关系}")` 辅助角色设定和说话方式。如 agent 不可用，由主线程直接执行。
 
 ---
 
