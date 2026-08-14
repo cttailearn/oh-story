@@ -64,7 +64,7 @@ test("用现有 demo 浏览拆文库、搜索项目并编辑保存", async ({ pa
   await page.locator("#treeSearch").fill("江晨");
   await expect(page.locator("#fileTree")).toContainText("江晨.md");
   await expect(page.locator("#fileTree")).not.toContainText("关系.md");
-  await expect(page.locator("#fileTree")).not.toContainText("细纲_第003章");
+  await expect(page.locator("#fileTree")).not.toContainText("第003章");
   await expect(page.locator("#fileTree")).not.toContainText("盘龙");
   // 断言「树被过滤成命中集」而不是比行数：命中数会随 demo 增加同名文件而变化
   // （角色既有 设定/角色/{名}.md 又有 追踪/角色状态/{名}.md），行数比较会偶然失效。
@@ -334,7 +334,7 @@ test("CRLF 稿件里的孤立 CR 不会反向触发整篇 LF 重写", async ({ p
 });
 
 test("打开文稿不会收起正在翻的目录", async ({ page }) => {
-  const rowPath = "长篇/让你管账号，你高燃混剪炸全网/大纲/细纲_第002章.md";
+  const rowPath = "长篇/让你管账号，你高燃混剪炸全网/大纲/细纲/第002章.md";
   await page.goto("/");
   await page.getByRole("tab", { name: /写作项目/ }).click();
   await expect(page.locator("#fileTree")).toContainText("让你管账号，你高燃混剪炸全网");
@@ -344,7 +344,7 @@ test("打开文稿不会收起正在翻的目录", async ({ page }) => {
   await expect(row).toBeVisible();
 
   await row.click();
-  await expect(page.locator("#editorTitle")).toHaveText("细纲_第002章.md");
+  await expect(page.locator("#editorTitle")).toHaveText("第002章.md");
   await expect(row).toBeVisible();
   await expect(row).toHaveAttribute("data-active", "true");
 
@@ -353,8 +353,8 @@ test("打开文稿不会收起正在翻的目录", async ({ page }) => {
   await expect(row).toBeVisible();
   await expect(row).toHaveAttribute("data-active", "true");
 
-  await page.locator("#treeSearch").fill("细纲_第002章");
-  await expect(page.locator("#fileTree")).not.toContainText("细纲_第003章");
+  await page.locator("#treeSearch").fill("第002章");
+  await expect(page.locator("#fileTree")).not.toContainText("第003章");
   await page.locator("#treeSearch").fill("");
   await expect(row).toBeVisible();
 });
