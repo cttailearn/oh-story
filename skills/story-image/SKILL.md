@@ -17,7 +17,7 @@ description: "故事图像生成。生成小说封面、角色卡图（统一立
 | `GPT_IMAGE_API_KEY` | openai | ✅ | OpenAI 或兼容代理的 API Key |
 | `GPT_IMAGE_BASE_URL` | openai | | 兼容代理时改；默认 `https://api.openai.com/v1` |
 | `GRSAI_API_KEY` | grsai | ✅ | GrsAI（grsai.ai）API Key，控制台创建；OpenAI 风格 GPT-Image 接口 |
-| `GRSAI_BASE_URL` | grsai | | 默认 `https://api.grsai.com`（海外）；国内可设 `https://api.grsai.cn` |
+| `GRSAI_BASE_URL` | grsai | | 默认 `https://grsai.dakka.com.cn`（实测可用）；海外可设 `https://api.grsai.com` |
 | `GRSAI_MODEL` | grsai | | 默认 `gpt-image-2` |
 | `ARK_API_KEY` | volcengine | ✅ | 火山方舟 Key（字节 Seedream） |
 | `ARK_IMAGE_MODEL` | volcengine | | 默认 `doubao-seedream-4-0-250828`（最兼容，实测通过）；可用模型 `GET /api/v3/models` 查询。**模型 size 语义不同**：4.0 支持 `1K/2K/4K` 或任意 `宽x高`；5.0/4.5 只支持 `2k/3k/4k`（小写）或 `宽x高`（像素 ≥ 3686400，如 1440x2560） |

@@ -5,7 +5,7 @@
 #
 # 环境变量：
 #   GRSAI_API_KEY        必填；grsai.ai 控制台创建
-#   GRSAI_BASE_URL       可选；默认 https://api.grsai.com（海外）；国内可设 https://api.grsai.cn
+#   GRSAI_BASE_URL       可选；默认 https://grsai.dakka.com.cn（实测可用）；海外可设 https://api.grsai.com
 #   GRSAI_MODEL          可选；默认 gpt-image-2
 # 认证：Authorization: Bearer $GRSAI_API_KEY
 # 协议：POST {base}/v1/draw/completions，同步返回 {status:"succeeded", results:[{url}]}，
@@ -48,7 +48,7 @@ done
 : "${OUT:?缺少 --out}"
 : "${GRSAI_API_KEY:?请设置 GRSAI_API_KEY}"
 PROMPT=$(cat "$PROMPT_FILE")
-BASE_URL="${GRSAI_BASE_URL:-https://api.grsai.com}"
+BASE_URL="${GRSAI_BASE_URL:-https://grsai.dakka.com.cn}"
 MODEL="${GRSAI_MODEL:-gpt-image-2}"
 # GrsAI 的 size 语义是宽高比（aspectRatio），如 1:1 / 2:3 / 3:4
 SIZE="${SIZE:-1:1}"
@@ -96,11 +96,29 @@ print(json.dumps(body, ensure_ascii=False))
 " "$BODY" "$URLS")
 fi
 
-curl -fsS --max-time 240 --retry 2 --retry-delay 5 \
+# Windows curl（schannel）在国内网络下证书吊销检查会超时（CRYPT_E_REVOCATION_OFFLINE），
+# 加 --ssl-no-revoke 跳过吊销检查（仅 Windows 有效，Linux/macOS 忽略）
+CURL_SSL_OPTS=""
+if [ -n "${WINDIR:-}" ] || [ "$(uname -s 2>/dev/null)" = "MINGW*" ] || [ "$(uname -s 2>/dev/null)" = "MSYS*" ]; then
+	CURL_SSL_OPTS="--ssl-no-revoke"
+fi
+curl -fsS $CURL_SSL_OPTS --max-time 300 --retry 2 --retry-delay 5 \
 	"$BASE_URL/v1/draw/completions" \
 	-H "Authorization: Bearer $GRSAI_API_KEY" \
 	-H "Content-Type: application/json" \
 	-d "$BODY" >"$RESP"
+
+# GrsAI 响应带 `data: ` 前缀（SSE 风格单帧），剥离后才是 JSON
+if head -c 6 "$RESP" | grep -q "^data: "; then
+	python -c "
+import sys
+raw = sys.stdin.read()
+if raw.startswith('data: '):
+    raw = raw[6:]
+sys.stdout.write(raw)
+" <"$RESP" >"$RESP.json"
+	mv "$RESP.json" "$RESP"
+fi
 
 if ERR=$(python "$JSONPY" has-error "$RESP" grsai); then
 	:
