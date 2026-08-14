@@ -1,7 +1,7 @@
 ---
 name: story-image
 version: 2.1.0
-description: "故事图像生成。生成小说封面、人物形象图（立绘）、角色三视图、场景图四类图像，支持多后端（GPT-Image-2、火山方舟 Seedream、阿里通义万相、本地 ComfyUI），自动探测已配置后端。触发方式：/skill:story-image、/封面、/人物图、/立绘、/三视图、/场景图、「帮我做个封面」「生成封面图」「做个小说封面」「封面设计」「生成人物形象图」「生成三视图」「生成场景图」。"
+description: "故事图像生成。生成小说封面、角色卡图（统一立绘/人设/三视图）、场景图，支持多后端（GPT-Image-2、GrsAI、火山方舟 Seedream、阿里通义万相、本地 ComfyUI），自动探测已配置后端，未配置时主动询问用户提供 API Key。触发方式：/skill:story-image、/封面、/人物图、/立绘、/三视图、/角色卡图、/场景图、「帮我做个封面」「生成封面图」「做个小说封面」「封面设计」「生成人物形象图」「生成三视图」「生成场景图」。"
 ---
 
 # story-image：故事图像生成
@@ -34,6 +34,8 @@ description: "故事图像生成。生成小说封面、人物形象图（立绘
 **外部依赖**：curl；JSON 处理内置 Python 脚本（`api-json.py` 云后端 / `comfyui-json.py` ComfyUI 后端，均无需 jq）；ComfyUI 后端用 Python 生成 client_id（无需 uuidgen）；openai/dashscope 后端另需 base64。脚本入口有前置检查，缺依赖会给出中文提示。**已实测环境**：Windows Git Bash + 本地 Python 3.13 + ComfyUI 0.30（FaboroHacks 整合包，端口 8198）；火山方舟 Seedream 4.0（720x1280 竖版实测通过）。
 
 ## 生成流程
+
+> **配置前置（进入任何 Step 前先做一次）**：跑 `bash <skill-dir>/scripts/imagegen.sh --list-backends` 检测已配置后端。**未配置任何后端时，先用 AskUserQuestion 询问用户提供 API Key 或选择后端**（询问文案见 Step 4「先检测配置」），不得直接开始生成或报错退出。
 
 ### Step 1：确定图像类型与收集信息
 
@@ -101,6 +103,17 @@ python <skill-dir>/scripts/prompt-template.py turnaround jinjin \
 > **三视图局限**：单图三格提示词对当前主流模型（Krea2/Seedream 4.0）是**能力边界**——三格布局+纯白背景难两全。优化提示词能稳住横版（aspect 3:1）与多数白底（实测字节 Seedream 4.0 白底 ~56%），但人物+服饰仍会占据一部分画面。最稳的方案是 **ComfyUI 专用三格布局工作流**（用户自选）；本仓库在 `tests/comfyui/` 提供了 1536x512 的精简横版工作流 `krea2_turnaround_api.json` 作为默认起点。char-sheet 的三视图部分同样适用此注意点。
 
 ### Step 4：调用后端
+
+**先检测配置（调用前必做，不直接跑脚本碰壁）**：
+
+1. 先跑 `bash <skill-dir>/scripts/imagegen.sh --list-backends` 列出**所有**已配置的后端（openai/grsai/volcengine/dashscope/comfyui 每行一个；无任何配置时退出码 1 且无输出）。`IMG_BACKEND` 已设置时直接用该后端并跳过探测。
+2. **无任何后端已配置时，不得直接报错退出**——用 AskUserQuestion 询问用户：
+   - 选项 1：**我提供 API Key** → 让用户粘贴 key，然后引导用户配置到环境（当前会话导出 + 提示持久化方式，如写入 `~/.bashrc` 或 pi 配置）；配置后可继续本次生成
+   - 选项 2：**本地 ComfyUI** → 提示先启动 ComfyUI（`COMFYUI_URL` 默认 `http://127.0.0.1:8188`），探测到后继续
+   - 选项 3：**先跳过** → 停止生成，告知用户随时可回来继续
+   - 询问时把各后端用途列清楚：GPT-Image（OpenAI 或兼容代理）/ GrsAI（grsai.ai，需在控制台创建 key）/ 火山方舟 Seedream / 通义万相 / 本地 ComfyUI。用户明确指定后端时优先该后端。
+3. 用户提供 key 后，**先做一次连通性验证**再进入正式生成：用极小成本请求（或直接跑本次生成并在失败时定位）——至少确认 key 格式非空且后端可达（curl 一次 API 根路径或文档端点）；失败时给出该后端典型错误对照（401=key 无效/过期，429=限流，5xx=服务端）。
+4. 多后端已配置时默认按探测顺序取第一个，但可提示用户指定：`IMG_BACKEND=openai|grsai|volcengine|dashscope|comfyui`。
 
 统一入口 `scripts/imagegen.sh`，先探测后端（`IMG_BACKEND` 显式指定优先）：
 

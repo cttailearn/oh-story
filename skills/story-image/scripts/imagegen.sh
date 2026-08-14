@@ -47,6 +47,39 @@ detect_backend() {
 	exit 1
 }
 
+# --list-backends：列出当前已配置的后端（供 skill 在调用前检测/询问用户），
+# 每行一个后端名；无任何配置时退出码 1 且无输出。
+list_backends() {
+	FOUND=0
+	[ -n "${GPT_IMAGE_API_KEY:-}" ] && {
+		echo openai
+		FOUND=1
+	}
+	[ -n "${GRSAI_API_KEY:-}" ] && {
+		echo grsai
+		FOUND=1
+	}
+	[ -n "${ARK_API_KEY:-}" ] && {
+		echo volcengine
+		FOUND=1
+	}
+	[ -n "${DASHSCOPE_API_KEY:-}" ] && {
+		echo dashscope
+		FOUND=1
+	}
+	COMFY_URL="${COMFYUI_URL:-http://127.0.0.1:8188}"
+	if [ -n "${COMFYUI_URL:-}" ] || curl -fsS --max-time 3 "$COMFY_URL/system_stats" >/dev/null 2>&1; then
+		echo comfyui
+		FOUND=1
+	fi
+	[ "$FOUND" -eq 1 ] || exit 1
+}
+
+if [ "${1:-}" = "--list-backends" ]; then
+	list_backends
+	exit 0
+fi
+
 BACKEND="${1:-auto}"
 case "$BACKEND" in
 auto)
