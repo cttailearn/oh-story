@@ -14,7 +14,7 @@ description: "网文写作工具集（pi 专属）项目初始化。验证 oh-st
 
 ## Phase 1：自检与状态检测
 
-### 1.1 自检参考目录（包完整性）
+### Step 1：自检参考目录（包完整性）
 
 以正在执行的本 `SKILL.md` 所在目录为准，核对同级 `references/` 下：
 
@@ -27,7 +27,7 @@ description: "网文写作工具集（pi 专属）项目初始化。验证 oh-st
 > 「story-setup 参考资料包不完整，缺 {目录名}。重新安装 oh-story-pi 后再执行：
 > git 安装 → `pi install git:github.com/cttailearn/oh-story-pi@v1.5.0`；更新 → `pi update --extensions`。」
 
-### 1.2 检测项目状态
+### Step 2：检测项目状态
 
 1. 读 `.story-deployed`：
    - 不存在 → 全新项目，继续
@@ -44,13 +44,13 @@ description: "网文写作工具集（pi 专属）项目初始化。验证 oh-st
 
 整个 Phase 2 幂等：重复执行结果一致。中途失败直接重跑本 Phase，不需要先清理半成品。
 
-### 2.1 部署专业子代理到 `.pi/agents/`
+### Step 1：部署专业子代理到 `.pi/agents/`
 
 1. 将本 skill 目录 `references/templates/agents/` 下的 7 个 `*.md` 复制到项目 `.pi/agents/`（文件名不变）。
 2. 覆盖策略：这 7 个文件由 story-setup 管理，直接覆盖复制（模板自带 frontmatter 与内容，升级后重跑 setup 即刷新）。用户在 `.pi/agents/` 下自己添加的其它 agent 文件一律不动。
 3. 不改动全局 `~/.pi/agent/agents/`（那是用户级配置，setup 不碰）。
 
-### 2.2 写/合并 `AGENTS.md`
+### Step 2：写/合并 `AGENTS.md`
 
 模板：本 skill 目录 `references/templates/AGENTS.md.tmpl`，替换 `{项目名}` 为当前目录名。
 
@@ -58,7 +58,7 @@ description: "网文写作工具集（pi 专属）项目初始化。验证 oh-st
 - 已存在 → 只处理「## 网文写作工具集（pi）」段：不存在该标题则把模板的该段追加到文件末尾；存在则用模板该段替换原段。文件其它内容原样保留。
 - 替换 `{项目名}` 占位符，去掉花括号。其它占位符不存在于模板中。
 
-### 2.3 创建书目录结构
+### Step 3：创建书目录结构
 
 按用户意图（未指定时用 AskUserQuestion 询问篇幅）：
 
@@ -82,7 +82,7 @@ references_dir: package-skill-dir（skill 本体随 oh-story-pi 包加载，项�
 ```
 
 - 此文件供写作/审查/导入 skill 检测部署状态，避免重复提示
-- target_cli 固定写 `pi`；检测到旧多端标记时按 Phase 1.2 迁移场景处理，不删旧端文件
+- target_cli 固定写 `pi`；检测到旧多端标记时按 Phase 1 Step 2 迁移场景处理，不删旧端文件
 
 ---
 
@@ -93,7 +93,7 @@ references_dir: package-skill-dir（skill 本体随 oh-story-pi 包加载，项�
 3. 书目录结构与 `.active-book` 指向一致。
 4. `.story-deployed` 的 `agents_version: 26`、`target_cli: pi`。
 
-全部通过后报告（按 Phase 1.2 第 2 步记录的运行时检测结果分支）：
+全部通过后报告（按 Phase 1 Step 2 第 2 步记录的运行时检测结果分支）：
 
 > ✅ 初始化完成：子代理已部署到 `.pi/agents/`（7 个）、AGENTS.md 已合并、书目录已建、部署标记已写。
 

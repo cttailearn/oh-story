@@ -1,0 +1,67 @@
+name: Story Guards
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: story-guards-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guards:
+    name: guards (ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - name: 静态结构化检查（skills/demo markdown、frontmatter、链接、锚点、路径）
+        run: bash scripts/static-check.sh
+      - name: 工作流编号规范（Step/Phase/Stage 整数编号）
+        run: python3 scripts/skill-numbering.py check
+      - name: 当前契约校验（manifest、版本四源一致、agents_version 阈值、demo 产物）
+        run: bash scripts/check-current-skill-contracts.sh
+      - name: 热路径文档预算
+        run: bash scripts/check-doc-budget.sh
+      - name: 共享资产单源同步
+        run: python3 scripts/sync-shared-assets.py check
+      - name: python 调用规范（hook 内嵌 python 不得文本模式输出）
+        run: bash scripts/check-python-invocation.sh
+      - name: 回归：static-check
+        run: python3 scripts/test-static-check.py
+      - name: 回归：skill-numbering
+        run: bash scripts/test-skill-numbering.sh
+      - name: 回归：current-contract
+        run: python3 scripts/test-current-skill-contracts.py
+      - name: 回归：shared-assets
+        run: python3 scripts/test-shared-assets.py
+      - name: 回归：标点归一化
+        run: node scripts/test-normalize-punctuation.js
+      - name: 回归：扫榜运行时（shell-safe CDP 调用、无副作用导入）
+        run: node scripts/test-scan-runtime.js
+      - name: 回归：AI 味检测
+        run: bash scripts/test-ai-patterns.sh
+      - name: 回归：退化检测
+        run: bash scripts/test-degeneration.sh
+      - name: 回归：AI 模式基准（blocking 10/10）
+        run: bash scripts/test-ai-benchmark.sh
+      - name: 回归：跨平台字符统计
+        run: bash scripts/test-charcount-portable.sh
+      - name: 回归：追踪事务（26 项）
+        run: python3 scripts/test-tracking-commit.py
+      - name: 回归：追踪工作流契约（14 项）
+        run: python3 scripts/test-tracking-workflow-contracts.py
+      - name: 回归：dashboard API（node test 套件）
+        run: npm run test:dashboard

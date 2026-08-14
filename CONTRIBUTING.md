@@ -60,7 +60,14 @@ description: "一句话描述。触发方式：/skill:skill-name、触发词1、
 
 ## CI 检查
 
-PR 自动运行 `.github/workflows/dashboard.yml`（dashboard API + e2e）。提交前本地跑完整守卫清单：
+PR 与 main push 自动运行两套流水线：
+
+- `.github/workflows/guards.yml`：全部静态守卫 + 回归测试（static-check / skill-numbering /
+  current-contract / doc-budget / shared-assets / python-invocation / AI 味基准 / 追踪事务 /
+  dashboard API 等 19 个 step），无路径过滤，任何改动都会触发。
+- `.github/workflows/dashboard.yml`：dashboard e2e（playwright，仅 dashboard 相关路径）。
+
+提交前也可本地跑完整守卫清单：
 
 ```bash
 bash scripts/static-check.sh
