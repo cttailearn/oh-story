@@ -42,5 +42,15 @@
       "demo": "结尾设定和钩子"
     }
   ],
+  "required_outline_header_fields": [
+    "阶段位置",
+    "单元ID/位置",
+    "目标情绪",
+    "主角目标/关键选择",
+    "结构公式",
+    "禁止提前释放",
+    "契约风险",
+    "设定引用"
+  ],
   "expected_demo_outline_count": 20
 }

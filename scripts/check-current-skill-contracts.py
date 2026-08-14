@@ -28,6 +28,7 @@ EXPECTED_MANIFEST_KEYS = {
     "expected_demo_outline_count",
     "primary_benchmark_artifacts",
     "required_outline_sections",
+    "required_outline_header_fields",
 }
 SEMVER_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 ARTIFACT_PATH_RE = re.compile(r"(?:[^/\s]+/)+[^/\s]+\.md")
@@ -42,6 +43,7 @@ class ContractManifest:
     progress_schema_version: int
     primary_benchmark_artifacts: Tuple[str, ...]
     required_outline_sections: Tuple[Tuple[str, str], ...]
+    required_outline_header_fields: Tuple[str, ...]
     expected_demo_outline_count: int
 
 
@@ -428,11 +430,39 @@ def load_manifest(path: Path) -> Tuple[Optional[ContractManifest], List[Finding]
             )
         )
 
+    header_fields = raw.get("required_outline_header_fields")
+    valid_header_fields = (
+        isinstance(header_fields, list)
+        and bool(header_fields)
+        and all(
+            isinstance(item, str) and bool(item.strip()) for item in header_fields or []
+        )
+    )
+    if not valid_header_fields:
+        findings.append(
+            Finding(
+                "manifest-header-type",
+                "required_outline_header_fields must be a non-empty string array",
+                path,
+            )
+        )
+    elif isinstance(header_fields, list) and len(set(header_fields)) != len(
+        header_fields
+    ):
+        findings.append(
+            Finding(
+                "manifest-header-duplicate",
+                "required_outline_header_fields must be unique",
+                path,
+            )
+        )
+
     if findings:
         return None, findings
 
     assert isinstance(artifacts, list)
     assert isinstance(sections, list)
+    assert isinstance(header_fields, list)
     manifest = ContractManifest(
         manifest_version=raw["manifest_version"],
         setup_skill_version=raw["setup_skill_version"],
@@ -443,6 +473,7 @@ def load_manifest(path: Path) -> Tuple[Optional[ContractManifest], List[Finding]
         required_outline_sections=tuple(
             (item["rule"], item["demo"]) for item in sections
         ),
+        required_outline_header_fields=tuple(header_fields),
         expected_demo_outline_count=raw["expected_demo_outline_count"],
     )
     return manifest, []
@@ -1468,6 +1499,24 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
     findings.extend(
         outline_rule_contract_findings(outline_rule_text, manifest, outline_rule)
     )
+    # 细纲顶层必填字段（v1.5：单元ID/位置、主角目标/关键选择、契约风险、本章设定引用等）：
+    # 权威模板 workflow-setup.md 必须声明全部字段，防止新增/改名后模板与 manifest 脱节。
+    blueprint_fields = extract_outline_rule_fields(outline_rule_text)
+    missing_header = [
+        field
+        for field in manifest.required_outline_header_fields
+        if field not in blueprint_fields
+    ]
+    if missing_header:
+        findings.append(
+            Finding(
+                "outline-header-field",
+                "workflow-setup chapter blueprint template is missing required header fields: {}".format(
+                    ", ".join(missing_header)
+                ),
+                outline_rule,
+            )
+        )
 
     demo_root = repo_root / "demo/拆文库/盘龙"
     for artifact in manifest.primary_benchmark_artifacts:
