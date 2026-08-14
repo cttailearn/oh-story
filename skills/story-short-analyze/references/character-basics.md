@@ -70,7 +70,7 @@
 | --- | --- | --- |
 | {时期1} | … | … |
 能力/金手指上限：…（与 设定/题材定位.md 交叉引用）
-形象图：…（由 story-image 生成后回写：`characters/{名}/portrait_v{N}.png` + 生成日期，如 `characters/沈栀/portrait_v2.png（2026-08-14）`；新图生成时把 N 递增并更新本行，不叠加历史版本；未生成写“无”）
+形象图：…（由 story-image 生成后回写：`characters/{名}/char-sheet_v{N}.png` + 生成日期，如 `characters/沈栀/char-sheet_v2.png（2026-08-14）`；兼容旧图 `portrait_v{N}.png`/`turnaround_v{N}.png`；新图生成时把 N 递增并更新本行，不叠加历史版本；未生成写“无”）
 
 ## 说话方式
 

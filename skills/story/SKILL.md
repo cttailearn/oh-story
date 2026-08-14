@@ -22,8 +22,7 @@ description: "网络小说工具箱主入口。根据用户需求自动路由到
 | 去 AI 味 | 去 AI 味、太 AI、去味 | `/skill:story-deslop` |
 | 审查稿件 | 审查、审稿、帮我审一下、一致性检查、看看有没有问题 | `/skill:story-review` |
 | 封面 | 封面、封面图 | `/skill:story-image` |
-| 人物图/立绘 | 人物图、立绘、人设图、形象图 | `/skill:story-image` |
-| 三视图 | 三视图、正侧背面、角色设定图 | `/skill:story-image` |
+| 角色卡图 | 人物图、立绘、人设图、形象图、三视图、正侧背面、角色设定图 | `/skill:story-image` |
 | 场景图 | 场景图、场景设定、概念场景 | `/skill:story-image` |
 | 环境部署 | 准备写书、搭环境、初始化 | `/skill:story-setup` |
 | 浏览器操控 | 浏览器、抓取、登录态 | `/skill:browser-cdp` |

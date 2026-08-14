@@ -39,11 +39,12 @@ description: "故事图像生成。生成小说封面、人物形象图（立绘
 | 类型 | 必填信息 | 选填 |
 | :----- | :--------- | :----- |
 | cover 封面 | 书名、作者名（笔名）、目标平台 | 参考图、风格偏好、平台上传尺寸 |
-| portrait 人物形象图 | 角色名（读 `设定/角色/{名}.md` 的外貌特征/身份标签/性格关键词） | 半身/全身、表情姿态、道具 |
-| turnaround 三视图 | 角色名（复用 portrait 固化的外貌描述串） | 服装（默认与立绘同一套） |
+| **char-sheet 角色卡图** | 角色名（读 `设定/角色/{名}.md` 的 基础信息/形象与能力/身份标签/性格关键词；用 `scripts/character-card.py` 自动提取） | 表情网格、色板、简介、关键词标签、中英双语（--lang） |
+| portrait 人物形象图 | 角色名（旧单图模式；新项目建议用 char-sheet 替代） | 半身/全身、表情姿态、道具 |
+| turnaround 三视图 | 角色名（旧三格模式；新项目建议用 char-sheet 替代） | 服装（默认与立绘同一套） |
 | scene 场景图 | 场景名、地点类型、时间/天气 | 横/竖版、`设定/世界观/{主题}.md` 参考 |
 
-> 角色图强烈建议先有 `设定/角色/{名}.md`——人设卡的外貌特征+服饰描述串是图像一致性的唯一事实源；没有卡片时先让用户提供或先用 generation 草稿后回写入设卡。缺书名/作者名/角色名等必填信息必须问用户，不得编造。
+> **char-sheet 角色卡图（推荐）**：统一替代 portrait/turnaround——参考表布局（大标题+基本信息面板+三视图+表情网格+服装分解+色板），从角色卡自动提取信息构建提示词，支持中英双语（`--lang en|zh`）与模块裁剪（`--modules`）。角色图强烈建议先有 `设定/角色/{名}.md`——人设卡是图像一致性的唯一事实源；没有卡片时先让用户提供或先用 generation 草稿后回写入设卡。缺书名/作者名/角色名等必填信息必须问用户，不得编造。
 
 **封面卖点注入**（cover 类型）：写作项目内生成封面时，先读 `设定/题材定位.md` 的「表层卖点」「核心梗三分法」，把表层卖点化为一个画面元素写进提示词画面层（例：卖点「混剪引爆全网」→ 画面加入“视频剪辑风暴/屏幕弹出爆款数据”元素），封面不是只有书名——卖点要一眼可见。
 
@@ -56,11 +57,30 @@ description: "故事图像生成。生成小说封面、人物形象图（立绘
 按类型读对应模板：
 
 - cover：image-types.md「cover 封面」（文字层+风格层+画面层；书名字体表/作者名装饰表）
-- portrait / turnaround / scene：image-types.md 对应章节 + visual-styles.md 的类型规范节（人物形象图/三视图/场景图规范）
+- char-sheet / portrait / turnaround / scene：image-types.md 对应章节 + visual-styles.md 的类型规范节（角色卡图/人物形象图/三视图/场景图规范）
 
 风格/题材/光效/构图关键词统一取自 visual-styles.md。全英文提示词写入临时文件（`mktemp`），调用脚本时传 `--prompt-file`。
 
-**内置提示词模板（推荐）**：用 `scripts/prompt-template.py` 一键生成标准化英文提示词，避免手写拼接出错。接受角色描述串（`--desc`，逗号分隔，可加 `hair:`/`face:`/`outfit:`/`accessory:` 前缀）与画风（`jinjin`/`qidian`/`fanqie`/`yan`/`qimao`/`general`）：
+**内置提示词模板（推荐）**：用 `scripts/prompt-template.py` 一键生成标准化提示词，避免手写拼接出错。
+
+**char-sheet 角色卡图（首选）**：先用 `scripts/character-card.py` 从 `设定/角色/{名}.md` 自动提取素材，再组装提示词（支持中英双语）：
+
+```bash
+# 1) 提取角色卡素材（--json 输出供程序消费；人类可读输出可直接参考）
+python <skill-dir>/scripts/character-card.py "{项目}/设定/角色/{名}.md" --json
+
+# 2) 中文版角色卡图（参考表布局）
+python <skill-dir>/scripts/prompt-template.py char-sheet jinjin --lang zh \
+  --name {角色名} --pinyin {拼音} \
+  --info "姓名={名}; 年龄={X}岁; 身份={身份}; 气质={性格}" \
+  --desc "face: {外貌记忆点}, hair: {发型}, outfit: {服饰}, accessory: {饰品}" \
+  --colors "#FFFFFF,#000000" --bio "{核心目标}" --tags {性格关键词逗号分隔}
+
+# 英文版：--lang en（模型对英文布局指令理解更稳）；提示词过长时可 --modules 裁剪
+# （如 --modules header,info,expressions,breakdown 去掉 palette）
+```
+
+**旧模式（兼容保留）**：
 
 ```bash
 # portrait 半身/全身单图
@@ -75,7 +95,7 @@ python <skill-dir>/scripts/prompt-template.py turnaround jinjin \
   --desc "hair: ..., face: ..., outfit: ..., accessory: ..."
 ```
 
-> **三视图局限**：单图三格提示词对当前主流模型（Krea2/Seedream 4.0）是**能力边界**——三格布局+纯白背景难两全。优化提示词能稳住横版（aspect 3:1）与多数白底（实测字节 Seedream 4.0 白底 ~56%），但人物+服饰仍会占据一部分画面。最稳的方案是 **ComfyUI 专用三格布局工作流**（用户自选）；本仓库在 `tests/comfyui/` 提供了 1536x512 的精简横版工作流 `krea2_turnaround_api.json` 作为默认起点。
+> **三视图局限**：单图三格提示词对当前主流模型（Krea2/Seedream 4.0）是**能力边界**——三格布局+纯白背景难两全。优化提示词能稳住横版（aspect 3:1）与多数白底（实测字节 Seedream 4.0 白底 ~56%），但人物+服饰仍会占据一部分画面。最稳的方案是 **ComfyUI 专用三格布局工作流**（用户自选）；本仓库在 `tests/comfyui/` 提供了 1536x512 的精简横版工作流 `krea2_turnaround_api.json` 作为默认起点。char-sheet 的三视图部分同样适用此注意点。
 
 ### Step 4：调用后端
 
@@ -109,8 +129,9 @@ bash <skill-dir>/scripts/imagegen.sh auto \
 **输出路径约定**（自增版本号，不覆盖历史版本）：
 
 - cover → `covers/<书名>/封面/封面_v{N}.png`
-- portrait → `characters/<角色名>/portrait_v{N}.png`
-- turnaround → `characters/<角色名>/turnaround_v{N}.png`
+- **char-sheet → `characters/<角色名>/char-sheet_v{N}.png`（角色卡图首选；portrait/turnaround 旧图不迁移）**
+- portrait → `characters/<角色名>/portrait_v{N}.png`（兼容旧模式）
+- turnaround → `characters/<角色名>/turnaround_v{N}.png`（兼容旧模式）
 - scene → `scenes/<场景名>/scene_v{N}.png`
 
 脚本自动落盘同名 `.prompt.txt`（提示词副本，便于迭代微调）。
@@ -128,10 +149,10 @@ bash <skill-dir>/scripts/imagegen.sh auto \
 - turnaround：三视角同一性逐项比对（发型/服饰颜色/饰品/体态）——不一致即不合格
 - scene：与世界观规则一致/光影时间一致/层次完整
 
-### Step 7：回写写作资产（portrait/turnaround 必做）
+### Step 7：回写写作资产（char-sheet/portrait/turnaround 必做）
 
-- portrait/turnaround 生成验收后，把最新图路径写进 `设定/角色/{名}.md` 的「形象图」字段（`characters/{名}/portrait_v{N}.png` + 生成日期），角色卡无该字段则补一行——形象图从此成为卡片的可检索事实；已有多图记录时把版本号 N 递增并**替换**旧行（不叠加历史版本），turnaround 同理写 `turnaround_v{N}.png`
-- 读取角色卡外貌描述串时跳过「形象图」行本身（它是生成记录不是描述素材），描述素材取「形象与能力」标题的外貌记忆点/分时期表
+- char-sheet/portrait/turnaround 生成验收后，把最新图路径写进 `设定/角色/{名}.md` 的「形象图」字段（`characters/{名}/char-sheet_v{N}.png` + 生成日期；旧模式图为 `portrait_v{N}.png`/`turnaround_v{N}.png`），角色卡无该字段则补一行——形象图从此成为卡片的可检索事实；已有多图记录时把版本号 N 递增并**替换**旧行（不叠加历史版本）
+- 读取角色卡外貌描述串时跳过「形象图」行本身（它是生成记录不是描述素材），描述素材取「形象与能力」标题的外貌记忆点/分时期表；用 `scripts/character-card.py` 提取时该行为已自动跳过
 - cover 生成后不需要回写（封面属于书目而非角色）
 
 ## 参考资料
