@@ -26,6 +26,11 @@
 
 ### 修复
 
+- **版本四源漂移修复**：`skills/story/VERSION` 停在 1.3.2（v1.4.0/v1.5.0 两次发布漏更），导致「检查更新」报错当前版本，已对齐 1.5.0。`check-current-skill-contracts.py` 新增四源一致性断言（package.json / VERSION / manifest / UPGRADING）+ spawn-capable SKILL 的 `agents_version` 阈值文案一致性检查（防 v25→v26 式半更新残留）
+- **agents_version 阈值残留清理**：7 个 spawn-capable SKILL.md 中「小于或大于 25」→「小于或大于 26」（与 `agents_version: 26` 一致）
+- **story-setup 工作流编号规范**：`### 1.1/1.2/2.1/2.2/2.3` 改为 `### Step N` 连续整数编号，`Phase 1.2` 引用改 `Phase 1 Step 2`，`skill-numbering.py check` 恢复 PASS
+- **CI 守卫门禁**：新增 `.github/workflows/guards.yml`，PR 与 main push 全量运行 19 个守卫/回归 step（此前 17 条守卫只在本地手动跑，导致 VERSION 漂移与编号违规入库）；CONTRIBUTING 更新 CI 说明
+- **僵尸 rules 模板清理**：删除 `skills/story-setup/references/templates/rules/` 4 个文件（story-consistency/story-format/story-narrative/story-outline，共 278 行）——v0.7 多端 hooks 时代的路径过滤规则文件，pi 版 story-setup 早已不部署，仅 contract 测试与回归测试还在强制引用。细纲必填项契约校验从 rules/story-outline.md 迁至热路径权威 `workflow-setup.md` 的「细纲（第 N 章）」模板（fence 内 bullet + heading 双形态提取，8 字段全命中），相关回归测试同步更新
 - workflow-setup 落盘校验：必查项改 6 大标题齐全（含 H1 定位括号、三项无待补充、结论（补充）格式禁表格）
 - 修复 consistency-checker.md 空文件事故（edit 与 git add 并行竞态导致提交 0 字节）
 
