@@ -1,4 +1,18 @@
+## v1.7.0
+
+> 细纲照搬检测（借鉴上游 oh-story-claudecode v0.7.6 #355）+ agents_version 字面量守卫 + demo 资产 WebP 化 + README_EN 对齐。
+> agents bundle 无变化（agents_version 27 保持）。
+
+### 修复
+
+- **细纲照搬检测（借鉴上游 oh-story-claudecode v0.7.6 #355）**：新增 `check-outline-copy.js`（正文与同章细纲连续重合 >15 字即报位置，`--outline` 显式指定/自动匹配，`--check`/`--json` 模式，锚句豁免）；细纲权威模板（workflow-setup）「情节细化」下新增**复沓锚句**字段——必须原样进正文的原话逐行登记（系统面板/誓词/案卷/固定专名），存量细纲无该字段按无锚句处理；narrative-writer「细纲边界」拆**内容层/形状层**两条并列（内容层=每项独立落地不许漏，形状层=落地顺序/断段自由、可打散重排缝进同一连续动作——此前形状层只存在于主会话 workflow-chapter，子代理模板只有「逐项展开」限制，会一项一段平推成流水账）；调用点：narrative-writer 交付前自查 + workflow-chapter 确定性收尾复扫；shared-assets 登记三副本（deslop/long-write/review）；新增 `test-outline-copy.sh` 7 例回归（锚句头/尾/中间/整体等于锚句/字段写无/存量无字段/多章各自比对）+ 挂 CI；doc-budget 相应调高（narrative-writer 13300 / workflow-chapter / workflow-setup 15300 / 两条路径）
+- **agents_version 字面量守卫**：contract 检查器升级为全量比对 manifest——skills 下任何 `agents_version: N` 字面量（反引号或裸写）必须等于 manifest 值，覆盖 story-import 条件门禁、story-setup YAML 部署字面量与 UPGRADING 等此前会静默漂移的形态（CHANGELOG 历史记录不参与）；新增回归：字面量必须匹配 manifest（backtick/裸写双形态）+ bump 演练（manifest+1 后仓库内 9 个提及文件必须全部被标记）
+- **demo 图片压缩**：demo 目录 5.2MB → 约 640KB（-88%）——封面-剑道独尊 3.1MB→310KB、沈栀 char-sheet 2.0MB→130KB（PNG→WebP q90，README 引用同步），dashboard 截图调色板量化
+- **e2e 与 outline-copy 回归脚本统一 tab 格式化**：dashboard.spec.mjs / test-outline-copy.sh 纯空白整理（编辑器自动格式化残留），测试标题与断言逻辑零变化
+- **README_EN 补全**：英文版 README 补全至与中文版对齐（277 行）
+
 ## v1.6.0
+
 
 > 角色卡图（char-sheet）统一 portrait/turnaround + GrsAI 后端 + 配置询问流程 + 设定模板体系补全。
 > 图像链路：角色卡自动提取 → char-sheet 参考表提示词（中英双语）→ 多后端生成（GPT-Image-2/GrsAI/火山方舟/通义万相/ComfyUI）。
@@ -6,7 +20,6 @@
 
 ### 修复
 
-- **细纲照搬检测（借鉴上游 oh-story-claudecode v0.7.6 #355）**：新增 `check-outline-copy.js`（正文与同章细纲连续重合 >15 字即报位置，`--outline` 显式指定/自动匹配，`--check`/`--json` 模式，锚句豁免）；细纲权威模板（workflow-setup）「情节细化」下新增**复沓锚句**字段——必须原样进正文的原话逐行登记（系统面板/誓词/案卷/固定专名），存量细纲无该字段按无锚句处理；narrative-writer「细纲边界」拆**内容层/形状层**两条并列（内容层=每项独立落地不许漏，形状层=落地顺序/断段自由、可打散重排缝进同一连续动作——此前形状层只存在于主会话 workflow-chapter，子代理模板只有「逐项展开」限制，会一项一段平推成流水账）；调用点：narrative-writer 交付前自查 + workflow-chapter 确定性收尾复扫；shared-assets 登记三副本（deslop/long-write/review）；新增 `test-outline-copy.sh` 7 例回归（锚句头/尾/中间/整体等于锚句/字段写无/存量无字段/多章各自比对）+ 挂 CI；doc-budget 相应调高（narrative-writer 13300 / workflow-chapter / workflow-setup 15300 / 两条路径）
 - **story-setup 工作流编号规范**：`### 1.1/1.2/2.1/2.2/2.3` 改为 `### Step N` 连续整数编号，`Phase 1.2` 引用改 `Phase 1 Step 2`，`skill-numbering.py check` 恢复 PASS
 - **CI 守卫门禁**：新增 `.github/workflows/guards.yml`，PR 与 main push 全量运行 19 个守卫/回归 step（此前 17 条守卫只在本地手动跑，导致 VERSION 漂移与编号违规入库）；CONTRIBUTING 更新 CI 说明
 - **僵尸 rules 模板清理**：删除 `skills/story-setup/references/templates/rules/` 4 个文件（story-consistency/story-format/story-narrative/story-outline，共 278 行）——v0.7 多端 hooks 时代的路径过滤规则文件，pi 版 story-setup 早已不部署，仅 contract 测试与回归测试还在强制引用。细纲必填项契约校验从 rules/story-outline.md 迁至热路径权威 `workflow-setup.md` 的「细纲（第 N 章）」模板（fence 内 bullet + heading 双形态提取，8 字段全命中），相关回归测试同步更新

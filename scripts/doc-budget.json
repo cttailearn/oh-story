@@ -49,7 +49,7 @@
     {
       "path": "skills/story-setup/references/templates/agents/narrative-writer.md",
       "budget": 13300,
-      "why": "正文 agent 系统提示每章 spawn 都付；v1.1 模型钉定 frontmatter 行；v1.6.0+ 细纲边界拆内容层/形状层两条并列 + 复沓锚句自查（借鉴上游 #355，防正文誊抄细纲）"
+      "why": "正文 agent 系统提示每章 spawn 都付；v1.1 模型钉定 frontmatter 行；v1.7.0+ 细纲边界拆内容层/形状层两条并列 + 复沓锚句自查（借鉴上游 #355，防正文誊抄细纲）"
     },
     {
       "path": "skills/story-long-write/references/writing-craft.md",

@@ -1,6 +1,6 @@
 ---
 name: story-setup
-version: 1.6.0
+version: 1.7.0
 description: "网文写作工具集（pi 专属）项目初始化。验证 oh-story-pi 包完整性、部署专业子代理到 .pi/agents/、写入 AGENTS.md、创建标准书目录结构并打部署标记。触发方式：/skill:story-setup、「准备写书」「帮我搭一下环境」「配置写作项目」。"
 ---
 
@@ -25,7 +25,7 @@ description: "网文写作工具集（pi 专属）项目初始化。验证 oh-st
 有缺即包没装全，**立即停止，不写任何部署文件**，报告里区分「缺目录」和「目录为空」，并给修复指令：
 
 > 「story-setup 参考资料包不完整，缺 {目录名}。重新安装 oh-story-pi 后再执行：
-> git 安装 → `pi install git:github.com/cttailearn/oh-story-pi@v1.6.0`；更新 → `pi update --extensions`。」
+> git 安装 → `pi install git:github.com/cttailearn/oh-story-pi@v1.7.0`；更新 → `pi update --extensions`。」
 
 ### Step 2：检测项目状态
 
@@ -75,7 +75,7 @@ description: "网文写作工具集（pi 专属）项目初始化。验证 oh-st
 ```yaml
 deployed_at: {ISO8601 时间}
 agents_version: 27
-setup_skill_version: 1.6.0
+setup_skill_version: 1.7.0
 target_cli: pi
 resolver_strategy: project-local-skill-reference
 references_dir: package-skill-dir（skill 本体随 oh-story-pi 包加载，项目不复制 references）

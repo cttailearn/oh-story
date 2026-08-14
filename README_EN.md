@@ -27,7 +27,7 @@ layered context-state management · human-AI collaboration.
 ### Git channel (the current only release channel)
 
 ```bash
-pi install git:github.com/cttailearn/oh-story-pi@v1.6.0
+pi install git:github.com/cttailearn/oh-story-pi@v1.7.0
 ```
 
 Update / uninstall:
@@ -229,7 +229,7 @@ subagents. Skill bodies and the knowledge base ship with the pi package
 ## Platforms
 
 - **pi**: natively supported (this package). After
-  `pi install git:github.com/cttailearn/oh-story-pi@v1.6.0` the 13 skills are
+  `pi install git:github.com/cttailearn/oh-story-pi@v1.7.0` the 13 skills are
   available and the `/story` alias is registered by the bundled extension. npm
   publish is on hold due to the account 2FA policy (package name `oh-story-pi`
   reserved).
