@@ -1,0 +1,28 @@
+# 统一行尾：所有文本文件以 LF 存储和检出（core.autocrlf 在 Windows 上会检出 CRLF，
+# 导致 pi-lens/shellcheck 报 Literal carriage return，且与 CI(Linux) 行为不一致）
+* text=auto
+
+# 代码与脚本强制 LF（即使 Windows 检出也是 LF）
+*.sh text eol=lf
+*.py text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.ts text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.txt text eol=lf
+*.tmpl text eol=lf
+*.drawio text eol=lf
+
+# 二进制文件不转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
