@@ -37,7 +37,7 @@ skills degrade to solo/direct mode (reported as `Fallback: ... -> solo`).
 | De-AI polish | `/skill:story-deslop` | story-deslop |
 | Import existing novel | `/skill:story-import` | story-import |
 | Review manuscript | `/skill:story-review` | story-review |
-| Generate cover / portraits / turnarounds / scenes | `/skill:story-image` | story-image |
+| Generate cover / character sheets / scenes | `/skill:story-image` | story-image (GPT-Image-2/GrsAI/Volcengine/DashScope/ComfyUI) |
 | Browser automation | `/skill:browser-cdp` | browser-cdp |
 
 Natural-language triggers work too (skill descriptions auto-match), e.g.

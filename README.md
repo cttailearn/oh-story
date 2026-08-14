@@ -116,7 +116,7 @@ flowchart LR
 | `story-deslop` | `/skill:story-deslop` `/去AI味` | 去AI味 · 检测并清除 AI 写作痕迹 |
 | `story-import` | `/skill:story-import` `/导入小说` | 逆向导入 · 将已有小说反向解析为标准项目结构 |
 | `story-review` | `/skill:story-review` `/审查` | 多视角审查 · 4 Agent 多视角审稿 + 番茄/起点/知乎评分标准 |
-| `story-image` | `/skill:story-image` `/封面` `/人物图` `/三视图` `/场景图` | 图像生成 · 封面/人设立绘/三视图/场景图，多后端（GPT-Image-2/火山方舟/通义万相/ComfyUI） |
+| `story-image` | `/skill:story-image` `/封面` `/角色卡图` `/人物图` `/三视图` `/场景图` | 图像生成 · 封面/角色卡图（统一立绘+三视图参考表）/场景图，多后端（GPT-Image-2/GrsAI/火山方舟/通义万相/ComfyUI），未配置 API Key 时主动询问 |
 | `browser-cdp` | `/skill:browser-cdp` | 浏览器操控 · CDP 协议复用登录态抓取数据（pi 内置 agent_browser 优先） |
 
 > `story-deslop` 的本地检查是写作 lint：blocking 只限确定性句式/标点问题，其他提示按读感判断；朱雀等外部检测只作自测参考，不替代人工读感。
@@ -128,6 +128,15 @@ flowchart LR
 - 「把我的书导进来」→ `story-import`
 - 「打开工作台」→ `story dashboard`（本机浏览拆文库与写作项目，可轻量编辑）
 - 「沈栀现在什么状态」→ 自动 spawn `story-explorer` 子代理
+
+### 生成效果示例
+
+角色卡图（char-sheet）由 `story-image` 从角色卡自动提取素材并生成——统一立绘、三视图
+与参考表布局（基本信息面板/表情网格/服装分解/色板），支持中英双语提示词：
+
+![沈栀角色卡图 demo（GrsAI gpt-image-2 生成）](demo/characters/沈栀/char-sheet_v1.png)
+
+> 图片由真实 API 生成（1024x1536），完整流程：角色卡 → character-card.py 提取 → prompt-template.py 组装 → imagegen.sh 出图。
 
 ### Story Dashboard
 
