@@ -340,6 +340,7 @@ test("打开文稿不会收起正在翻的目录", async ({ page }) => {
   await expect(page.locator("#fileTree")).toContainText("让你管账号，你高燃混剪炸全网");
 
   await page.locator("summary").filter({ hasText: "大纲" }).click();
+  await page.locator("summary").filter({ hasText: "细纲" }).click();
   const row = page.locator(`.file-row[data-path='${rowPath}']`);
   await expect(row).toBeVisible();
 
