@@ -33,8 +33,8 @@ class ManifestError(ValueError):
 
 
 # 递归枚举 skills/*/scripts/ 时要跳过的非运行时目录：开发机上的构建缓存
-# （__pycache__、node_modules）不是需要登记的重复脚本。
-IGNORED_SCRIPT_DIRS = frozenset({".git", "__pycache__", "node_modules", ".venv"})
+# （__pycache__、node_modules、.ruff_cache）不是需要登记的重复脚本。
+IGNORED_SCRIPT_DIRS = frozenset({".git", "__pycache__", "node_modules", ".venv", ".ruff_cache"})
 
 
 def parse_args() -> argparse.Namespace:
