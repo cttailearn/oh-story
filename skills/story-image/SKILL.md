@@ -130,7 +130,8 @@ bash <skill-dir>/scripts/imagegen.sh auto \
 
 ### Step 7：回写写作资产（portrait/turnaround 必做）
 
-- portrait/turnaround 生成验收后，把最新图路径写进 `设定/角色/{名}.md` 的「形象图」字段（`characters/{名}/portrait_v{N}.png` + 生成日期），角色卡无该字段则补一行——形象图从此成为卡片的可检索事实
+- portrait/turnaround 生成验收后，把最新图路径写进 `设定/角色/{名}.md` 的「形象图」字段（`characters/{名}/portrait_v{N}.png` + 生成日期），角色卡无该字段则补一行——形象图从此成为卡片的可检索事实；已有多图记录时把版本号 N 递增并**替换**旧行（不叠加历史版本），turnaround 同理写 `turnaround_v{N}.png`
+- 读取角色卡外貌描述串时跳过「形象图」行本身（它是生成记录不是描述素材），描述素材取「形象与能力」标题的外貌记忆点/分时期表
 - cover 生成后不需要回写（封面属于书目而非角色）
 
 ## 参考资料
