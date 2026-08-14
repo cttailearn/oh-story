@@ -876,6 +876,60 @@ def test_issue_315_333_343_prompt_contracts() -> None:
         require(anchor in review, f"#343: review persistence contract missing {anchor}")
 
 
+def test_agents_version_literals_must_match_manifest() -> None:
+    """SKILL.md 里任何 `agents_version: N` 字面量（反引号或裸写）都必须等于 manifest。"""
+    manifest = repository_manifest()
+    current = manifest.agents_version
+    ok_text = """
+- 只有 `agents_version: {current}` 通过后，才检查 `.pi/agents/chapter-extractor.md`。
+- `.story-deployed` 的 `agents_version: {current}`、`target_cli: pi`。
+agents_version: {current}
+""".format(current=current)
+    require(
+        not VALIDATOR.agents_version_literal_findings(
+            ok_text, manifest, Path("ok-fixture.md")
+        ),
+        "current agents_version literals (backticked or bare) must pass",
+    )
+
+    for stale in (current - 1, current + 1):
+        stale_text = (
+            "- 只有 `agents_version: {stale}` 通过后，才检查 chapter-extractor。\n"
+            "agents_version: {stale}\n"
+        ).format(stale=stale)
+        found = VALIDATOR.agents_version_literal_findings(
+            stale_text, manifest, Path("story-import/SKILL.md")
+        )
+        require(
+            finding_codes(found) == {"stale-agents-version-literal"}
+            and len(found) == 2,
+            "both backticked and bare stale literals must be flagged, got {}".format(
+                sorted(finding_codes(found))
+            ),
+        )
+
+
+def test_agents_version_literal_bump_flags_every_mentioning_file() -> None:
+    """agents_version bump 后，仓库里每个出现 `agents_version: N` 的 md 文件都必须被标记。
+
+    覆盖 story-import 条件门禁、story-setup YAML 字面量、UPGRADING 与 spawn 提示等
+    全部形态；CHANGELOG.md（历史记录）不参与。"""
+    manifest = repository_manifest()
+    bumped = manifest_with(agents_version=manifest.agents_version + 1)
+    flagged = flagged_paths(bumped, "stale-agents-version-literal")
+    mentioning = {
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in (REPO_ROOT / "skills").rglob("*.md")
+        if "agents_version:" in path.read_text(encoding="utf-8")
+    }
+    require(
+        flagged == mentioning,
+        "literal scan must flag exactly the mentioning files: missing {}, extra {}".format(
+            sorted(mentioning - flagged), sorted(flagged - mentioning)
+        ),
+    )
+
+
 def main() -> int:
     test_manifest_contract()
     test_bad_fallbacks_fail()
@@ -896,6 +950,8 @@ def main() -> int:
     test_structured_sentinel_contract()
     test_structured_outline_contract()
     test_upgrading_version_contract()
+    test_agents_version_literals_must_match_manifest()
+    test_agents_version_literal_bump_flags_every_mentioning_file()
     print("OK: current-contract manifest, structure, and fallback regressions passed")
     return 0
 

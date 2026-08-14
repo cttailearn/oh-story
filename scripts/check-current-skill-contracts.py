@@ -936,6 +936,38 @@ def upgrading_version_findings(
     return findings
 
 
+AGENTS_VERSION_LITERAL_RE = re.compile(r"agents_version:\s*(\d+)")
+
+
+def agents_version_literal_findings(
+    text: str, manifest: ContractManifest, path: Path
+) -> List[Finding]:
+    """任何 `agents_version: N` 字面量（反引号或裸写）都必须等于 manifest 当前值。
+
+    spawn-capable skill 的「小于或大于 N」阈值另有专门检查，UPGRADING.md 的
+    backtick 行也由 upgrading-step-version 覆盖；本函数兜住其余形态——story-setup
+    的 YAML 部署字面量、story-import 的条件门禁（「只有 `agents_version: N` 通过后」），
+    以及未来新增的任意提及。CHANGELOG.md 属历史记录，不参与校验（iter_files 已排除）。
+    """
+    findings: List[Finding] = []
+    expected = str(manifest.agents_version)
+    for line_number, line_text in enumerate(text.splitlines(), start=1):
+        for match in re.finditer(AGENTS_VERSION_LITERAL_RE, line_text):
+            if match.group(1) != expected:
+                findings.append(
+                    Finding(
+                        "stale-agents-version-literal",
+                        "agents_version literal must be {}, got {}: {}".format(
+                            expected, match.group(1), line_text.strip()
+                        ),
+                        path,
+                        line_number,
+                        line_text,
+                    )
+                )
+    return findings
+
+
 def extract_sentinel_fields(text: str) -> Optional[dict[str, str]]:
     """Parse the generated `.story-deployed` YAML example from its Step section.
 
@@ -1323,6 +1355,21 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
                             line_text,
                         )
                     )
+
+    # agents_version 字面量一致性：skills 下任何 `agents_version: N`（反引号或裸写，含
+    # story-setup 的 YAML 部署字面量与 story-import 的条件门禁）都必须等于 manifest。
+    # 阈值检查只覆盖「小于或大于 N」措辞，UPGRADING 检查只覆盖其 backtick 行；
+    # story-import/SKILL.md:104 的「只有 `agents_version: N` 通过后」曾静默漂移。
+    for path in iter_files(repo_root / "skills"):
+        if path.suffix.lower() != ".md":
+            continue
+        findings.extend(
+            agents_version_literal_findings(read_text(path) or "", manifest, path)
+        )
+    upgrading = repo_root / "skills/story-setup/UPGRADING.md"
+    findings.extend(
+        agents_version_literal_findings(read_text(upgrading) or "", manifest, upgrading)
+    )
 
     topic_file = repo_root / "skills/story-long-scan/references/topic-decision.md"
     topic_text = read_text(topic_file) or ""
