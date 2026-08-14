@@ -33,13 +33,13 @@
     },
     {
       "path": "skills/story-long-write/references/workflow-chapter.md",
-      "budget": 11700,
-      "why": "单章正文与质量检查，日更/单章路径都加载"
+      "budget": 11900,
+      "why": "单章正文与质量检查，日更/单章路径都加载；细纲照搬复扫（check-outline-copy.js）调用点"
     },
     {
       "path": "skills/story-long-write/references/workflow-setup.md",
-      "budget": 15000,
-      "why": "开书/补纲路径加载；v1.1 新增细纲「本章设定引用」锚点字段与世界观卡/角色线卡建档规则；v1.3.2 增 Gate A/B/C 与大纲安全七检/审查、角色线卡前移、卷纲细纲提示词强化"
+      "budget": 15300,
+      "why": "开书/补纲路径加载；v1.1 新增细纲「本章设定引用」锚点字段与世界观卡/角色线卡建档规则；v1.3.2 增 Gate A/B/C 与大纲安全七检/审查、角色线卡前移、卷纲细纲提示词强化；复沓锚句字段（细纲权威模板，防誊抄）"
     },
     {
       "path": "skills/story-short-write/SKILL.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "skills/story-setup/references/templates/agents/narrative-writer.md",
-      "budget": 12700,
-      "why": "正文 agent 系统提示每章 spawn 都付；v1.1 模型钉定 frontmatter 行"
+      "budget": 13300,
+      "why": "正文 agent 系统提示每章 spawn 都付；v1.1 模型钉定 frontmatter 行；v1.6.0+ 细纲边界拆内容层/形状层两条并列 + 复沓锚句自查（借鉴上游 #355，防正文誊抄细纲）"
     },
     {
       "path": "skills/story-long-write/references/writing-craft.md",
@@ -70,7 +70,7 @@
   "paths": [
     {
       "label": "长篇日更主会话",
-      "budget": 36300,
+      "budget": 36500,
       "files": [
         "skills/story-long-write/SKILL.md",
         "skills/story-long-write/references/workflow-daily.md",
@@ -87,7 +87,7 @@
     },
     {
       "label": "正文 agent 上下文",
-      "budget": 38600,
+      "budget": 39250,
       "files": [
         "skills/story-setup/references/templates/agents/narrative-writer.md",
         "skills/story-long-write/references/writing-craft.md",

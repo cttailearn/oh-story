@@ -512,6 +512,14 @@
         "skills/story-long-write/references/character-basics.md",
         "skills/story-short-analyze/references/character-basics.md"
       ]
+    },
+    {
+      "name": "prose-outline-copy-detector",
+      "source": "skills/story-deslop/scripts/check-outline-copy.js",
+      "targets": [
+        "skills/story-long-write/scripts/check-outline-copy.js",
+        "skills/story-review/scripts/check-outline-copy.js"
+      ]
     }
   ]
 }

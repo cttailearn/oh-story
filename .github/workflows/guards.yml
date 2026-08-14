@@ -53,6 +53,8 @@ jobs:
         run: node scripts/test-scan-runtime.js
       - name: 回归：AI 味检测
         run: bash scripts/test-ai-patterns.sh
+      - name: 回归：细纲照搬检测
+        run: bash scripts/test-outline-copy.sh
       - name: 回归：退化检测
         run: bash scripts/test-degeneration.sh
       - name: 回归：AI 模式基准（blocking 10/10）

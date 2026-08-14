@@ -121,6 +121,8 @@
 **确定性收尾**：本批正文写完后，主会话对实际落盘文件运行 `node scripts/check-ai-patterns.js --check --fail-on=blocking 正文/第XXX章_*.md`。blocking 命中先回正文改写并复扫；advisory 逐条读原文判断，确属问题才改，功能性写法标 `[需复核]`。其中 `formulaic-parallelism` 必须连同对话一起复核，不能因为 hook 不阻断台词就略过。
 随后运行 `node scripts/normalize-punctuation.js 正文/第XXX章_*.md`（默认 `--quote-mode keep`）清理无功能省略号、破折号、双连字符和独立分隔线；盐言「」不受影响。narrative-writer agent 不运行这些脚本。
 
+**细纲照搬复扫**：正文落盘后运行 `node scripts/check-outline-copy.js --check 正文/第XXX章_*.md`（自动匹配同章细纲）。连续重合 >15 字命中 → 先读该章细纲「复沓锚句」字段：登记的原话（系统面板/誓词/案卷/固定专名）是合法逐字一致，豁免；其余命中是誊抄证据（细纲情节点写成成品散文句、正文照抄），回正文按形状层改写（打散重排/合并穿插/演成场景）并复扫到 0。
+
 **退化防护**：正文落盘后运行 `node scripts/check-degeneration.js --check 正文/第XXX章_*.md`。blocking（复读、截断、拒绝语、tier1 工程词泄漏）只重写受影响章节，最多 2 次；仍失败就报告证据让用户定夺。
 advisory 只提示可疑处，先看脚本给出的例外；故事内系统/界面用语、弹幕刷屏、重复台词等有功能则保留。
 

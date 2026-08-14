@@ -81,6 +81,7 @@ python3 scripts/test-shared-assets.py
 node scripts/test-normalize-punctuation.js
 node scripts/test-scan-runtime.js
 bash scripts/test-ai-patterns.sh
+bash scripts/test-outline-copy.sh
 bash scripts/test-degeneration.sh
 bash scripts/check-python-invocation.sh
 bash scripts/test-charcount-portable.sh
