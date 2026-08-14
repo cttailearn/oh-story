@@ -22,16 +22,20 @@ import os
 def _out(s=""):
     if os.name == "nt":
         try:
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
         except Exception:
             pass
     print(s)
 
 
 def load_json(path):
-    with open(path, "r", encoding="utf-8-sig") as f:
-        return json.load(f)
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError, UnicodeError) as exc:
+        _out(json.dumps({"error": "无法解析 JSON {}: {}".format(path, exc)}, ensure_ascii=False))
+        raise SystemExit(1) from exc
 
 
 def get_path(d, path):
@@ -39,7 +43,10 @@ def get_path(d, path):
     cur = d
     for seg in path.split("."):
         if isinstance(cur, list) and seg.isdigit():
-            cur = cur[int(seg)]
+            try:
+                cur = cur[int(seg)]
+            except IndexError:
+                return None
         elif isinstance(cur, dict):
             cur = cur.get(seg)
         else:
@@ -57,6 +64,12 @@ def build_body(kind, model, prompt, size=None):
         return b
     if kind == "dashscope":
         b = {"model": model, "input": {"prompt": prompt}, "parameters": {"size": size or "1024*1024", "n": 1}}
+        return b
+    if kind == "grsai":
+        # GrsAI /v1/draw/completions：同步返回，results[].url 取图
+        b = {"model": model, "prompt": prompt, "shutProgress": True}
+        if size:
+            b["aspectRatio"] = size
         return b
     # openai（默认）
     b = {"model": model, "prompt": prompt}
@@ -104,6 +117,14 @@ def main():
             if (d.get("code") or d.get("message")) and not get_path(d, "output.task_id"):
                 _out(json.dumps(d, ensure_ascii=False)[:500])
                 return 1
+        elif kind == "grsai":
+            # GrsAI 响应：status != "succeeded" 视为失败，error 字段优先
+            if d.get("error"):
+                _out(json.dumps(d["error"], ensure_ascii=False)[:500])
+                return 1
+            if d.get("status") not in (None, "succeeded"):
+                _out(json.dumps(d, ensure_ascii=False)[:500])
+                return 1
         else:
             if d.get("error"):
                 _out(json.dumps(d["error"], ensure_ascii=False)[:500])
@@ -119,7 +140,11 @@ def main():
 
     if cmd == "first-image":
         d = load_json(sys.argv[2])
+        # OpenAI 兼容：data[0].url / data[0].b64_json
         items = d.get("data") or []
+        # GrsAI：results[0].url（/v1/draw/completions 同步响应）
+        if not items and isinstance(d.get("results"), list):
+            items = d["results"]
         if not items:
             _out("none")
             return 0
