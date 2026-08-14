@@ -260,6 +260,14 @@ def _is_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def _safe_int(value: object) -> Optional[int]:
+    """Parse a captured digit group without throwing on unexpected content."""
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
 def load_manifest(path: Path) -> Tuple[Optional[ContractManifest], List[Finding]]:
     findings: List[Finding] = []
     try:
@@ -1021,24 +1029,60 @@ def _normalize_rule_field(label: str) -> str:
 
 
 def extract_outline_rule_fields(text: str) -> set[str]:
-    """Return structured field labels from Rules item 2 (细纲必填项)."""
+    """Return structured field labels from the canonical chapter blueprint template.
+
+    Home moved from the retired templates/rules/story-outline.md to
+    workflow-setup.md's ``## 细纲（第 N 章）`` section (the live authority the
+    writing skill actually loads).  Fields appear as ``- 阶段位置：`` bullets and
+    ``#### 内容概括（五段式）`` headings inside the template fence.
+    """
     lines = text.splitlines()
+    fence_re = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
+
+    # 模板起点：`## 细纲（第 N 章）` 标题行。真实文件里它位于代码块内
+    # （232 行 ``` 打开，234 行标题），fixture 里位于代码块外，两种都接受。
     start: Optional[int] = None
+    fence_depth = 0
     for index, line in enumerate(lines):
-        if re.match(r"^\s*2\.\s+\*\*细纲必填项\*\*", line):
-            start = index + 1
+        if fence_re.match(line):
+            fence_depth += 1
+            continue
+        if re.match(r"^##\s+细纲（第\s*N\s*章）", line):
+            start = index
             break
     if start is None:
         return set()
 
+    # 确定提取区间：标题前有打开的 fence（真实文件）→ 用该 fence 的打开行；
+    # 标题在 fence 外（fixture）→ 从标题后第一个 fence 打开行开始。
+    if fence_depth % 2 == 1:
+        # 标题在 fence 内：从标题行往前回溯到 fence 打开行。
+        begin = start
+        while begin > 0 and not fence_re.match(lines[begin - 1]):
+            begin -= 1
+        content_start = begin
+    else:
+        content_start = None
+        for index in range(start + 1, len(lines)):
+            if fence_re.match(lines[index]):
+                content_start = index + 1
+                break
+        if content_start is None:
+            return set()
+
+    # 区间终点：下一个 fence 闭合行。
     end = len(lines)
-    for index in range(start, len(lines)):
-        if re.match(r"^\s*[3-9][0-9]*\.\s+\*\*", lines[index]):
+    for index in range(content_start, len(lines)):
+        if fence_re.match(lines[index]):
             end = index
             break
 
     fields: set[str] = set()
-    for line in lines[start:end]:
+    for line in lines[content_start:end]:
+        heading = re.match(r"^#{2,6}\s+(.+?)\s*$", line)
+        if heading:
+            fields.add(_normalize_rule_field(heading.group(1)))
+            continue
         match = re.match(r"^\s*-\s+(.+?)[：:]", line)
         if match:
             fields.add(_normalize_rule_field(match.group(1)))
@@ -1104,7 +1148,7 @@ def progress_schema_pin_findings(repo_root: Path, expected: int) -> List[Finding
             continue
         for line_number, line_text in enumerate(text.splitlines(), start=1):
             for match in SCHEMA_VERSION_PIN_RE.finditer(line_text):
-                if int(match.group(1)) == expected:
+                if _safe_int(match.group(1)) == expected:
                     continue
                 findings.append(
                     Finding(
@@ -1185,10 +1229,77 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
     upgrading_text = read_text(upgrading) or ""
     findings.extend(upgrading_version_findings(upgrading_text, manifest, upgrading))
 
+    # 四源版本一致性：skills/story/VERSION、package.json、manifest、UPGRADING 必须同号。
+    # 发布流程声明「四处同步」，但没有任何脚本校验——v1.4.0/v1.5.0 两次发布都漏更了
+    # story/VERSION（停在 1.3.2），导致「检查更新」向用户报告错误的当前版本。
+    story_version_path = repo_root / "skills/story/VERSION"
+    story_version = read_text(story_version_path)
+    if story_version is None:
+        findings.append(
+            Finding(
+                "story-version-file-missing",
+                "skills/story/VERSION must exist (story skill reads it for update checks)",
+                story_version_path,
+            )
+        )
+    else:
+        story_version = story_version.strip()
+        if story_version != manifest.setup_skill_version:
+            findings.append(
+                Finding(
+                    "story-version-drift",
+                    "skills/story/VERSION must equal setup_skill_version {}, got {!r} ".format(
+                        manifest.setup_skill_version, story_version
+                    )
+                    + "(four-way sync: package.json / VERSION / manifest / UPGRADING)",
+                    story_version_path,
+                )
+            )
+    package_json_path = repo_root / "package.json"
+    package_text = read_text(package_json_path) or ""
+    package_match = re.search(
+        r'"version"\s*:\s*"([0-9]+\.[0-9]+\.[0-9]+)"', package_text
+    )
+    if package_match is None or package_match.group(1) != manifest.setup_skill_version:
+        findings.append(
+            Finding(
+                "package-version-drift",
+                "package.json version must equal setup_skill_version {}, got {!r}".format(
+                    manifest.setup_skill_version,
+                    package_match.group(1) if package_match else "none",
+                ),
+                package_json_path,
+            )
+        )
+
+    # agents_version 阈值文案一致性：spawn-capable skill 的「小于或大于 N」半更新残留
+    # （v25→v26 迁移时 7 个文件都漏改了阈值）需要被拦截，否则每次 bump 都可能重演。
+    current_agents = str(manifest.agents_version)
+    for relative in SPAWN_CAPABLE_SKILLS:
+        spawn_skill = repo_root / relative
+        spawn_text = read_text(spawn_skill) or ""
+        for line_number, line_text in enumerate(spawn_text.splitlines(), start=1):
+            for match in re.finditer(r"小于或大于\s+(\d+)", line_text):
+                if match.group(1) != current_agents:
+                    findings.append(
+                        Finding(
+                            "stale-agents-version-threshold",
+                            "agents_version mismatch threshold must be {}, got {}".format(
+                                current_agents, match.group(1)
+                            ),
+                            spawn_skill,
+                            line_number,
+                            line_text,
+                        )
+                    )
+
     topic_file = repo_root / "skills/story-long-scan/references/topic-decision.md"
     topic_text = read_text(topic_file) or ""
     topic_match = re.search(r"Phase\s+([0-9]+)[^\n]*产出\s*`选题决策\.md`", topic_text)
-    if not topic_match or int(topic_match.group(1)) != manifest.topic_decision_phase:
+    if (
+        topic_match is None
+        or _safe_int(topic_match.group(1)) != manifest.topic_decision_phase
+    ):
         findings.append(
             Finding(
                 "topic-decision-phase",
@@ -1224,7 +1335,7 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
             for match in re.finditer(
                 r"`?story-long-scan`?[\s`]*Phase\s+([0-9]+)", line_text
             ):
-                value = int(match.group(1))
+                value = _safe_int(match.group(1))
                 if value == manifest.topic_decision_phase:
                     continue
                 findings.append(
@@ -1352,9 +1463,7 @@ def validate_repository(repo_root: Path, manifest: ContractManifest) -> List[Fin
         )
     )
 
-    outline_rule = (
-        repo_root / "skills/story-setup/references/templates/rules/story-outline.md"
-    )
+    outline_rule = repo_root / "skills/story-long-write/references/workflow-setup.md"
     outline_rule_text = read_text(outline_rule) or ""
     findings.extend(
         outline_rule_contract_findings(outline_rule_text, manifest, outline_rule)

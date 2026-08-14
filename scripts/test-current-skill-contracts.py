@@ -54,7 +54,12 @@ def repository_manifest() -> _Manifest:
 
 def manifest_with(**overrides: object) -> _Manifest:
     """按正常加载路径构造一个改过值的当前契约，用来演练 bump。"""
-    raw = json.loads((SCRIPT_DIR / "current-contract.json").read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(
+            (SCRIPT_DIR / "current-contract.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AssertionError("repository manifest must load: {}".format(exc)) from exc
     raw.update(overrides)
     with tempfile.TemporaryDirectory() as tmp:
         bumped_path = Path(tmp) / "bumped.json"
@@ -86,7 +91,10 @@ def test_manifest_contract() -> None:
         "manifest and repository must agree",
     )
 
-    raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AssertionError("repository manifest must load: {}".format(exc)) from exc
     with tempfile.TemporaryDirectory() as tmp:
         tmpdir = Path(tmp)
 
@@ -428,7 +436,10 @@ def test_structured_outline_contract() -> None:
     rule_names = [rule for rule, _ in manifest.required_outline_sections]
     demo_names = [demo for _, demo in manifest.required_outline_sections]
 
-    scattered_rule = "2. **细纲必填项**\n\n" + "、".join(rule_names)
+    # 权威模板已从 templates/rules/story-outline.md 迁到 workflow-setup.md 的
+    # `## 细纲（第 N 章）` 代码块（热路径权威）。提取逻辑：fence 内 bullet
+    # `- 字段：` 与 `#### 字段` heading 两种形态都算声明；fence 外 prose 不算。
+    scattered_rule = "## 细纲（第 N 章）\n\n```\n" + "、".join(rule_names) + "\n```"
     require(
         "outline-rule-section"
         in finding_codes(
@@ -439,15 +450,27 @@ def test_structured_outline_contract() -> None:
         "outline names scattered in prose must not satisfy structured rules",
     )
     structured_rule = (
-        "2. **细纲必填项**\n"
+        "## 细纲（第 N 章）\n\n```\n### 第 N 章：{章名}\n"
         + "\n".join("- {}：必填".format(name) for name in rule_names)
-        + "\n3. **下一条规则**\n"
+        + "\n```\n"
     )
     require(
         not VALIDATOR.outline_rule_contract_findings(
             structured_rule, manifest, Path("rule.md")
         ),
         "structured outline rule fields must pass",
+    )
+
+    structured_rule_headings = (
+        "## 细纲（第 N 章）\n\n```\n### 第 N 章：{章名}\n"
+        + "\n".join("#### {}".format(name) for name in rule_names)
+        + "\n```\n"
+    )
+    require(
+        not VALIDATOR.outline_rule_contract_findings(
+            structured_rule_headings, manifest, Path("rule.md")
+        ),
+        "heading-form outline rule fields must pass",
     )
 
     scattered_demo = "本章应包含：" + "、".join(demo_names)

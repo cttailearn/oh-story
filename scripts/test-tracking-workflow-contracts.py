@@ -200,7 +200,6 @@ def test_retired_tracking_architecture_is_absent() -> None:
         "skills/story-review/SKILL.md",
         "skills/story-setup/references/templates/AGENTS.md.tmpl",
         "skills/story-setup/references/templates/agents/story-explorer.md",
-        "skills/story-setup/references/templates/rules/story-consistency.md",
     )
     retired = (
         "追踪/阶段摘要.md",
@@ -311,7 +310,6 @@ def test_tracking_examples_use_the_demo_novel() -> None:
         "skills/story-import/SKILL.md",
         "skills/story-import/references/character-state-reverse.md",
         "skills/story-review/SKILL.md",
-        "skills/story-setup/references/templates/rules/story-consistency.md",
     )
     for path in paths:
         text = read(path)
