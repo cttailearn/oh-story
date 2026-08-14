@@ -1,3 +1,26 @@
+## v1.6.0
+
+> 角色卡图（char-sheet）统一 portrait/turnaround + GrsAI 后端 + 配置询问流程 + 设定模板体系补全。
+> 图像链路：角色卡自动提取 → char-sheet 参考表提示词（中英双语）→ 多后端生成（GPT-Image-2/GrsAI/火山方舟/通义万相/ComfyUI）。
+> agents bundle（agents_version 26→27）+ 版本四源守卫 + CI 全量守卫门禁。
+
+### 修复
+
+- **story-setup 工作流编号规范**：`### 1.1/1.2/2.1/2.2/2.3` 改为 `### Step N` 连续整数编号，`Phase 1.2` 引用改 `Phase 1 Step 2`，`skill-numbering.py check` 恢复 PASS
+- **CI 守卫门禁**：新增 `.github/workflows/guards.yml`，PR 与 main push 全量运行 19 个守卫/回归 step（此前 17 条守卫只在本地手动跑，导致 VERSION 漂移与编号违规入库）；CONTRIBUTING 更新 CI 说明
+- **僵尸 rules 模板清理**：删除 `skills/story-setup/references/templates/rules/` 4 个文件（story-consistency/story-format/story-narrative/story-outline，共 278 行）——v0.7 多端 hooks 时代的路径过滤规则文件，pi 版 story-setup 早已不部署，仅 contract 测试与回归测试还在强制引用。细纲必填项契约校验从 rules/story-outline.md 迁至热路径权威 `workflow-setup.md` 的「细纲（第 N 章）」模板（fence 内 bullet + heading 双形态提取，8 字段全命中），相关回归测试同步更新
+- **v1.5 术语残留清理（设定模板体系审查）**：① narrative-writer/story-short-write 两处「语言风格档案」→「说话方式」（v1.5 角色卡 6 大标题制的正式称呼）；② worldbuilding.md「硬事实表」范围修正为势力/世界观卡（角色卡 v1.5 起由基础信息「结论（补充）」字段承担事实锚点），副本经 shared-assets 同步
+- **细纲模板双轨消除**：story-architect 模板内缩减版细纲示例替换为与 workflow-setup.md 权威模板一致的完整字段结构（含阶段位置/章节定位/结构公式/禁止提前释放/契约风险/本章设定引用/预算合计），禁止事项同步补「预算合计」要求
+- **细纲顶层必填字段守卫（v1.5 新字段）**：current-contract.json 新增 `required_outline_header_fields`（单元ID/位置、主角目标/关键选择、契约风险、本章设定引用等 8 项），contract 校验 workflow-setup 权威模板必须声明全部字段（负面测试已验证拦截），demo 保持 8 项核心段校验不变
+- **角色线阶段编号连续性**：consistency-checker 第零步新增阶段 N 连续性机械校验（从 1 开始、无跳号/重复，[S1][stage_numbering]）；character-basics/workflow-setup 模板同步注明编号纪律
+- **细纲字段强度分层显式化**：workflow-setup 新增显式清单——13 项每章必填硬字段 + 4 项按需字段（高压章必配、低压章可弱化但须写占位结论），供生成/验收对照
+- **设定模板补全（artifact-protocols 新增 3 个模板节 + 衔接修复）**：①势力卡模板（基本信息/核心目标/关键人物/与主角关系/硬事实表），workflow-setup 势力卡规范同步指向模板；②文风卡最小模板（句长/标点/潜台词/例句锚点）+ 「含实质内容」判定口径（≥200 字或含可执行约束小节）统一写入模板；③题材正文提示卡填空模板（9 项：边界/核心逻辑/读者期待/爽点情绪/正文落点/前后期打法/节奏密度/场景颗粒/禁止漂移 + 置信度标注）；④角色卡「形象图」字段细化（版本递增/替换旧行/写生成日期），story-image Step 7 补充多图版本处理与「读取描述串时跳过形象图行」说明；模板列表头部同步登记 4 个设定文件
+- **角色卡图（char-sheet）统一 portrait/turnaround**：新增 `scripts/character-card.py`（从 `设定/角色/{名}.md` 自动提取 基础信息/形象与能力/身份/性格/简介/关键词 素材，兼容 6 大标题制与旧版卡结构，`--json` 输出）；`prompt-template.py` 新增 `char-sheet` 类型——参考表布局（背景/大标题中文名+拼音+标语/基本信息面板/三视图/表情网格 2×3/服装配饰分解/色板+简介+关键词），支持中英双语（`--lang en|zh`）与模块裁剪（`--modules`），基于用户实测模板（火火参考表）通用化；portrait/turnaround 保留为兼容模式；文档同步：SKILL.md 类型表/Step3/输出路径（`characters/{名}/char-sheet_v{N}.png`）/Step7 回写、image-types.md 类型一览+新规范节、visual-styles.md 角色卡图规范、story 路由表合并人物图/三视图为角色卡图、character-basics 形象图字段改 char-sheet 命名（shared-assets 三副本同步）
+- **子智能体审查修复 + agents_version 27（P1/P2）**：consistency-checker 删「旧版为 代价兑现/收益兑现」兼容残留（v1.5 已移除旧项目兼容）；agents_version 26→27 四处同步（current-contract/UPGRADING/setup SKILL/7 个 spawn-capable SKILL 共 23+14 处，含「本版 N」「大于 N 时额外提示」裸数字与「小于 N」部署阈值语义修正）；chapter-extractor 质量检查段模型名描述软化（「更强模型档（默认 pro，覆盖默认 flash 档）」替代硬编码双模型名，主流程 story-long-analyze 的操作指令保留具体模型名不变）
+- **配置检测与询问流程**：SKILL.md 新增「配置前置」——进入生成流程前跑 `imagegen.sh --list-backends` 检测已配置后端（新增该子命令，列出全部已配置后端、无配置时 exit 1），未配置任何后端时用 AskUserQuestion 主动询问用户提供 API Key（含后端用途说明、key 持久化引导、连通性验证与 401/429/5xx 错误对照）；description 同步更新（补 GrsAI、角色卡图、未配置时询问）
+- **demo 角色卡图示例**：`demo/characters/沈栀/char-sheet_v1.png`（GrsAI gpt-image-2 真实生成，1024x1536 参考表布局），README 新增「生成效果示例」小节并更新 story-image 说明（触发词/后端列表/配置询问）
+- **GrsAI 后端支持**：新增 `scripts/imagegen-grsai.sh`（grsai.ai GPT-Image 接口，`POST /v1/draw/completions` 同步返回，`Authorization: Bearer` 认证，仅需 `GRSAI_API_KEY`）；`api-json.py` 增加 grsai kind（body 用 `aspectRatio` 宽高比语义，has-error 识别 `status!=succeeded`，first-image 兼容 `results[].url` 与 `data[].url` 双结构）；`imagegen.sh` 探测链加入 `GRSAI_API_KEY`（GPT_IMAGE_API_KEY 之后）；支持 `--ref` 图生图（URL 或本地转 data URL）；文档：SKILL.md 环境变量表/后端差异表；顺手加固 api-json.py 既有 6 处防御性问题（reconfigure 类型标注/load_json 异常/索引越界）
+
 ## v1.5.0
 
 > 角色卡架构重构批：角色卡与角色线卡整合为单文件 6 大标题制（基础信息/形象与能力/说话方式/角色线/写作红线/本书专属），基础信息字段采用「结论（补充）」单层格式（消除硬事实区重复），移除旧项目兼容（一律按新格式重构生成），附最小完整卡真实范例。agents bundle 同步（agents_version 26：character-designer/consistency-checker/story-architect/story-explorer 模板更新）。
@@ -26,21 +49,6 @@
 
 ### 修复
 
-- **版本四源漂移修复**：`skills/story/VERSION` 停在 1.3.2（v1.4.0/v1.5.0 两次发布漏更），导致「检查更新」报错当前版本，已对齐 1.5.0。`check-current-skill-contracts.py` 新增四源一致性断言（package.json / VERSION / manifest / UPGRADING）+ spawn-capable SKILL 的 `agents_version` 阈值文案一致性检查（防 v25→v26 式半更新残留）
-- **agents_version 阈值残留清理**：7 个 spawn-capable SKILL.md 中「小于或大于 25」→「小于或大于 26」（与 `agents_version: 26` 一致）
-- **story-setup 工作流编号规范**：`### 1.1/1.2/2.1/2.2/2.3` 改为 `### Step N` 连续整数编号，`Phase 1.2` 引用改 `Phase 1 Step 2`，`skill-numbering.py check` 恢复 PASS
-- **CI 守卫门禁**：新增 `.github/workflows/guards.yml`，PR 与 main push 全量运行 19 个守卫/回归 step（此前 17 条守卫只在本地手动跑，导致 VERSION 漂移与编号违规入库）；CONTRIBUTING 更新 CI 说明
-- **僵尸 rules 模板清理**：删除 `skills/story-setup/references/templates/rules/` 4 个文件（story-consistency/story-format/story-narrative/story-outline，共 278 行）——v0.7 多端 hooks 时代的路径过滤规则文件，pi 版 story-setup 早已不部署，仅 contract 测试与回归测试还在强制引用。细纲必填项契约校验从 rules/story-outline.md 迁至热路径权威 `workflow-setup.md` 的「细纲（第 N 章）」模板（fence 内 bullet + heading 双形态提取，8 字段全命中），相关回归测试同步更新
-- **v1.5 术语残留清理（设定模板体系审查）**：① narrative-writer/story-short-write 两处「语言风格档案」→「说话方式」（v1.5 角色卡 6 大标题制的正式称呼）；② worldbuilding.md「硬事实表」范围修正为势力/世界观卡（角色卡 v1.5 起由基础信息「结论（补充）」字段承担事实锚点），副本经 shared-assets 同步
-- **细纲模板双轨消除**：story-architect 模板内缩减版细纲示例替换为与 workflow-setup.md 权威模板一致的完整字段结构（含阶段位置/章节定位/结构公式/禁止提前释放/契约风险/本章设定引用/预算合计），禁止事项同步补「预算合计」要求
-- **细纲顶层必填字段守卫（v1.5 新字段）**：current-contract.json 新增 `required_outline_header_fields`（单元ID/位置、主角目标/关键选择、契约风险、本章设定引用等 8 项），contract 校验 workflow-setup 权威模板必须声明全部字段（负面测试已验证拦截），demo 保持 8 项核心段校验不变
-- **角色线阶段编号连续性**：consistency-checker 第零步新增阶段 N 连续性机械校验（从 1 开始、无跳号/重复，[S1][stage_numbering]）；character-basics/workflow-setup 模板同步注明编号纪律
-- **细纲字段强度分层显式化**：workflow-setup 新增显式清单——13 项每章必填硬字段 + 4 项按需字段（高压章必配、低压章可弱化但须写占位结论），供生成/验收对照
-- **设定模板补全（artifact-protocols 新增 3 个模板节 + 衔接修复）**：①势力卡模板（基本信息/核心目标/关键人物/与主角关系/硬事实表），workflow-setup 势力卡规范同步指向模板；②文风卡最小模板（句长/标点/潜台词/例句锚点）+ 「含实质内容」判定口径（≥200 字或含可执行约束小节）统一写入模板；③题材正文提示卡填空模板（9 项：边界/核心逻辑/读者期待/爽点情绪/正文落点/前后期打法/节奏密度/场景颗粒/禁止漂移 + 置信度标注）；④角色卡「形象图」字段细化（版本递增/替换旧行/写生成日期），story-image Step 7 补充多图版本处理与「读取描述串时跳过形象图行」说明；模板列表头部同步登记 4 个设定文件
-- **角色卡图（char-sheet）统一 portrait/turnaround**：新增 `scripts/character-card.py`（从 `设定/角色/{名}.md` 自动提取 基础信息/形象与能力/身份/性格/简介/关键词 素材，兼容 6 大标题制与旧版卡结构，`--json` 输出）；`prompt-template.py` 新增 `char-sheet` 类型——参考表布局（背景/大标题中文名+拼音+标语/基本信息面板/三视图/表情网格 2×3/服装配饰分解/色板+简介+关键词），支持中英双语（`--lang en|zh`）与模块裁剪（`--modules`），基于用户实测模板（火火参考表）通用化；portrait/turnaround 保留为兼容模式；文档同步：SKILL.md 类型表/Step3/输出路径（`characters/{名}/char-sheet_v{N}.png`）/Step7 回写、image-types.md 类型一览+新规范节、visual-styles.md 角色卡图规范、story 路由表合并人物图/三视图为角色卡图、character-basics 形象图字段改 char-sheet 命名（shared-assets 三副本同步）
-- **子智能体审查修复 + agents_version 27（P1/P2）**：consistency-checker 删「旧版为 代价兑现/收益兑现」兼容残留（v1.5 已移除旧项目兼容）；agents_version 26→27 四处同步（current-contract/UPGRADING/setup SKILL/7 个 spawn-capable SKILL 共 23+14 处，含「本版 N」「大于 N 时额外提示」裸数字与「小于 N」部署阈值语义修正）；chapter-extractor 质量检查段模型名描述软化（「更强模型档（默认 pro，覆盖默认 flash 档）」替代硬编码双模型名，主流程 story-long-analyze 的操作指令保留具体模型名不变）
-- **配置检测与询问流程**：SKILL.md 新增「配置前置」——进入生成流程前跑 `imagegen.sh --list-backends` 检测已配置后端（新增该子命令，列出全部已配置后端、无配置时 exit 1），未配置任何后端时用 AskUserQuestion 主动询问用户提供 API Key（含后端用途说明、key 持久化引导、连通性验证与 401/429/5xx 错误对照）；description 同步更新（补 GrsAI、角色卡图、未配置时询问）
-- **GrsAI 后端支持**：新增 `scripts/imagegen-grsai.sh`（grsai.ai GPT-Image 接口，`POST /v1/draw/completions` 同步返回，`Authorization: Bearer` 认证，仅需 `GRSAI_API_KEY`）；`api-json.py` 增加 grsai kind（body 用 `aspectRatio` 宽高比语义，has-error 识别 `status!=succeeded`，first-image 兼容 `results[].url` 与 `data[].url` 双结构）；`imagegen.sh` 探测链加入 `GRSAI_API_KEY`（GPT_IMAGE_API_KEY 之后）；支持 `--ref` 图生图（URL 或本地转 data URL）；文档：SKILL.md 环境变量表/后端差异表；顺手加固 api-json.py 既有 6 处防御性问题（reconfigure 类型标注/load_json 异常/索引越界）
 - workflow-setup 落盘校验：必查项改 6 大标题齐全（含 H1 定位括号、三项无待补充、结论（补充）格式禁表格）
 - 修复 consistency-checker.md 空文件事故（edit 与 git add 并行竞态导致提交 0 字节）
 
