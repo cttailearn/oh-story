@@ -134,7 +134,7 @@ flowchart LR
 角色卡图（char-sheet）由 `story-image` 从角色卡自动提取素材并生成——统一立绘、三视图
 与参考表布局（基本信息面板/表情网格/服装分解/色板），支持中英双语提示词：
 
-![沈栀角色卡图 demo（GrsAI gpt-image-2 生成）](demo/characters/沈栀/char-sheet_v1.png)
+![沈栀角色卡图 demo（GrsAI gpt-image-2 生成）](demo/characters/沈栀/char-sheet_v1.webp)
 
 > 图片由真实 API 生成（1024x1536），完整流程：角色卡 → character-card.py 提取 → prompt-template.py 组装 → imagegen.sh 出图。
 
