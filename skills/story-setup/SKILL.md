@@ -47,9 +47,9 @@ description: "网文写作工具集项目初始化（pi / dsh 双运行时自适
 
 1. 读 `.story-deployed`：
    - 不存在 → 全新项目，继续
-   - `agents_version` 缺失、非整数或小于 `28` → 标记为待更新，继续执行当前部署
-   - `agents_version: 28` → 用 AskUserQuestion（dsh 下为 ask_user_question）确认是否重新部署；提示里写明重新部署只用**当前本地包**刷新项目文件（pi: `.pi/agents/`；dsh: `.dsh/story-agents/`；及 AGENTS.md 段），要拿新版本得先更新 oh-story 包
-   - `agents_version` 大于 `28` → 当前包比项目部署旧；停止以避免降级覆盖，提示先更新 oh-story，不写任何部署文件
+   - `agents_version` 缺失、非整数或小于 `29` → 标记为待更新，继续执行当前部署
+   - `agents_version: 29` → 用 AskUserQuestion（dsh 下为 ask_user_question）确认是否重新部署；提示里写明重新部署只用**当前本地包**刷新项目文件（pi: `.pi/agents/`；dsh: `.dsh/story-agents/`；及 AGENTS.md 段），要拿新版本得先更新 oh-story 包
+   - `agents_version` 大于 `29` → 当前包比项目部署旧；停止以避免降级覆盖，提示先更新 oh-story，不写任何部署文件
    - `target_cli` 非空且非 `pi`/`dsh`（如 `claude`、`codex`、`zcode` 等旧多端标记）→ 迁移场景：提示「检测到旧多端部署（{target_cli}），本版只按当前运行时初始化；旧端目录（.claude/、.codex/ 等）不删也不动，如需清理请自行处理。」
    - `target_cli` 为另一运行时（如 pi 项目在 dsh 下运行 setup，或反之）→ **跨环境切换**：提示「项目原按 {target_cli} 部署。本次按当前运行时（{Phase 0 检测结果}）补充部署（pi → `.pi/agents/`；dsh → `.dsh/story-agents/`），原部署目录保留不动——两个运行时可共存，sentinel 的 target_cli 更新为当前运行时。」
 2. 检查 `.active-book` 是否存在；列出已有书目录（包含 `追踪/` 或 `设定/` 子目录的目录 = 长篇；含 `正文.md` 且同时含 `小节大纲.md` 或 `设定.md` 的目录 = 短篇）。
@@ -80,6 +80,7 @@ description: "网文写作工具集项目初始化（pi / dsh 双运行时自适
    > 写作/审查 skill 会在 spawn 前检查本目录与 `.story-deployed`。
 
 4. 提示用户：dsh 下子代理**立即可用**（`subagent` 工具原生存在，无需安装扩展或新开会话）。
+5. **部署追踪工具**：把本 skill 的 `scripts/tracking_commit.py` 复制到项目 `.dsh/tools/tracking_commit.py`（说明文件一并复制：`references/tracking-transaction.md`），并在 `AGENTS.md` 写入「追踪工具」节（见 Step 2 模板）——追踪状态的**唯一写入口**是该项目内工具：`python .dsh/tools/tracking_commit.py check|commit --project {项目根}`，禁止手改 `追踪/` 下任何文件（追踪一致性由 `check-project-consistency.js` 与写作 Gate 机械校验）。
 
 ### Step 2：写/合并 `AGENTS.md`（双运行时模板）
 
@@ -116,7 +117,7 @@ description: "网文写作工具集项目初始化（pi / dsh 双运行时自适
 
 ```yaml
 deployed_at: {ISO8601 时间}
-agents_version: 28
+agents_version: 29
 setup_skill_version: 2.1.0
 target_cli: {Phase 0 检测到的 runtime: pi | dsh}
 resolver_strategy: project-local-skill-reference
@@ -135,14 +136,14 @@ references_dir: package-skill-dir（skill 本体随 oh-story 包加载，项目�
 1. `.pi/agents/` 下 7 个 agent 文件存在，且 frontmatter 可解析（`name:`、`description:` 非空，`name` 与文件名一致）。
 2. `AGENTS.md` 含「网文写作工具集」段。
 3. 书目录结构与 `.active-book` 指向一致。
-4. `.story-deployed` 的 `agents_version: 28`、`target_cli: pi`。
+4. `.story-deployed` 的 `agents_version: 29`、`target_cli: pi`。
 
 **dsh 分支验证**：
 
 1. `.dsh/story-agents/` 下 7 个模板文件 + README.md 存在。
 2. `AGENTS.md` 含「网文写作工具集」段（dsh 会自动加载）。
 3. 书目录结构与 `.active-book` 指向一致。
-4. `.story-deployed` 的 `agents_version: 28`、`target_cli: dsh`。
+4. `.story-deployed` 的 `agents_version: 29`、`target_cli: dsh`。
 
 全部通过后报告（按 Phase 0 运行时与 subagent 能力分支）：
 

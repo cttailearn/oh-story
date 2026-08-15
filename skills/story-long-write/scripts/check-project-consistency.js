@@ -136,7 +136,7 @@ function checkReview(root) {
   const fails = [];
   const files = glob(root, "大纲/审查记录");
   if (files.length === 0) {
-    fails.push("[FAIL][review] 大纲/审查记录/ 无审查记录（Gate A/B/C 后必须写审查记录，缺失=Gate 未完成）");
+    fails.push("[FAIL][review] 大纲/审查记录/ 无审查记录（Gate A/B/C 后与每章正文后必须写审查记录，缺失=未完成）");
     return fails;
   }
   for (const f of files) {
@@ -145,6 +145,13 @@ function checkReview(root) {
     if (!lines || text.trim().length < 40 || !/S1|S2|S3|S4|结论|发现|处置/.test(text)) {
       fails.push(`[FAIL][review] ${f} 内容不完整（需含 审查范围/发现(S1-S4)/处置/结论）`);
     }
+  }
+  // 正文审查记录：每章必写（写章三查落盘）
+  const chapters = glob(root, "正文").map((f) => f.match(/第(\d+)章/)).filter(Boolean).map((m) => m[1]);
+  const reviewNames = new Set(files);
+  for (const n of chapters) {
+    const expect = `正文审查_第${n}章.md`;
+    if (!reviewNames.has(expect)) fails.push(`[FAIL][review] 缺 ${expect}（写章三查记录必写，缺失=该章未完成）`);
   }
   return fails;
 }

@@ -1,3 +1,21 @@
+## v2.2.0（未发布）
+
+> 真实使用复盘优化（时间戳实证：执行断点 + 重排遗留 + 部署缺失）：写章三查强制化、重排回写纪律、追踪工具部署、面板内容差异化。
+> agents bundle 变化：consistency-checker 模板加「面板同款检测」（agents_version 28 → 29）。
+
+### 新增
+
+- **写章三查强制检查点**（workflow-chapter）：写前追踪状态加载 → 写后细纲硬要求兑现（含面板内容差异化核对）→ 写后禁用词 Gate（0 blocking）；三查结论落盘 `大纲/审查记录/正文审查_第{N}章.md`（review-log 契约扩展，check-project-consistency --scope review 机械校验）——**缺记录 = 本章未完成，不得写下一章**（workflow-daily 硬停靠）
+- **重排回写清单**（workflow-revision Step 4）：章节重排必输出 `重排影响_YYYYMMDD.md`（受影响章节清单/正文硬事实回写/正文 vs 新细纲冲突项/追踪事务），未输出 = 重排未完成
+- **check-chapter-consistency.js**：正文时间线硬事实机械检查——章编号对应（正文/细纲双向）、星期倒挂（只查倒退，允许同日多章）、日期倒挂、天数/倒计时回退；接入重排回写与日更 Gate；test-chapter-consistency.js 7 用例
+- **story-setup 部署追踪工具**：dsh 分支复制 tracking_commit.py 到项目 `.dsh/tools/`，AGENTS.md 写入「追踪工具」节（追踪唯一写入口声明，禁止手改）
+- **面板内容差异化规则**：复沓锚句豁免只覆盖框架措辞；内容字段必须随追踪状态增量差异化，连续多章整段同款 = S1 违例（workflow-setup 模板边界 + workflow-chapter 写章核对 + consistency-checker「面板同款检测」）
+
+### 变更
+
+- agents_version 28 → 29（consistency-checker 模板变更）；check-project-consistency review scope 增加每章正文审查记录必选
+- shared-assets 登记 story-setup 的 tracking_commit.py / tracking-transaction.md 副本（4 副本同步）
+
 ## v2.1.0
 
 > 小版本发布：逐级确认链、审查记录契约化、一致性机械校验、生成环境检查、默认画风（真实系真人）、反馈优化修复。
