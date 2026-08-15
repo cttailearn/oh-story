@@ -40,28 +40,43 @@ pi remove git:github.com/cttailearn/oh-story        # uninstall
 
 ### dsh channel (DeepSeek Harness)
 
-One idempotent installer script:
-
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1
+# Install from GitHub (pinned release tag, recommended)
+dsh plugin --profile web add github:cttailearn/oh-story#v2.0.0
+
+# Or install the latest main-branch content (dev build)
+dsh plugin --profile web add github:cttailearn/oh-story
 ```
 
-It performs two home-level registrations (applies to every profile / writing project):
+After installing, **append the mount row once** to `~/.dsh/cordis.patch.yml` (home level,
+applies to every profile) so the skill registry discovers the in-package skills
+(dsh plugin activation is explicit: install ≠ activate; the mount row is a one-time step):
 
-1. Creates the junction `~/.dsh/skills` -> this repo's `skills/` (dsh skill root rank 400;
-   hot-discovered; the repo stays the single source of truth).
-2. Appends a `skill-filesystem` `customSkillDirs` entry to `~/.dsh/cordis.patch.yml`
-   (belt and braces).
+```yaml
+- insert:
+    - id: oh-story-skills
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: oh-story
+        includeDefaultRoots: false
+        customSkillDirs:
+          - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))
+```
 
-Uninstall: `powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Uninstall`.
-For a checkout elsewhere: `-RepoSkills 'D:\\dev\\oh-story\\skills'`.
-Verify: after refreshing/opening a dsh session, typing `/story` (or natural language
-"我想写小说") should trigger; all 13 skills (`/story-setup`, `/story-long-write`, ...)
-should be listed.
+Update / uninstall (same style as pi):
 
-> Manual equivalent: copy or link this repo's `skills/` into `~/.dsh/skills`, a writing
-> project's `.dsh/skills`, or the project-root `.agents/skills` (project rank 200).
-> Re-run the script after updates (the junction always points at the repo).
+```powershell
+dsh plugin --profile web add github:cttailearn/oh-story#new-tag   # upgrade (change the ref)
+dsh plugin --profile web remove oh-story                        # uninstall
+# After uninstall: delete the mount row above; remove any leftover node_modules/oh-story directory
+```
+
+> **Local development**: `dsh plugin --profile web add link:G:/AI/oh-story-pi` (`link:` creates a
+> junction to the repo; `git pull` updates it without reinstalling).
+> **Note**: the web profile disables HMR, so **restart the dsh session** after install/update;
+> then typing `/story` (or natural language "我想写小说") should trigger — all 13 skills visible
+> means success. Saying "检查更新" in a session compares the GitHub version with local
+> `skills/story/VERSION`.
 
 ### Deploy professional subagents (multi-agent collaboration)
 
@@ -263,7 +278,7 @@ subagents. Skill bodies and the knowledge base ship with the pi package
 - **pi**: first-class. `pi install git:github.com/cttailearn/oh-story@v2.0.0` makes all 13 skills
   available; the `/story` command alias comes from the in-package extension; agents deploy to
   `.pi/agents/`. npm publishing is deferred due to account 2FA policy (the `oh-story` name is reserved).
-- **dsh (DeepSeek Harness)**: first-class. Run `scripts/install-dsh.ps1` and the 13 skills are
+- **dsh (DeepSeek Harness)**: first-class. `dsh plugin --profile web add github:cttailearn/oh-story#v2.0.0` + one mount row (see the install section) and the 13 skills are
   discovered from the home-level skill root (project-level placement also works); trigger via
   `/story`, `/story-*` or natural language; agent prompt templates deploy to `.dsh/story-agents/`.
   dsh auto-loads the project `AGENTS.md`, so the routing table takes effect directly.

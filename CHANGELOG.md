@@ -8,7 +8,7 @@
 
 - **双运行时（pi / dsh）**：13 个 skill 同时支持 pi 与 dsh（DeepSeek Harness）。pi 触发 `/skill:story-*`、
   dsh 触发 `/story-*` 或自然语言；两端流程指令通用
-- **dsh 插件式安装（方案 A，scripts/install-dsh.ps1）**：`dsh plugin add` 三种来源——
+- **dsh 插件式安装**：`dsh plugin add` 三种来源——
   link:（本地仓库 junction，单点更新）/ github:（pnpm github: 协议）/ npm（发布后 -Package）；
   `~/.dsh/cordis.patch.yml` `- insert:` 独立 skill-filesystem 实例（providerName: oh-story、
   官方 fileURLToPath 表达式指向 node_modules/oh-story/skills，注册 global 层）；

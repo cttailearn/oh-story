@@ -30,59 +30,43 @@ pi install git:github.com/cttailearn/oh-story@新ref   # 升级到新版本（�
 pi remove git:github.com/cttailearn/oh-story           # 卸载
 ```
 
-### dsh 通道（DeepSeek Harness · 插件式，方案 A）
-
-本仓库提供一键安装脚本（幂等，可重复执行），按 **dsh 插件机制**安装：
+### dsh 通道（DeepSeek Harness）
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1
+# 安装（GitHub 源，指定发布 tag，推荐）
+dsh plugin --profile web add github:cttailearn/oh-story#v2.0.0
+
+# 或安装 main 分支最新内容（开发版）
+dsh plugin --profile web add github:cttailearn/oh-story
 ```
 
-脚本做三件事（均幂等）：
+安装后还需在 `~/.dsh/cordis.patch.yml`（home 级，所有 profile 生效）**追加一次挂载行**，
+让 dsh 的 skill 注册表发现包内 skills（dsh 的插件激活是显式的：安装 ≠ 激活；挂载一次后更新/重装无需再改）：
 
-1. **插件安装**：`dsh plugin --profile web add link:<仓库>`（`link:` 协议创建 junction，
-   仓库即唯一事实源；npm 发布后自动改用 `dsh plugin --profile web add oh-story`）
-2. **挂载行**：在 `~/.dsh/cordis.patch.yml`（home 级，所有 profile 生效）`- insert:`
-   一个**独立 skill-filesystem 实例**（`providerName: oh-story`、`includeDefaultRoots: false`、
-   `customSkillDirs` 指向 `node_modules/oh-story/skills/`——与 dsh 官方 cordis preset
-   分发技能的方式一致，注册进 global 层，所有 preset 会话可见）
-3. **清理旧形态**：移除旧 `~/.dsh/skills` junction（若指向本仓库）
+```yaml
+- insert:
+    - id: oh-story-skills
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: oh-story
+        includeDefaultRoots: false
+        customSkillDirs:
+          - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))
+```
 
-参数与来源：
-
-| 参数 | 来源 | 说明 |
-|---|---|---|
-| `-Package <npm名>` | npm 发布版 | `dsh plugin add <包名>`（最高优先级） |
-| `-GitHub cttailearn/oh-story[@tag]` | GitHub 仓库 | pnpm `github:` 协议自动 clone+打包安装（副本形态，更新需重装） |
-| （默认）`-Repo <路径>` | 本地仓库 | `link:` 协议创建 junction，仓库即唯一事实源（单点更新） |
-
-更新检查与更新：
+更新 / 卸载（写法同 pi）：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -CheckUpdate   # 对比本地 VERSION 与 GitHub tags
-powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Update        # link:源→git pull；GitHub/npm源→重装最新
+dsh plugin --profile web add github:cttailearn/oh-story#新tag   # 升级（改 ref 即可）
+dsh plugin --profile web remove oh-story                        # 卸载
+# 卸载后：删除上面追加的挂载行；若 node_modules/oh-story 目录残留一并删除
 ```
 
-> 会话内「检查更新」：任意 dsh/pi 会话中说「检查更新」（story skill 路由），模型对比 GitHub release
-> 与本地 `skills/story/VERSION` 给出结果，两端通用。
-
-卸载：`-Uninstall`（移除挂载行 + profile 依赖 + 旧 junction）。
-验证：**新开 dsh 会话**（web profile 的 HMR 已禁用，配置在启动时加载）后输入 `/story`（或自然语言
-「我想写小说」）应能触发；`/story-setup`、`/story-long-write` 等 13 个 skill 全部可见即安装成功。
-
-> 手动等价方式：`dsh plugin --profile web add link:<仓库>` 后，在 `~/.dsh/cordis.patch.yml` 追加：
-> ```yaml
-> - insert:
->     - id: oh-story-skills
->       name: '@deepseek-ai/dsh-skill-filesystem'
->       config:
->         providerName: oh-story
->         includeDefaultRoots: false
->         customSkillDirs:
->           - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))
-> ```
-> 项目级替代：把 `skills/` 复制/链接到写作项目 `.dsh/skills` 或 `.agents/skills`（rank 100/200）。
-> 更新时重新执行脚本（link: junction 始终指向仓库，天然单点更新）。
+> **本地开发**：`dsh plugin --profile web add link:G:/AI/oh-story-pi`（`link:` 协议创建 junction
+> 指向仓库，git pull 即更新，无需重装）。
+> **注意**：web profile 的 HMR 被官方禁用，安装/更新后需**重启 dsh 会话**生效；
+> 之后输入 `/story`（或自然语言「我想写小说」）即可触发，13 个 skill 全部可见即安装成功。
+> 会话内说「检查更新」可对比 GitHub 版本与本地 `skills/story/VERSION`。
 
 ### 部署专业子代理（多 agent 协作）
 
@@ -259,14 +243,14 @@ pi 无 hooks 机制，原多端版的运行时硬拦截由两层等价物承担�
 
 `story-setup/references/agent-references/` 是 600KB+ 的共享写作知识库（题材卡、爽点
 钩子、人设方法、对话掌控、情绪曲线、去AI味语料等），由写作/审查 skill 与子代理按需
-加载。skill 本体与知识库随包更新（pi：`pi update --extensions`；dsh：重新执行 install-dsh.ps1 或 git pull 后刷新），项目内不复制副本。
+加载。skill 本体与知识库随包更新（pi：`pi update --extensions`；dsh：`dsh plugin --profile web add github:cttailearn/oh-story#新tag` 或 link: 源 git pull），项目内不复制副本。
 
 ## 适用平台
 
 - **pi**：原生支持。`pi install git:github.com/cttailearn/oh-story@v2.0.0` 后 13 个 skill 自动可用，
   `/story` 命令别名由包内扩展注册；子代理部署到 `.pi/agents/`。npm 发布因账号 2FA 策略暂缓，
   待条件允许后补充（包名 `oh-story` 已预留）。
-- **dsh（DeepSeek Harness）**：原生支持。执行 `scripts/install-dsh.ps1` 后 13 个 skill 即被 home 级
+- **dsh（DeepSeek Harness）**：原生支持。`dsh plugin --profile web add github:cttailearn/oh-story#v2.0.0` + 一行挂载（见安装章节）后 13 个 skill 即被 global 层
   skills 根发现（也可项目级放置）；触发 `/story`、`/story-*` 或自然语言；子代理 prompt 模板部署到
   `.dsh/story-agents/`。dsh 的 AGENTS.md 自动加载让项目路由表直接生效。
 - 旧多端版（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）见上游仓库
