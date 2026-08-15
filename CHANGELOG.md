@@ -17,7 +17,7 @@
   （直接列表项 + 密/疏标注，无需「情节点N：」前缀）；预算合计支持区间写法（8000-8800字），
   括号备注不参与解析；workflow-setup 补长章（8000+）情节点拆解示例与题材字数规则引用
 - **AGENTS.md 合并保留清单报告**：story-setup 部署后列出已替换的模板子节与已保留的用户自定义段
-- **角色图默认画风（兜底档）**：未指定风格时一律用「厚涂半写实商业插画」（semi-realistic painterly digital illustration）——
+- **角色图默认画风（兜底档）**：未指定风格时一律用**国漫 3D 风格**（stylized Chinese 3D animation (guoman)，参考斗罗大陆/完美世界类 3D 动画渲染）——
   光影电影感柔光、皮肤柔和有质感、显式排除真人照片感与 AI 塑料感；prompt-template.py 的 general 档即本档
   （style 参数已可省略，缺省 general）；visual-styles.md 新增「默认画风（兜底档）」节（画风定义/禁忌/适用顺序），
   SKILL.md Step 2 风格选择优先级：用户指定 > 平台档 > 题材风格库 > 默认画风档

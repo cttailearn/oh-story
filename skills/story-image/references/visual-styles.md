@@ -59,19 +59,20 @@
 
 > **角色图（char-sheet / portrait / turnaround）未指定风格时的唯一兜底**：用户没说风格、题材风格标签未覆盖画风维度、或 prompt-template 未传 style 时，一律用本档（prompt-template.py 的 `general` 档即本档）。cover/scene 按各自类型规范执行，不套本档。
 
-**画风定义**（提示词关键词，中英双语均用）：
+**画风定义**（提示词关键词，中英双语均用；默认 = **国漫 3D 风格**，参考《斗罗大陆》《完美世界》《眷思量》类 3D 动画渲染）：
 
-- 画风：**厚涂半写实商业插画**（`semi-realistic painterly digital illustration`）
-- 细节：`high detail refined character art`（五官精致、发丝/服饰细节到位）
-- 光影：`cinematic soft lighting`（电影感柔光 + 轮廓光，面部受光清晰）
+- 画风：**国漫 3D 动画渲染风**（`stylized Chinese 3D animation (guoman) style`）
+- 渲染：`high detail 3D character render`（3D 建模渲染、五官立体精致、轮廓清晰）
+- 发丝/布料：`silky detailed hair`（发丝细腻）、`detailed fabric texture`（服装布料材质到位）
+- 皮肤：`soft realistic skin material with subsurface shading`（次表面散射皮肤材质，柔和有质感，不塑料）
+- 光影：`cinematic lighting, elegant rim light`（电影感布光 + 轮廓光，面部受光清晰）
 - 构图：`clean composition`（主体居中/三分法，背景干净不抢主体）
-- 色彩：`elegant color grading`（通透饱和，主色调跟随角色卡「主色调」字段）
-- 皮肤：`soft natural skin texture`（柔和有质感）
+- 色彩：`vibrant color grading`（通透饱和，主色调跟随角色卡「主色调」字段）
 
 **禁忌**（提示词中显式排除）：
 
-- `avoid photorealistic`——禁止真人照片感（网文角色图底线，见「提示词技巧·避免真人照片感」）
-- `avoid plastic look`——禁止 AI 塑料感（皮肤光滑无纹理、表情僵硬）
+- `avoid photorealistic`——禁止真人照片感（国漫 3D ≠ 真人写实，见「提示词技巧·避免真人照片感」）
+- `avoid plastic look`——禁止 AI 塑料感（3D 渲染尤其要防皮肤无纹理、表情僵硬）
 
 **适用顺序**（风格选择优先级，从高到低）：
 

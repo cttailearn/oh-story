@@ -36,8 +36,8 @@ STYLE_TAGS = {
     "fanqie":   ("vibrant saturated colors, eye-catching bold design", "high contrast, character dominating frame, mass-market novel cover style"),
     "yan":      ("minimalist literary style, clean composition with negative space", "subtle moody atmosphere, independent film poster aesthetic"),
     "qimao":    ("warm narrative illustration, detailed environment, retro comic style", "warm earthy palette, comic-influenced shading, vivid storytelling"),
-    # 默认画风档（未指定 style 或非平台档时兜底，权威定义见 visual-styles.md「默认画风（兜底档）」）
-    "general":  ("semi-realistic painterly digital illustration, high detail refined character art, cinematic soft lighting, clean composition", "balanced lighting, soft natural skin texture, elegant color grading, avoid photorealistic and plastic look"),
+    # 默认画风档（未指定 style 或非平台档时兜底；国漫 3D 风格，权威定义见 visual-styles.md「默认画风（兜底档）」）
+    "general":  ("stylized Chinese 3D animation (guoman) style, high detail 3D character render, refined facial features, silky detailed hair, soft realistic skin material, cinematic lighting, vibrant color grading, clean composition", "soft subsurface skin shading, elegant rim light, detailed fabric texture, avoid photorealistic and plastic look"),
     "photo":    ("realistic photographic style, sharp focus, professional studio photography", "soft dramatic studio lighting, clean background, natural skin texture"),
 }
 # char-sheet 专用风格：摄影写实参考表（火火模板基准），仍可按 --style 覆盖
