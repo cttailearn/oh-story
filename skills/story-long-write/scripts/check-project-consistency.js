@@ -168,7 +168,7 @@ function main() {
     else { console.error(USAGE); process.exit(2); }
   }
   if (!project) { console.error(USAGE); process.exit(2); }
-  const scopes = scope === "all" ? ["setup", "outline", "detail", "review"] : [scope];
+  const scopes = scope === "all" ? ["setup", "outline", "detail", "review"] : scope.split(",").map((s) => s.trim()).filter(Boolean);
   const results = {};
   let fails = [];
   for (const s of scopes) {

@@ -1,6 +1,6 @@
 ---
 name: story-setup
-version: 2.1.0
+version: 2.2.0
 description: "网文写作工具集项目初始化（pi / dsh 双运行时自适应）。验证 oh-story 包完整性、按运行时部署专业子代理（pi → .pi/agents/，dsh → .dsh/story-agents/ prompt 模板）、写入 AGENTS.md、创建标准书目录结构并打部署标记。触发方式：/skill:story-setup、/story-setup、「准备写书」「帮我搭一下环境」「配置写作项目」。"
 ---
 
@@ -118,7 +118,7 @@ description: "网文写作工具集项目初始化（pi / dsh 双运行时自适
 ```yaml
 deployed_at: {ISO8601 时间}
 agents_version: 29
-setup_skill_version: 2.1.0
+setup_skill_version: 2.2.0
 target_cli: {Phase 0 检测到的 runtime: pi | dsh}
 resolver_strategy: project-local-skill-reference
 references_dir: package-skill-dir（skill 本体随 oh-story 包加载，项目不复制 references）
