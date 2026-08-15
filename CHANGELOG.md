@@ -18,7 +18,7 @@
   括号备注不参与解析；workflow-setup 补长章（8000+）情节点拆解示例与题材字数规则引用
 - **AGENTS.md 合并保留清单报告**：story-setup 部署后列出已替换的模板子节与已保留的用户自定义段
 - **长篇写作逐级确认链**：设定完成后先写大纲（全书体量与阶段总览）→ **大纲确认停靠** → 卷纲 → Gate B + **卷纲确认停靠** → 细纲（首批 10 章）→ Gate C + 批末预算核对 + **细纲确认停靠** → 正文；每级用户确认（AskUserQuestion 确认/修改）后才进下一级，修改后重跑该层门控与审查记录
-- **角色图默认画风（兜底档）**：未指定风格时一律用**国漫 3D 风格**（stylized Chinese 3D animation (guoman)，参考斗罗大陆/完美世界类 3D 动画渲染）——
+- **角色图默认画风（兜底档）**：未指定风格时一律用**真实系真人风格**（photorealistic realistic style, professional portrait photography，写实摄影人像；禁忌：avoid plastic CG look / avoid anime or illustration style）——
   光影电影感柔光、皮肤柔和有质感、显式排除真人照片感与 AI 塑料感；prompt-template.py 的 general 档即本档
   （style 参数已可省略，缺省 general）；visual-styles.md 新增「默认画风（兜底档）」节（画风定义/禁忌/适用顺序），
   SKILL.md Step 2 风格选择优先级：用户指定 > 平台档 > 题材风格库 > 默认画风档
