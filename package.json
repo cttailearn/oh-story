@@ -1,6 +1,6 @@
 {
   "name": "oh-story",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "网络小说创作工具箱（pi / dsh 双运行时）：扫榜、拆文、写作、审查、去AI味、封面生成，13 个 skills + 7 个专业子代理",
   "keywords": [
     "pi-package",

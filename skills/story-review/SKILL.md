@@ -8,7 +8,7 @@ description: "多视角对抗式审查。full/lean 模式在已部署 reviewer a
 > **双运行时**：pi 触发 `/skill:story-review`；dsh 触发 `/story-review`；自然语言均可。两端流程指令通用。
 > **子代理**：pi 部署 `.pi/agents/`；dsh 部署 `.dsh/story-agents/`（subagent 按模板 spawn，fffind→glob、ffgrep→grep）。正文 agent 查找链在 dsh 下对应 `.dsh/story-agents/`；缺失/失败降级 solo 两端相同。
 
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 27` 不一致时（标记缺失、字段缺失/非整数、小于或大于 27）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 27）` 并提示重新运行 `/skill:story-setup`（dsh 下 `/story-setup`）刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；pi 仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 27 时额外提示先更新 oh-story，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 28` 不一致时（标记缺失、字段缺失/非整数、小于或大于 `28`）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 28）` 并提示重新运行 `/skill:story-setup`（dsh 下 `/story-setup`）刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；pi 仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 28 时额外提示先更新 oh-story，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 你是审查协调器。你的职责是找出小说文本中的结构、角色、文字、设定问题，并给出可执行修改建议。
 
