@@ -104,7 +104,7 @@ if ($Update) {
   }
   if ($spec) {
     Push-Location $profileDir
-    try { pnpm add $spec 2>&1 | ForEach-Object { Write-Host $_ }; if ($LASTEXITCODE -ne 0) { Write-Error "pnpm add failed (exit $LASTEXITCODE)" } } finally { Pop-Location }
+    try { pnpm add $spec --ignore-scripts 2>&1 | ForEach-Object { Write-Host $_ }; if ($LASTEXITCODE -ne 0) { Write-Error "pnpm add failed (exit $LASTEXITCODE)" } } finally { Pop-Location }
   }
   Write-Host "[done] update finished; restart dsh session to load it"
   exit 0
@@ -116,7 +116,8 @@ if ($Uninstall) {
     $pj = Get-Content $ppj -Raw | ConvertFrom-Json
     if ($pj.dependencies.PSObject.Properties.Name -contains "oh-story") {
       $pj.dependencies.PSObject.Properties.Remove("oh-story")
-      $pj | ConvertTo-Json -Depth 10 | Set-Content $ppj -Encoding UTF8
+      $json = $pj | ConvertTo-Json -Depth 10
+      [System.IO.File]::WriteAllText($ppj, $json, (New-Object System.Text.UTF8Encoding($false)))
       Write-Host "[ok] removed oh-story from $ppj"
       if (Test-Path (Join-Path $profileDir "node_modules\oh-story")) { Remove-Item (Join-Path $profileDir "node_modules\oh-story") -Force -Recurse }
     }
@@ -142,7 +143,8 @@ if (-not $already) {
   if (-not $spec) { $spec = "link:" + $absRepo.Replace("\", "/") }
   Push-Location $profileDir
   try {
-    pnpm add $spec 2>&1 | ForEach-Object { Write-Host $_ }
+    $extra = if ($GitHub) { "--ignore-scripts" } else { "" }
+    pnpm add $spec $extra 2>&1 | ForEach-Object { Write-Host $_ }
     if ($LASTEXITCODE -ne 0) { Write-Error "pnpm add failed (exit $LASTEXITCODE)" }
   } finally { Pop-Location }
   Write-Host "[ok] oh-story installed into profile $Profile"
