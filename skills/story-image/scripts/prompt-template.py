@@ -36,7 +36,8 @@ STYLE_TAGS = {
     "fanqie":   ("vibrant saturated colors, eye-catching bold design", "high contrast, character dominating frame, mass-market novel cover style"),
     "yan":      ("minimalist literary style, clean composition with negative space", "subtle moody atmosphere, independent film poster aesthetic"),
     "qimao":    ("warm narrative illustration, detailed environment, retro comic style", "warm earthy palette, comic-influenced shading, vivid storytelling"),
-    "general":  ("high detail digital painting", "balanced lighting, clean composition"),
+    # 默认画风档（未指定 style 或非平台档时兜底，权威定义见 visual-styles.md「默认画风（兜底档）」）
+    "general":  ("semi-realistic painterly digital illustration, high detail refined character art, cinematic soft lighting, clean composition", "balanced lighting, soft natural skin texture, elegant color grading, avoid photorealistic and plastic look"),
     "photo":    ("realistic photographic style, sharp focus, professional studio photography", "soft dramatic studio lighting, clean background, natural skin texture"),
 }
 # char-sheet 专用风格：摄影写实参考表（火火模板基准），仍可按 --style 覆盖
@@ -281,7 +282,7 @@ BUILDERS = {
 def main():
     ap = argparse.ArgumentParser(description="story-image 内置提示词模板")
     ap.add_argument("image_type", choices=list(BUILDERS), help="图像类型（char-sheet 角色卡图 / portrait / turnaround / cover / scene）")
-    ap.add_argument("style", choices=list(STYLE_TAGS), help="画风")
+    ap.add_argument("style", choices=list(STYLE_TAGS), default="general", nargs="?", help="画风（默认 general = 默认画风档，见 visual-styles.md「默认画风（兜底档）」）")
     ap.add_argument("--desc", help="角色描述串（逗号分隔多短语，可加 hair:/face:/outfit:/accessory: 前缀）")
     ap.add_argument("--lang", choices=("en", "zh"), default="en", help="提示词语言（char-sheet 支持双语；默认 en）")
     ap.add_argument("--name", default="", help="角色中文名（char-sheet 大标题）")

@@ -55,6 +55,33 @@
 
 ---
 
+## 默认画风（兜底档）
+
+> **角色图（char-sheet / portrait / turnaround）未指定风格时的唯一兜底**：用户没说风格、题材风格标签未覆盖画风维度、或 prompt-template 未传 style 时，一律用本档（prompt-template.py 的 `general` 档即本档）。cover/scene 按各自类型规范执行，不套本档。
+
+**画风定义**（提示词关键词，中英双语均用）：
+
+- 画风：**厚涂半写实商业插画**（`semi-realistic painterly digital illustration`）
+- 细节：`high detail refined character art`（五官精致、发丝/服饰细节到位）
+- 光影：`cinematic soft lighting`（电影感柔光 + 轮廓光，面部受光清晰）
+- 构图：`clean composition`（主体居中/三分法，背景干净不抢主体）
+- 色彩：`elegant color grading`（通透饱和，主色调跟随角色卡「主色调」字段）
+- 皮肤：`soft natural skin texture`（柔和有质感）
+
+**禁忌**（提示词中显式排除）：
+
+- `avoid photorealistic`——禁止真人照片感（网文角色图底线，见「提示词技巧·避免真人照片感」）
+- `avoid plastic look`——禁止 AI 塑料感（皮肤光滑无纹理、表情僵硬）
+
+**适用顺序**（风格选择优先级，从高到低）：
+
+1. 用户明确指定的风格（如"画成二次元/厚涂/水墨风"）
+2. 平台档（番茄/起点/晋江等，见「平台风格」）
+3. 题材风格库标签（「风格库」各题材的标签/色彩/光效）
+4. **默认画风档（本档）**——未命中以上任一层时兜底
+
+**题材判定零命中**：题材推断规则零命中 → 题材默认都市 + 画风默认本档。
+
 ## 提示词构建公式
 
 ```
