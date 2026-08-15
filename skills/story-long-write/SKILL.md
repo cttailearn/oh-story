@@ -60,9 +60,16 @@ description: "长篇网文写作。从大纲到正文，辅助长篇网络小说
 - 已有设定/大纲但无正文 → 建议说「写第1章」「只写1章」或「日更2章」；
 - 已有正文+追踪 → 展示最后完成章节与下一章细纲状态，建议说「日更3章」「只写1章」「逐章确认」或「修改第X章」。
 
-**开书默认停靠**：用户只说"开书/写大纲/帮我开书"时，完成 Phase 1→3 与首批 10 章细纲后停止，报告已生成文件和下一步命令；除非用户同一句明确说"并写第1章/写 N 章/日更"，否则不要自动进入 Phase 4 正文。
+**开书默认停靠（逐级确认链）**：用户只说"开书/写大纲/帮我开书"时，按 **设定 → 大纲 → 卷纲 → 细纲 → 正文** 逐级推进，**每一级完成后必须用户确认才进下一级**：
 
-**阶段门控（Phase 2→3→细纲之间不静默带缺）**：Phase 2 完成后跑 **Gate A**（设定完善度检查：核心设定表/角色卡/关系/题材定位/提示卡/力量体系上限）+ **写入审查 A/B**（角色卡/设定写后语义审查，见 [references/write-review.md](references/write-review.md)），卷纲完成后跑 **Gate B**（大纲完成度检查：全部卷纲/核心角色角色线阶段规划/大纲安全七检）+ **写入审查 C**（大纲写后语义审查），每批细纲落盘后跑 **Gate C**（落盘校验：`scripts/check-outline-detail.js` 字段完整性+充实度机械校验——每章必填硬字段缺任一即 THIN、硬字段齐但内容空洞（目标情绪无前后态/内容概括"略"式/情节点数不足/无密疏标注/结尾设定状态判词等）即 LEAN，THIN/LEAN 都阻断；+ `scripts/check-project-consistency.js --scope detail` 设定引用点名文件存在性）+ **写入审查 D**（细纲批写后语义审查：与卷纲/角色线/追踪状态一致性）。任一不达标 → 先停靠列出缺项，用 AskUserQuestion 让用户选「补齐 / 带缺继续（标注风险，写入 设定/题材定位.md「设定待补」）」，**不静默进入下一步**。
+1. Phase 2 设定完成（Gate A）→ 写**大纲**（全书体量与阶段总览）→ **大纲确认停靠**（AskUserQuestion 确认/修改）
+2. 大纲确认后 → 写**卷纲**（全部卷）→ Gate B + **卷纲确认停靠**（确认/修改某卷）
+3. 卷纲确认后 → 写**细纲**（首批 10 章）→ Gate C + 批末预算核对 + **细纲确认停靠**（确认本批/修改/继续补批）
+4. 细纲确认后 → 停止并报告下一步命令；除非用户明确说"写第1章/写 N 章/日更"，否则**不要自动进入 Phase 4 正文**。
+
+中途修改意见：确认停靠时用户提出修改 → 改对应层级文件并重跑该层门控（Gate A/B/C）与审查记录，再重新停靠确认；**不允许带未确认内容进入下一级**。
+
+**阶段门控（Phase 2→3→细纲之间不静默带缺；每级用户确认后才进下一级）**：Phase 2 完成后跑 **Gate A**（设定完善度检查：核心设定表/角色卡/关系/题材定位/提示卡/力量体系上限）+ **写入审查 A/B**（角色卡/设定写后语义审查，见 [references/write-review.md](references/write-review.md)），卷纲完成后跑 **Gate B**（大纲完成度检查：全部卷纲/核心角色角色线阶段规划/大纲安全七检）+ **写入审查 C**（大纲写后语义审查），每批细纲落盘后跑 **Gate C**（落盘校验：`scripts/check-outline-detail.js` 字段完整性+充实度机械校验——每章必填硬字段缺任一即 THIN、硬字段齐但内容空洞（目标情绪无前后态/内容概括"略"式/情节点数不足/无密疏标注/结尾设定状态判词等）即 LEAN，THIN/LEAN 都阻断；+ `scripts/check-project-consistency.js --scope detail` 设定引用点名文件存在性）+ **写入审查 D**（细纲批写后语义审查：与卷纲/角色线/追踪状态一致性）。任一不达标 → 先停靠列出缺项，用 AskUserQuestion 让用户选「补齐 / 带缺继续（标注风险，写入 设定/题材定位.md「设定待补」）」，**不静默进入下一步**。
 
 **停靠点完成定义（三元组，缺一不可）**：① 产出文件落盘 ✓ + ② 机械校验通过（check-outline-detail / check-project-consistency / tracking_commit.py check）✓ + ③ 审查记录落盘（`大纲/审查记录/*.md`，契约见 [references/review-log.md](references/review-log.md)）✓——**审查记录缺失 = 未完成，不得报告完成**。检查清单与门控位置见 [references/workflow-setup.md](references/workflow-setup.md) 的 Gate A/B/C、[references/write-review.md](references/write-review.md) 与 [references/review-log.md](references/review-log.md)。
 
