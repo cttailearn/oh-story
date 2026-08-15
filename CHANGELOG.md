@@ -1,3 +1,29 @@
+## v2.1.0（未发布）
+
+> 真实使用反馈优化：模板↔脚本契约对齐、审查记录契约化、一致性机械校验、子代理交付协议。
+> agents bundle 无变化（agents_version 27 保持）。
+
+### 新增
+
+- **审查记录契约 references/review-log.md**：语义审查（写入审查/大纲安全审查/七检）必须落盘
+  `大纲/审查记录/*.md`（固定模板：审查范围/执行方式/逐项检查/发现 S1-S4/结论）；
+  **审查记录缺失 = Gate 未完成 = 不得报告完成**（停靠点三元组：产出✓ + 机械校验✓ + 审查记录✓）
+- **写作项目一致性脚本 check-project-consistency.js**：--scope setup/outline/detail/review——
+  设定索引 vs 实际文件（关系.md 角色索引）、角色线阶段编号连续性（S1）、卷纲六字段与全书体量、
+  细纲设定引用点名文件存在性、审查记录存在性与栏目完整性；接入 Gate A/B/C
+- **子代理交付协议**：7 个 agent 模板新增硬约定——最终消息 = 完整交付内容（禁止概述式收尾），
+  超长按固定分区连发，结构化产出字段完整
+- **细纲检测与模板契约对齐**（check-outline-detail.js）：情节点识别兼容模板式写法
+  （直接列表项 + 密/疏标注，无需「情节点N：」前缀）；预算合计支持区间写法（8000-8800字），
+  括号备注不参与解析；workflow-setup 补长章（8000+）情节点拆解示例与题材字数规则引用
+- **AGENTS.md 合并保留清单报告**：story-setup 部署后列出已替换的模板子节与已保留的用户自定义段
+
+### 变更
+
+- 三副本同步 check-outline-detail.js；test-outline-detail.sh 新增模板式写法/预算区间用例
+- 新增 scripts/test-project-consistency.js（good+bad 双夹具回归）；CONTRIBUTING/scripts 索引登记
+- doc-budget：登记 review-log.md；Gate/交付协议/审查输出增量调高 5 处预算
+
 ## v2.0.0
 
 > **改名 + 双运行时 + 全功能发布版**：oh-story-pi → oh-story（pi / dsh 双运行时）；细纲 THIN/LEAN 双层校验、

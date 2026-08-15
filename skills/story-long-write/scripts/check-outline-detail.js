@@ -163,11 +163,14 @@ function parseWordTarget(text) {
 	return { lo, hi };
 }
 
-// 解析「预算合计：X字（目标Y，范围Y-Z）」/「预算合计：X字」；支持全角/半角冒号
+// 解析「预算合计：X字（目标Y，范围Y-Z）」/「预算合计：X字」/「预算合计：8000-8800字」；
+// 支持全角/半角冒号；括号内备注不参与解析
 function parseBudgetTotal(text) {
-	const m = text.match(/预算合计[：:]\s*[约\s]*(\d{3,6})\s*字/);
+	const m = text.match(/预算合计[：:]\s*[约\s]*(\d{3,6})(?:\s*[-~至]\s*(\d{3,6}))?\s*字/);
 	if (!m) return null;
-	return parseInt(m[1], 10);
+	const lo = parseInt(m[1], 10);
+	const hi = m[2] ? parseInt(m[2], 10) : lo;
+	return { lo, hi };
 }
 
 // 提取章节定位（用于按需字段的报告提示）
@@ -253,12 +256,17 @@ function checkQuality(text, position, wordTarget) {
 	}
 
 	// 5. 情节细化：情节点数下限 + 至少一条密/疏标注
+	// 情节点识别兼容两种写法：模板示例「- 情节点1：内容【铺垫·疏40】」与
+	// 直接列表项「- 内容【铺垫·疏40】」（带密/疏标注或功能标签即视为情节点）
 	const detail = sectionBody(text, "情节细化");
 	if (detail) {
-		const points = (detail.match(/(?:^|\n)\s*[-*]\s*(?:\*\*)?情节点/g) || []).length;
+		const pointLineRe = /^\s*[-*]\s+(?:\*\*)?情节点|^\s*[-*]\s+[^【\n]*(?:【[^】]*[密疏][^】]*】|·密|·疏|密\d{2,4}|疏\d{1,3})/;
+		const pointLines = new Set();
+		detail.split("\n").forEach((l) => { if (pointLineRe.test(l)) pointLines.add(l.trim()); });
+		const points = pointLines.size;
 		const min = shortChapter || lowPressure ? 3 : 5;
 		if (points < min) {
-			warnings.push(`情节细化·情节点 ${points} 个 < ${min}（普通章 ≥5；<1500 字短章或低压/过场/信息整理/关系回收章 ≥3）`);
+			warnings.push(`情节细化·情节点 ${points} 个 < ${min}（普通章 ≥5；<1500 字短章或低压/过场/信息整理/关系回收章 ≥3；写法：「- 情节点N：内容【密/疏+字数】」或「- 内容【密/疏+字数】」）`);
 		}
 		if (!/(?:【[^】]*[密疏]|·密|·疏|密\d{2,4}|疏\d{1,3})/.test(detail)) {
 			warnings.push("情节细化·情节点缺少 密/疏 标注（每点标 密/疏 + 字数预算，如【铺垫·疏40】【高潮·密400】）");
@@ -293,15 +301,15 @@ function checkOutline(text) {
 		if (!f.re.test(text)) detailWarnings.push(f.name);
 	}
 
-	// 预算核对（仅在硬字段齐全或预算合计存在时做）
+	// 预算核对（仅在硬字段齐全或预算合计存在时做）：预算值（或区间）应落在 [目标下限, 目标上限×1.1] 内
 	if (!detailWarnings.includes("预算合计")) {
 		const target = parseWordTarget(text);
 		const total = parseBudgetTotal(text);
 		if (target && total !== null) {
-			if (total < target.lo) {
-				detailWarnings.push(`预算合计 ${total} < 字数目标下限 ${target.lo}`);
-			} else if (total > Math.round(target.hi * 1.1)) {
-				detailWarnings.push(`预算合计 ${total} > 字数目标上限 ${target.hi} × 1.1`);
+			if (total.lo < target.lo) {
+				detailWarnings.push(`预算合计 ${total.lo} < 字数目标下限 ${target.lo}`);
+			} else if (total.hi > Math.round(target.hi * 1.1)) {
+				detailWarnings.push(`预算合计 ${total.hi} > 字数目标上限 ${target.hi} × 1.1`);
 			}
 		}
 	}

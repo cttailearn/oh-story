@@ -23,8 +23,8 @@
   "files": [
     {
       "path": "skills/story-long-write/SKILL.md",
-      "budget": 14000,
-      "why": "长篇任一场景都无条件加载；v1.3.2 阶段门控与开书工作流概览增量；v2.0.0 双运行时说明；v2.1.0 Gate A/B/C + 写入审查接线增量"
+      "budget": 14300,
+      "why": "长篇任一场景都无条件加载；v1.3.2 阶段门控与开书工作流概览增量；v2.0.0 双运行时说明；v2.1.0 Gate A/B/C + 写入审查接线 + 停靠点三元组（产出/机械校验/审查记录）增量"
     },
     {
       "path": "skills/story-long-write/references/workflow-daily.md",
@@ -38,8 +38,8 @@
     },
     {
       "path": "skills/story-long-write/references/workflow-setup.md",
-      "budget": 16300,
-      "why": "开书必读（含细纲模板）；v2.1.0 Gate A/B/C 接入写入审查 + LEAN 充实度层增量"
+      "budget": 17300,
+      "why": "开书必读（含细纲模板）；v2.1.0 Gate A/B/C 接入写入审查 + LEAN 充实度层 + 审查记录完成定义 + 长章情节点示例增量"
     },
     {
       "path": "skills/story-short-write/SKILL.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "skills/story-setup/references/templates/agents/narrative-writer.md",
-      "budget": 13300,
-      "why": "正文 agent 系统提示每章 spawn 都付；v1.1 模型钉定 frontmatter 行；v1.7.0+ 细纲边界拆内容层/形状层两条并列 + 复沓锚句自查（借鉴上游 #355，防正文誊抄细纲）"
+      "budget": 13600,
+      "why": "正文 agent 系统提示每章 spawn 都付；v1.1 模型钉定 frontmatter 行；v1.7.0+ 细纲边界拆内容层/形状层；v2.1 交付协议（完整产出写入最终消息）增量"
     },
     {
       "path": "skills/story-long-write/references/writing-craft.md",
@@ -68,14 +68,19 @@
     },
     {
       "path": "skills/story-long-write/references/write-review.md",
-      "budget": 3500,
-      "why": "v2.1.0 写入审查协议：角色卡/设定/大纲/细纲每次写入后必读（热路径）"
+      "budget": 3700,
+      "why": "v2.1.0 写入审查协议：角色卡/设定/大纲/细纲每次写入后必读（热路径）；v2.1 输出契约化（审查记录落盘）+ 机械校验接线增量"
+    },
+    {
+      "path": "skills/story-long-write/references/review-log.md",
+      "budget": 2000,
+      "why": "v2.1 审查记录契约：每次写后审查必读（热路径）"
     }
   ],
   "paths": [
     {
       "label": "长篇日更主会话",
-      "budget": 37100,
+      "budget": 37350,
       "why": "日更每章加载：SKILL.md + workflow-daily + workflow-chapter；v1.8 workflow-chapter 步骤 1 接线 check-outline-detail.js（写正文前细纲硬字段机械校验，THIN 即补建，防薄细纲）",
       "files": [
         "skills/story-long-write/SKILL.md",
@@ -85,7 +90,7 @@
     },
     {
       "label": "长篇开书",
-      "budget": 30200,
+      "budget": 31550,
       "why": "开书路径：SKILL.md + workflow-setup.md；v1.8 Gate C 升两步落盘校验（check-outline-detail.js 字段完整性 + 设定引用 grep）",
       "files": [
         "skills/story-long-write/SKILL.md",
@@ -94,7 +99,7 @@
     },
     {
       "label": "正文 agent 上下文",
-      "budget": 39250,
+      "budget": 39350,
       "files": [
         "skills/story-setup/references/templates/agents/narrative-writer.md",
         "skills/story-long-write/references/writing-craft.md",
