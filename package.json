@@ -38,5 +38,15 @@
   },
   "dependencies": {
     "oh-story-pi": "github:cttailearn/oh-story"
-  }
+  },
+  "files": [
+    "skills",
+    "extensions",
+    "scripts",
+    "demo",
+    "README.md",
+    "README_EN.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
 }
