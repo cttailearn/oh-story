@@ -17,6 +17,10 @@
   （直接列表项 + 密/疏标注，无需「情节点N：」前缀）；预算合计支持区间写法（8000-8800字），
   括号备注不参与解析；workflow-setup 补长章（8000+）情节点拆解示例与题材字数规则引用
 - **AGENTS.md 合并保留清单报告**：story-setup 部署后列出已替换的模板子节与已保留的用户自定义段
+- **story-image 生成环境检查（check-imagegen-env.sh）**：任何生成前必跑——运行依赖（bash/curl/python/base64）、
+  后端配置探测（复用 imagegen.sh）、指定后端专项（ComfyUI 可达+工作流目录、云后端 key、自定义端点）；
+  **不满足先问用户**（依赖缺失/后端未配置/不可达 → AskUserQuestion 提供 key/自定义 API/ComfyUI/跳过，修复后复检）；
+  SKILL.md 生成流程新增「环境检查」前置节
 
 ### 变更
 

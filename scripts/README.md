@@ -31,6 +31,7 @@
 | `test-scan-runtime.js` | CDP argv 边界/报错/JSON 契约与 scraper 无副作用 import | 提交前 |
 | `test-imagegen-custom.js` | story-image 自定义图像 API 后端端到端回归（本地 mock API：OpenAI 兼容 b64 / 自定义 url / 错误响应 + imagegen.sh 分发链路，8 用例；需 git bash） | 改动 imagegen-custom.sh / imagegen.sh / api-json.py 后 |
 | `test-project-consistency.js` | 写作项目机械一致性（check-project-consistency.js）：设定索引 vs 文件/角色线编号/卷纲字段/设定引用/审查记录，good+bad 双夹具 | 改动 check-project-consistency.js 或 Gate 契约后 |
+| `test-imagegen-env.js` | story-image 生成环境检查（check-imagegen-env.sh）：依赖/后端探测/专项可达性，无后端 MISSING + 有 key 全 OK 双状态 | 改动 check-imagegen-env.sh / imagegen.sh 探测后 |
 | `test-charcount-portable.sh` | 跨平台字符统计命令在三平台 + Windows 的正确性 | 提交前 |
 | `test-skill-numbering.sh` | Step 重排级联安全、锚点 fail-closed、代码块引用、验证零写入/提交回滚、dry-run/write/幂等性 | 提交前 |
 

@@ -40,6 +40,19 @@ description: "故事图像生成。生成小说封面、角色卡图（统一立
 
 > **配置前置（进入任何 Step 前先做一次）**：跑 `bash <skill-dir>/scripts/imagegen.sh --list-backends` 检测已配置后端。**未配置任何后端时，先用 AskUserQuestion 询问用户提供 API Key 或选择后端**（询问文案见 Step 4「先检测配置」），不得直接开始生成或报错退出。
 
+### 环境检查（生成前置，任何生成前必做，不满足先问用户）
+
+用户要求生成图像（或检测到生成图像意图）时，进入 Step 1 前先做环境检查：
+
+1. 跑 `bash <skill-dir>/scripts/check-imagegen-env.sh`（已选定后端时加 `--backend <名>`，comfyui 后端自动做可达性+工作流目录专项检查；云后端检查 key 配置）。
+2. 按检查结果分流：
+   - **全部 `[OK]`** → 继续 Step 1。
+   - **依赖缺失**（bash/curl/python/base64）→ 用 AskUserQuestion 询问：装依赖后重试 / 换环境 / 跳过（说明缺什么、怎么装）。
+   - **后端未配置/不可达** → 用 AskUserQuestion 询问：**提供 API Key**（配置到环境）/ **自定义 API**（走接入流程，文档+key）/ **本地 ComfyUI**（先启动）/ **跳过**。
+3. 用户选择/修复后**复检一次**（重跑检查脚本）再进入生成；仍不满足则如实报告缺项，不硬生成。
+
+> 检查脚本只查环境，不查提示词/题材；每次会话第一次生成前做完整检查，同会话后续生成快速复检（`--list-backends` 非空即可）。
+
 ### Step 1：确定图像类型与收集信息
 
 从用户意图确定类型（[references/image-types.md](references/image-types.md)），按类型收集信息：
