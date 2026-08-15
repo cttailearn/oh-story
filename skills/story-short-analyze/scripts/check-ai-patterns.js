@@ -411,10 +411,29 @@ if (options.files.length === 0) {
   die("No files provided");
 }
 
+// 目录参数展开：递归收集 .md/.txt（正文/拆文/细纲目录可直接传入）
+function expandFiles(files) {
+  const out = [];
+  const walk = (p) => {
+    let st;
+    try { st = fs.statSync(p); } catch { out.push(p); return; }
+    if (st.isDirectory()) {
+      let entries;
+      try { entries = fs.readdirSync(p); } catch { return; }
+      entries.sort().forEach((e) => walk(path.join(p, e)));
+    } else if (/\.(md|txt)$/i.test(p)) {
+      out.push(p);
+    }
+  };
+  files.forEach(walk);
+  return out;
+}
+const fileList = expandFiles(options.files);
+
 let failed = false;
 const allFindings = [];
 
-for (const file of options.files) {
+for (const file of fileList) {
   const fullPath = path.resolve(file);
   let input;
   try {

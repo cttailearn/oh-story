@@ -29,12 +29,28 @@ function checkSetup(root) {
   const rel = readLines(path.join(root, "设定", "关系.md"));
   if (rel) {
     const names = new Set();
+    // 关系符号/句式词：关系对（↔/vs/→）与"起点/转折/当前"等叙述词不算角色索引
+    const badChar = /[↔⇄⇆vs→×（()）【】\s]/;
+    const stopWords = new Set(["起点", "转折", "当前", "变化", "关系", "情感", "状态", "起始", "节点", "角色 A", "角色 B", "角色a", "角色b"]);
+    const isName = (n) => {
+      if (!n || n.length > 8 || badChar.test(n)) return false;
+      if (stopWords.has(n)) return false;
+      return /^[\u4e00-\u9fa5A-Za-z0-9·]+$/.test(n);
+    };
     for (const l of rel) {
+      // 表格行：前两列（角色 A / 角色 B）为角色索引
+      if (l.trim().startsWith("|")) {
+        const cells = l.split("|").map((x) => x.trim()).filter(Boolean);
+        if (cells.length >= 2 && !/角色|^--/.test(cells[0]) && !/角色|^--/.test(cells[1])) {
+          if (isName(cells[0])) names.add(cells[0]);
+          if (isName(cells[1])) names.add(cells[1]);
+        }
+        continue;
+      }
+      // 粗体（关系演变段）：排除关系对写法
       let m;
       const re = /\*\*([^*]+?)\*\*/g;
-      while ((m = re.exec(l))) { const n = m[1].trim(); if (n && n.length <= 12) names.add(n); }
-      const lm = l.match(/^\s*[-*]\s*([^：:\n，,]{1,12})[：:]/);
-      if (lm) names.add(lm[1].trim().replace(/\*\*/g, ""));
+      while ((m = re.exec(l))) { const n = m[1].trim(); if (isName(n)) names.add(n); }
     }
     for (const n of names) {
       if (!fs.existsSync(path.join(root, "设定", "角色", n + ".md"))) {
