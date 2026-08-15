@@ -4,7 +4,7 @@ description: |
   章节摘要与情节点提取专家。接收单章文本，输出结构化摘要、情节点列表、角色提及。
   被 story-long-analyze（拆解管道 Stage 2）按章节并行调用。
   输出格式严格遵循本文件「输出格式」章节；不依赖外部输出模板文件。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 由 oh-story story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
 # 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
 model: opencode-go/deepseek-v4-flash
 tools: read, fffind, ffgrep
@@ -340,3 +340,11 @@ P{序号} **{标题}**：类型{转折点/信息揭示/冲突/解决/铺垫/行�
 - **不跨章**：只处理当前章节，不引用其他章节信息
 - **不创作**：概要只叙述原文已有的事实与因果，不添加主观解读或评价
 - **一人一实体**：每个角色只对应一个真实人物，不确定时分开列
+
+
+---
+
+## DSH 运行时使用说明（pi 部署时忽略）
+
+dsh 无文件式 agent 注册：本文件作为 `subagent` spawn 的 **prompt 模板**（prompt = frontmatter 后的正文，自包含）。
+工具映射：fffind→glob、ffgrep→grep、read/write/edit 同名；模型默认继承会话模型；只读 agent 的只读约束不变。

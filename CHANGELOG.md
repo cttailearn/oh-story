@@ -1,3 +1,68 @@
+## v2.0.0
+
+> **改名 + 双运行时 + 全功能发布版**：oh-story-pi → oh-story（pi / dsh 双运行时）；细纲 THIN/LEAN 双层校验、
+> 写入后主动审查、dsh 插件式安装、自定义图像 API 接入一并进入本版。
+> agents bundle 变化：story-setup 按运行时自适应部署（agents_version 27 保持）。
+
+### 新增
+
+- **双运行时（pi / dsh）**：13 个 skill 同时支持 pi 与 dsh（DeepSeek Harness）。pi 触发 `/skill:story-*`、
+  dsh 触发 `/story-*` 或自然语言；两端流程指令通用
+- **dsh 插件式安装（方案 A，scripts/install-dsh.ps1）**：`dsh plugin add` 三种来源——
+  link:（本地仓库 junction，单点更新）/ github:（pnpm github: 协议）/ npm（发布后 -Package）；
+  `~/.dsh/cordis.patch.yml` `- insert:` 独立 skill-filesystem 实例（providerName: oh-story、
+  官方 fileURLToPath 表达式指向 node_modules/oh-story/skills，注册 global 层）；
+  `-CheckUpdate`（对比本地 VERSION 与 GitHub tags）/ `-Update` / `-Uninstall`
+- **story-setup 运行时自适应**（Phase 0 检测 pi/dsh）：pi 部署 `.pi/agents/`（pi-subagents 格式）；
+  dsh 部署 `.dsh/story-agents/`（subagent prompt 模板 + README 索引）；AGENTS.md 模板路由表双运行时化；
+  `target_cli` 支持 pi / dsh 双值
+- **子代理模板 DSH 使用说明**：7 个 agent 模板末尾附 DSH spawn 用法（工具映射 fffind→glob、ffgrep→grep，
+  模型继承会话），pi 部署时忽略
+- **细纲充实度判定（LEAN 层，check-outline-detail.js）**：硬字段 13/13 齐全但内容空洞同样阻断（--check 退出 1）：
+  目标情绪无「前→后」状态 / 内容概括段"略/同上"式占位（结尾段禁状态判词）/ 主线推进或出场顺序过空 /
+  情节细化情节点数不足（普通章 <5，<1500 字短章或低压/过场/信息整理/关系回收章 <3）/ 无密疏标注 /
+  结尾设定状态判词；--json 输出 status: THIN | LEAN | OK；低压/短章按规则豁免点数下限
+- **写入审查协议 references/write-review.md**：角色卡/设定/大纲/细纲写入完成后主动语义审查
+  （S1-S4 分级复用 story-review / consistency-checker 口径；S1/S2 必须落实、S3/S4 待用户确认；
+  机械校验先行、语义审查随后，agent 模式（consistency-checker）优先、solo 降级）；
+  Gate A 后接写入审查 A/B、Gate B 后接 C、Gate C 后接 D；story-short-write Phase 2 后加写后自查
+- **story-image 自定义图像 API 接入**：用户提供自有图像 API 文档（粘贴/文件/网址）+ API key 时，
+  按 references/custom-api-guide.md 解析（端点/认证/请求体/响应取图路径/错误结构/同步异步）→ 生成
+  `~/.story-image/custom-backend.conf` → `imagegen-custom.sh --test` 小尺寸测试出图 → 登记进
+  `imagegen.sh` 探测链（dashscope 之后、comfyui 之前，`IMG_BACKEND=custom` 可显式指定）；
+  支持自定义认证头/CUSTOM_BODY 占位符模板/任意响应点路径/错误路径
+- **README 双通道安装文档**（pi git 通道 / dsh 插件式通道）与适用平台章节更新
+
+### 变更
+
+- 包名/仓库名：oh-story-pi → oh-story（旧 git 源由 GitHub 自动重定向；pi install 命令
+  改用 git:github.com/cttailearn/oh-story）
+- 版本号 1.7.0 → 2.0.0；skill 触发方式双写（/skill:story-* 与 /story-*）
+- check-outline-detail.js 三副本同步（long-write 源 / deslop / review）；test-outline-detail.sh 新增
+  LEAN/豁免用例；新增 scripts/test-imagegen-custom.js 端到端回归（mock API 三模式 + 分发链路）
+- static-check.py：DEPLOYED_RUNTIME_PREFIXES 增加 .dsh/（dsh 子代理部署路径豁免）
+- doc-budget：登记 write-review.md（写后必读热路径）；LEAN/审查/接线增量调高相关预算
+
+### 说明
+
+- target_cli 支持 pi / dsh 双值；旧多端标记迁移逻辑不变
+- 历史版本（v1.x）记录保留原名 oh-story-pi
+
+## v1.8.0
+
+> 细纲字段完整性检测（防薄细纲）+ Gate C 升两步落盘校验。
+> agents bundle 无变化（agents_version 27 保持）。
+
+### 新增
+
+- **细纲字段完整性检测器 `check-outline-detail.js`**：机械校验每章细纲的必填硬字段（13 项：核心事件/字数目标/阶段位置/单元ID/位置/目标情绪/主角目标·关键选择/禁止提前释放/内容概括五段式/情节安排多线/人物关系和出场顺序/情节细化/结尾设定和钩子/本章设定引用——缺任一即 THIN，`--check` 退出 1）+ 按需字段（结构公式/章首钩子/爽点/契约风险，warning 不阻断）+ 情节细化子项（预算合计/密疏标注/复沓锚句/行动成本·收益归属/视角·信息差）+ 「预算合计」与「字数目标」数值核对（Σ ∈ [目标, 目标×1.1]）；支持文件/目录参数与 `--json`；三副本 shared-assets 登记（long-write 源 / deslop / review）
+- **Gate C 升两步落盘校验**（workflow-setup「细纲落盘校验」）：① 字段完整性跑 `check-outline-detail.js`（THIN 回退补建，warning 按章节定位酌情补）→ ② 引用完整性 grep「本章设定引用」指向的设定文件；SKILL.md 门控描述同步；workflow-chapter 步骤 1 写正文前可先跑脚本验细纲
+- **`test-outline-detail.sh` 6 例回归**：完整细纲 OK/缺执行层字段 THIN/预算低于目标 warning 不阻断/目录与 `--json` 参数/不可读文件与空参数/真实 demo 细纲兼容性 + 挂 CI；doc-budget 调高（workflow-setup 15500 / 长篇开书 28700）
+
+### 修复
+
+- **check-outline-detail 不可读文件处理**：文件不存在时 `--check` 同样退出 1（此前只 THIN 才失败，漏报路径错误）
+
 ## v1.7.0
 
 > 细纲照搬检测（借鉴上游 oh-story-claudecode v0.7.6 #355）+ agents_version 字面量守卫 + demo 资产 WebP 化 + README_EN 对齐。
@@ -12,7 +77,6 @@
 - **README_EN 补全**：英文版 README 补全至与中文版对齐（277 行）
 
 ## v1.6.0
-
 
 > 角色卡图（char-sheet）统一 portrait/turnaround + GrsAI 后端 + 配置询问流程 + 设定模板体系补全。
 > 图像链路：角色卡自动提取 → char-sheet 参考表提示词（中英双语）→ 多后端生成（GPT-Image-2/GrsAI/火山方舟/通义万相/ComfyUI）。

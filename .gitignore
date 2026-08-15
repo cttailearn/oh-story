@@ -21,3 +21,7 @@ skills/story-image/tests/**/*.jpg
 skills/story-image/tests/**/*.jpeg
 skills/story-image/tests/**/*.webp
 skills/story-image/tests/**/*.gif
+
+# pnpm 测试残留（本仓库不是 pnpm 项目）
+.pnpm-store/
+pnpm-lock.yaml

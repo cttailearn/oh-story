@@ -640,7 +640,7 @@ def test_spawn_preflight_uses_agents_version_not_file_existence() -> None:
     current_contract = """
 读取 `.story-deployed` 的 `agents_version: {current}`；不一致时照常按文件存在性检查并 spawn，
 报告 `Notice: agents bundle 版本不匹配（项目 {{N}}，本版 {current}）` 并提示重跑 `/skill:story-setup`。
-大于 {current} 时额外提示先更新 oh-story-pi。
+大于 {current} 时额外提示先更新 oh-story。
 只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 """.format(current=current)
     require(

@@ -1,9 +1,12 @@
 ---
 name: story-long-write
 version: 1.0.0
-description: "长篇网文写作。从大纲到正文，辅助长篇网络小说的创作，包括世界观、人物、情节线管理。触发方式：/skill:story-long-write、/写长篇、「帮我开书」「写大纲」「日更」「续写」「继续写」「修改第X章」「回炉」「重写第X章」。"
+description: "长篇网文写作。从大纲到正文，辅助长篇网络小说的创作，包括世界观、人物、情节线管理。触发方式：/skill:story-long-write、/story-long-write、/写长篇、「帮我开书」「写大纲」「日更」「续写」「继续写」「修改第X章」「回炉」「重写第X章」。"
 ---
 # story-long-write：长篇网文写作
+
+> **双运行时**：pi 触发 `/skill:story-long-write`；dsh 触发 `/story-long-write`；自然语言均可。两端流程指令通用。
+> **子代理**：pi 部署 `.pi/agents/`；dsh 部署 `.dsh/story-agents/`（subagent 按模板 spawn，fffind→glob、ffgrep→grep）。正文 agent 查找链在 dsh 下对应 `.dsh/story-agents/`；缺失/失败降级 solo 两端相同。
 
 你是网络小说创作教练。你的任务是帮用户从零开始写一本长篇网络小说，从选题确认到大纲搭建再到正文输出。
 
@@ -11,7 +14,7 @@ description: "长篇网文写作。从大纲到正文，辅助长篇网络小说
 
 > 运行环境兼容性：本 skill 面向 pi 环境设计。检查专业 agent 时检查 `.pi/agents/{agent}.md` 是否存在且运行时暴露 subagent 工具（pi-subagents）；不满足时直接 solo/direct 执行并报告 fallback。
 >
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 27` 不一致时（标记缺失、字段缺失/非整数、小于或大于 27）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 27）` 并提示重新运行 `/skill:story-setup` 刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 27 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 27` 不一致时（标记缺失、字段缺失/非整数、小于或大于 27）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 27）` 并提示重新运行 `/skill:story-setup` 刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 27 时额外提示先更新 oh-story，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 ## 核心方法
 
@@ -59,7 +62,7 @@ description: "长篇网文写作。从大纲到正文，辅助长篇网络小说
 
 **开书默认停靠**：用户只说"开书/写大纲/帮我开书"时，完成 Phase 1→3 与首批 10 章细纲后停止，报告已生成文件和下一步命令；除非用户同一句明确说"并写第1章/写 N 章/日更"，否则不要自动进入 Phase 4 正文。
 
-**阶段门控（Phase 2→3→细纲之间不静默带缺）**：Phase 2 完成后跑 **Gate A**（设定完善度检查：核心设定表/角色卡/关系/题材定位/提示卡/力量体系上限），卷纲完成后跑 **Gate B**（大纲完成度检查：全部卷纲/核心角色角色线阶段规划/大纲安全七检），每批细纲落盘后跑 **Gate C**（引用完整性检查：细纲点名的设定文件必须存在）。任一不达标 → 先停靠列出缺项，用 AskUserQuestion 让用户选「补齐 / 带缺继续（标注风险，写入 设定/题材定位.md「设定待补」）」，**不静默进入下一步**。检查清单与门控位置见 [references/workflow-setup.md](references/workflow-setup.md) 的 Gate A/B/C。
+**阶段门控（Phase 2→3→细纲之间不静默带缺）**：Phase 2 完成后跑 **Gate A**（设定完善度检查：核心设定表/角色卡/关系/题材定位/提示卡/力量体系上限）+ **写入审查 A/B**（角色卡/设定写后语义审查，见 [references/write-review.md](references/write-review.md)），卷纲完成后跑 **Gate B**（大纲完成度检查：全部卷纲/核心角色角色线阶段规划/大纲安全七检）+ **写入审查 C**（大纲写后语义审查），每批细纲落盘后跑 **Gate C**（落盘校验两步：`scripts/check-outline-detail.js` 字段完整性+充实度机械校验——每章必填硬字段缺任一即 THIN、硬字段齐但内容空洞（目标情绪无前后态/内容概括"略"式/情节点数不足/无密疏标注/结尾设定状态判词等）即 LEAN，THIN/LEAN 都阻断；+ 细纲「本章设定引用」指向的设定文件 grep 引用完整性）+ **写入审查 D**（细纲批写后语义审查：与卷纲/角色线/追踪状态一致性）。任一不达标 → 先停靠列出缺项，用 AskUserQuestion 让用户选「补齐 / 带缺继续（标注风险，写入 设定/题材定位.md「设定待补」）」，**不静默进入下一步**。检查清单与门控位置见 [references/workflow-setup.md](references/workflow-setup.md) 的 Gate A/B/C 与 [references/write-review.md](references/write-review.md)。
 
 **正文批量上限**：写正文必须由用户显式给出章节范围或日更意图。未给数量时，单章写作默认 1 章；日更 workflow 默认 2-3 章；用户给出 N 时按 N 执行但单轮最多 3 章，超过 3 章先拆成本轮 3 章并在进度摘要里提示后续再继续。
 

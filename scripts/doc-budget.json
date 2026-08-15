@@ -23,8 +23,8 @@
   "files": [
     {
       "path": "skills/story-long-write/SKILL.md",
-      "budget": 13500,
-      "why": "长篇任一场景都无条件加载；v1.3.2 阶段门控与开书工作流概览增量"
+      "budget": 14000,
+      "why": "长篇任一场景都无条件加载；v1.3.2 阶段门控与开书工作流概览增量；v2.0.0 双运行时说明；v2.1.0 Gate A/B/C + 写入审查接线增量"
     },
     {
       "path": "skills/story-long-write/references/workflow-daily.md",
@@ -38,13 +38,13 @@
     },
     {
       "path": "skills/story-long-write/references/workflow-setup.md",
-      "budget": 15300,
-      "why": "开书/补纲路径加载；v1.1 新增细纲「本章设定引用」锚点字段与世界观卡/角色线卡建档规则；v1.3.2 增 Gate A/B/C 与大纲安全七检/审查、角色线卡前移、卷纲细纲提示词强化；复沓锚句字段（细纲权威模板，防誊抄）"
+      "budget": 16300,
+      "why": "开书必读（含细纲模板）；v2.1.0 Gate A/B/C 接入写入审查 + LEAN 充实度层增量"
     },
     {
       "path": "skills/story-short-write/SKILL.md",
-      "budget": 16800,
-      "why": "短篇任一场景都无条件加载"
+      "budget": 17200,
+      "why": "短篇任一场景都无条件加载；v2.1.0 Phase 2 写后写入审查段增量"
     },
     {
       "path": "skills/story-setup/references/templates/agents/narrative-writer.md",
@@ -65,12 +65,18 @@
       "path": "skills/story-long-write/references/banned-words.md",
       "budget": 3800,
       "why": "禁用词扫描每章读"
+    },
+    {
+      "path": "skills/story-long-write/references/write-review.md",
+      "budget": 3500,
+      "why": "v2.1.0 写入审查协议：角色卡/设定/大纲/细纲每次写入后必读（热路径）"
     }
   ],
   "paths": [
     {
       "label": "长篇日更主会话",
-      "budget": 36500,
+      "budget": 37100,
+      "why": "日更每章加载：SKILL.md + workflow-daily + workflow-chapter；v1.8 workflow-chapter 步骤 1 接线 check-outline-detail.js（写正文前细纲硬字段机械校验，THIN 即补建，防薄细纲）",
       "files": [
         "skills/story-long-write/SKILL.md",
         "skills/story-long-write/references/workflow-daily.md",
@@ -79,7 +85,8 @@
     },
     {
       "label": "长篇开书",
-      "budget": 28500,
+      "budget": 30200,
+      "why": "开书路径：SKILL.md + workflow-setup.md；v1.8 Gate C 升两步落盘校验（check-outline-detail.js 字段完整性 + 设定引用 grep）",
       "files": [
         "skills/story-long-write/SKILL.md",
         "skills/story-long-write/references/workflow-setup.md"

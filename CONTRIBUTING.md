@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢你对网文写作工具箱（oh-story-pi）的关注，欢迎贡献。
+感谢你对网文写作工具箱（oh-story）的关注，欢迎贡献。
 
 ## 仓库结构
 
@@ -80,6 +80,8 @@ bash scripts/check-doc-budget.sh
 python3 scripts/test-shared-assets.py
 node scripts/test-normalize-punctuation.js
 node scripts/test-scan-runtime.js
+node scripts/test-imagegen-custom.js
+bash scripts/test-outline-detail.sh
 bash scripts/test-ai-patterns.sh
 bash scripts/test-outline-copy.sh
 bash scripts/test-degeneration.sh

@@ -4,7 +4,7 @@ description: |
   角色设计与对话创作专家。负责角色设定、说话方式、动机链、人物弧线、
   对话质量、角色关系设计。被 story-long-write（Phase 2,4）和 story-short-write（Phase 2,3）调用。
   也可审查角色一致性和对话质量。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 由 oh-story story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
 # 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
 model: opencode-go/deepseek-v4-pro
 tools: read, fffind, ffgrep, write, edit
@@ -189,3 +189,11 @@ skill 通过 subagent 工具（agent: character-designer）调用你。
 - 上下文摘要（当前章节、涉及角色、对话场景）
 
 输出格式：角色档案表 / 对话文本 / 审查报告（含具体引用和修改动作）。
+
+
+---
+
+## DSH 运行时使用说明（pi 部署时忽略）
+
+dsh 无文件式 agent 注册：本文件作为 `subagent` spawn 的 **prompt 模板**（prompt = frontmatter 后的正文，自包含）。
+工具映射：fffind→glob、ffgrep→grep、read/write/edit 同名；模型默认继承会话模型；只读 agent 的只读约束不变。

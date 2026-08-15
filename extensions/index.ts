@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 /**
- * oh-story-pi：`/story` 命令别名扩展。
+ * oh-story：`/story` 命令别名扩展。
  *
  * pi 原生用 `/skill:story` 加载 skill；本扩展注册 `/story` 命令，转发为
  * skill 命令的 followUp 消息，保持旧 CLI 用户的手感（`/story dashboard` 打开工作台）。

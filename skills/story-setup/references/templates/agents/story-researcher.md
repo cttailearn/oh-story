@@ -4,7 +4,7 @@ description: |
   小说写作资料研究 agent。接收研究查询，优先使用 CDP (agent-browser) 搜索并提取完整正文，
   WebSearch/webReader 作为兜底。输出带来源引用的结构化 Markdown 参考文件。
   被 story-long-write（Phase 4）、story-review、story skill 路由调用。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 由 oh-story story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
 # 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
 model: opencode-go/deepseek-v4-pro
 tools: read, fffind, ffgrep, bash, write
@@ -303,3 +303,11 @@ skill 通过 subagent 工具（agent: story-researcher）调用你。
 ```
 
 `partial` 表示找到了部分信息但有未覆盖的方面；`failed` 表示搜索无果。
+
+
+---
+
+## DSH 运行时使用说明（pi 部署时忽略）
+
+dsh 无文件式 agent 注册：本文件作为 `subagent` spawn 的 **prompt 模板**（prompt = frontmatter 后的正文，自包含）。
+工具映射：fffind→glob、ffgrep→grep、read/write/edit 同名；模型默认继承会话模型；只读 agent 的只读约束不变。

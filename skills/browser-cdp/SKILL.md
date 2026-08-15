@@ -1,8 +1,11 @@
 ---
 name: browser-cdp
-description: "浏览器 CDP 操控。通过 CDP 协议控制 Chrome、复用已有登录态，覆盖：启动 debug 模式 Chrome、打开页面、等待加载、执行 JavaScript、截图快照、提取登录 token。注意：pi 内置 agent_browser 优先，本 skill 只用于需要复用已有 debug 实例登录态的场景。触发方式：/skill:browser-cdp、browser automation、CDP、agent-browser、浏览器操作、操作浏览器、复用登录态。"
+description: "浏览器 CDP 操控。通过 CDP 协议控制 Chrome、复用已有登录态，覆盖：启动 debug 模式 Chrome、打开页面、等待加载、执行 JavaScript、截图快照、提取登录 token。注意：pi 内置 agent_browser 优先，本 skill 只用于需要复用已有 debug 实例登录态的场景。触发方式：/skill:browser-cdp、/browser-cdp、browser automation、CDP、agent-browser、浏览器操作、操作浏览器、复用登录态。"
 ---
 # Browser CDP 操作工具
+
+> **双运行时**：pi 触发 `/skill:browser-cdp`；dsh 触发 `/browser-cdp`；自然语言均可。两端流程指令通用。
+
 
 通过 CDP 协议控制 Chrome，复用已有登录态，执行浏览器自动化操作。
 

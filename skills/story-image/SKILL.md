@@ -1,10 +1,13 @@
 ---
 name: story-image
 version: 2.1.0
-description: "故事图像生成。生成小说封面、角色卡图（统一立绘/人设/三视图）、场景图，支持多后端（GPT-Image-2、GrsAI、火山方舟 Seedream、阿里通义万相、本地 ComfyUI），自动探测已配置后端，未配置时主动询问用户提供 API Key。触发方式：/skill:story-image、/封面、/人物图、/立绘、/三视图、/角色卡图、/场景图、「帮我做个封面」「生成封面图」「做个小说封面」「封面设计」「生成人物形象图」「生成三视图」「生成场景图」。"
+description: "故事图像生成。生成小说封面、角色卡图（统一立绘/人设/三视图）、场景图，支持多后端（GPT-Image-2、GrsAI、火山方舟 Seedream、阿里通义万相、本地 ComfyUI），自动探测已配置后端，未配置时主动询问用户提供 API Key。触发方式：/skill:story-image、/story-image、/封面、/人物图、/立绘、/三视图、/角色卡图、/场景图、「帮我做个封面」「生成封面图」「做个小说封面」「封面设计」「生成人物形象图」「生成三视图」「生成场景图」「接入我的图像 API」「自定义 API」「我有 API 文档」「配置图像环境」。"
 ---
 
 # story-image：故事图像生成
+
+> **双运行时**：pi 触发 `/skill:story-image`；dsh 触发 `/story-image`；自然语言均可。两端流程指令通用。
+
 
 你是故事图像设计师。按用户意图生成四类图像之一：封面（含书名/作者名文字层）、人物形象图（立绘）、角色三视图、场景图。一次只处理一个意图；生成后按类型检查表自检，不合格迭代。
 
@@ -109,8 +112,9 @@ python <skill-dir>/scripts/prompt-template.py turnaround jinjin \
 1. 先跑 `bash <skill-dir>/scripts/imagegen.sh --list-backends` 列出**所有**已配置的后端（openai/grsai/volcengine/dashscope/comfyui 每行一个；无任何配置时退出码 1 且无输出）。`IMG_BACKEND` 已设置时直接用该后端并跳过探测。
 2. **无任何后端已配置时，不得直接报错退出**——用 AskUserQuestion 询问用户：
    - 选项 1：**我提供 API Key** → 让用户粘贴 key，然后引导用户配置到环境（当前会话导出 + 提示持久化方式，如写入 `~/.bashrc` 或 pi 配置）；配置后可继续本次生成
-   - 选项 2：**本地 ComfyUI** → 提示先启动 ComfyUI（`COMFYUI_URL` 默认 `http://127.0.0.1:8188`），探测到后继续
-   - 选项 3：**先跳过** → 停止生成，告知用户随时可回来继续
+   - 选项 2：**自定义 API（我有文档/网址 + key）** → 走下方「自定义图像 API 接入」小节，接入测试通过后继续本次生成（或用 `IMG_BACKEND=custom`）
+   - 选项 3：**本地 ComfyUI** → 提示先启动 ComfyUI（`COMFYUI_URL` 默认 `http://127.0.0.1:8188`），探测到后继续
+   - 选项 4：**先跳过** → 停止生成，告知用户随时可回来继续
    - 询问时把各后端用途列清楚：GPT-Image（OpenAI 或兼容代理）/ GrsAI（grsai.ai，需在控制台创建 key）/ 火山方舟 Seedream / 通义万相 / 本地 ComfyUI。用户明确指定后端时优先该后端。
 3. 用户提供 key 后，**先做一次连通性验证**再进入正式生成：用极小成本请求（或直接跑本次生成并在失败时定位）——至少确认 key 格式非空且后端可达（curl 一次 API 根路径或文档端点）；失败时给出该后端典型错误对照（401=key 无效/过期，429=限流，5xx=服务端）。
 4. 多后端已配置时默认按探测顺序取第一个，但可提示用户指定：`IMG_BACKEND=openai|grsai|volcengine|dashscope|comfyui`。
@@ -153,6 +157,18 @@ bash <skill-dir>/scripts/imagegen.sh auto \
 
 脚本自动落盘同名 `.prompt.txt`（提示词副本，便于迭代微调）。
 
+### 自定义图像 API 接入（Step 4 的 custom 分支）
+
+用户提供**自有图像 API 的文档（粘贴内容 / 文件路径 / 网址）与 API key** 时，按此流程接入，让该后端与内置后端一样可被 `imagegen.sh` 调用：
+
+1. **主动询问**（缺什么问什么，不编造）：文档内容或网址、API key（及获取方式）、基础 URL/模型名（文档已含免问）。
+2. **解析文档**：按 [references/custom-api-guide.md](references/custom-api-guide.md)「文档解析清单」提取——生成端点 / 认证方式 / 请求体结构 / 尺寸语义 / 响应取图路径 / 错误结构 / 同步或异步。**异步接口（先 task_id 再轮询）当前不支持自动轮询**，如实告知用户或让其提供同步端点。
+3. **生成配置**：写 `~/.story-image/custom-backend.conf`（mkdir -p + chmod 600；key 只存本机不进项目）；按文档填 `CUSTOM_API_URL`/`CUSTOM_API_KEY`/`CUSTOM_AUTH_HEADER`/`CUSTOM_BODY`（占位符模板）/`CUSTOM_IMAGE_PATH`/`CUSTOM_ERROR_PATH`/`CUSTOM_SIZE_MODE` 等。
+4. **测试运行**：`bash <skill-dir>/scripts/imagegen-custom.sh --prompt-file <测试提示词> --out /tmp/custom-test.png --test`（小尺寸、低成本）——成功出图即接入完成；失败按排错表迭代修 conf（最多 3 轮），仍失败如实报告（打码 key）。
+5. **登记与使用**：`bash <skill-dir>/scripts/imagegen.sh --list-backends` 应列出 `custom`；正式生成用 `IMG_BACKEND=custom` 或探测自动选中（顺序在 dashscope 之后、comfyui 之前）。
+
+详细协议、配置项说明与排错表见 [references/custom-api-guide.md](references/custom-api-guide.md)。
+
 ### Step 5：平台尺寸导出（仅封面）
 
 设了 `UPLOAD_SIZE`（番茄 `600x800`）时把原图居中裁剪+缩放导出 `_上传` 版（magick/convert/sips 任选其一），原图保留。书名/笔名在中心安全区（内 85%），裁剪不切字。
@@ -178,6 +194,7 @@ bash <skill-dir>/scripts/imagegen.sh auto \
 |:-----|:---------|
 | [references/image-types.md](references/image-types.md) | 任何生成任务：类型模板/输出目录/质量检查表 |
 | [references/visual-styles.md](references/visual-styles.md) | 题材判定、风格标签、平台风格、光效构图关键词 |
+| [references/custom-api-guide.md](references/custom-api-guide.md) | 自定义图像 API 接入（Step 4 分支）：文档解析清单/配置项/排错表 |
 
 ## 语言
 

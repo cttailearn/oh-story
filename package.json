@@ -1,9 +1,10 @@
 {
-  "name": "oh-story-pi",
-  "version": "1.7.0",
-  "description": "网络小说创作工具箱（pi 专属版）：扫榜、拆文、写作、审查、去AI味、封面生成，13 个 skills + 7 个 pi-subagents",
+  "name": "oh-story",
+  "version": "2.0.0",
+  "description": "网络小说创作工具箱（pi / dsh 双运行时）：扫榜、拆文、写作、审查、去AI味、封面生成，13 个 skills + 7 个专业子代理",
   "keywords": [
     "pi-package",
+    "dsh-skill",
     "novel",
     "writing",
     "web-novel",
@@ -15,7 +16,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cttailearn/oh-story-pi.git"
+    "url": "https://github.com/cttailearn/oh-story.git"
   },
   "pi": {
     "extensions": [
@@ -24,7 +25,7 @@
     "skills": [
       "./skills"
     ],
-    "image": "https://github.com/cttailearn/oh-story-pi/raw/main/demo/story-dashboard.png"
+    "image": "https://github.com/cttailearn/oh-story/raw/main/demo/story-dashboard.png"
   },
   "scripts": {
     "dashboard": "node skills/story/scripts/dashboard-server.mjs",
@@ -34,5 +35,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0"
+  },
+  "dependencies": {
+    "oh-story-pi": "github:cttailearn/oh-story"
   }
 }

@@ -7,7 +7,7 @@ description: |
   被 story-long-write（日更 Step 1 上下文加载）、story-review（审查时查设定）、
   story 路由（用户自然提问时）调用。
   不做任何创作判断或修改。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 由 oh-story story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
 # 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
 model: opencode-go/deepseek-v4-flash
 tools: read, fffind, ffgrep
@@ -374,3 +374,11 @@ turnBudget: {"maxTurns": 15}
 - 可选的额外参数（如章节号、角色名、关键词）
 
 输出格式：结构化 JSON（见上方输出格式章节）。
+
+
+---
+
+## DSH 运行时使用说明（pi 部署时忽略）
+
+dsh 无文件式 agent 注册：本文件作为 `subagent` spawn 的 **prompt 模板**（prompt = frontmatter 后的正文，自包含）。
+工具映射：fffind→glob、ffgrep→grep、read/write/edit 同名；模型默认继承会话模型；只读 agent 的只读约束不变。

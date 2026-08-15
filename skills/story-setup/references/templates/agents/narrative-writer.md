@@ -5,7 +5,7 @@ description: |
   情绪弧线执行、开篇/收尾、去AI味（禁用词替换、句式去套路、节奏调整）。
   被 story-long-write（Phase 4-5）和 story-short-write（Phase 3-4）调用。
   也可执行完整去AI味流程和格式合规检查。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 由 oh-story story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
 # 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
 model: opencode-go/deepseek-v4-pro
 tools: read, fffind, ffgrep, write, edit
@@ -304,3 +304,11 @@ skill 通过 subagent 工具（agent: narrative-writer）调用你。
 短篇写作同样只写入/更新 `正文.md`，不创建长篇追踪目录。
 
 返回前在最后一行报出本章实际句长分布（短句占比 / 中句 / 长句 / 平均句长 / 句段均长），供主会话做正文质量校验；不要额外总结剧情或罗列追踪记录——主会话会从已经写入文件的正文和细纲中提取连续性变化，本 agent 的最后一段生成预算留给章尾钩子。
+
+
+---
+
+## DSH 运行时使用说明（pi 部署时忽略）
+
+dsh 无文件式 agent 注册：本文件作为 `subagent` spawn 的 **prompt 模板**（prompt = frontmatter 后的正文，自包含）。
+工具映射：fffind→glob、ffgrep→grep、read/write/edit 同名；模型默认继承会话模型；只读 agent 的只读约束不变。

@@ -1,9 +1,12 @@
 ---
 name: story-import
 version: 1.0.0
-description: "逆向导入已有小说。将已写好的小说（半成品或完本）反向解析为标准项目目录结构，兼容 story-long-write / story-short-write 后续写作流程；内部复用 story-long-analyze / story-short-analyze 的拆解管道，按篇幅自动分流。触发方式：/skill:story-import、「导入小说」「反向解析」「导入」「把我的书导进来」。"
+description: "逆向导入已有小说。将已写好的小说（半成品或完本）反向解析为标准项目目录结构，兼容 story-long-write / story-short-write 后续写作流程；内部复用 story-long-analyze / story-short-analyze 的拆解管道，按篇幅自动分流。触发方式：/skill:story-import、/story-import、「导入小说」「反向解析」「导入」「把我的书导进来」。"
 ---
 # story-import：逆向导入已有小说
+
+> **双运行时**：pi 触发 `/skill:story-import`；dsh 触发 `/story-import`；自然语言均可。两端流程指令通用。
+> **子代理**：pi 部署 `.pi/agents/`；dsh 部署 `.dsh/story-agents/`（subagent 按模板 spawn，fffind→glob、ffgrep→grep）。正文 agent 查找链在 dsh 下对应 `.dsh/story-agents/`；缺失/失败降级 solo 两端相同。
 
 你是小说项目逆向工程师。导入按篇幅分流：长篇走 Phase 3-L，短篇走 Phase 3-S。
 
@@ -13,7 +16,7 @@ description: "逆向导入已有小说。将已写好的小说（半成品或完
 
 > Agent 兼容性：检查专业 agent 是否可用时，检查 `.pi/agents/{agent}.md` 是否存在且运行时暴露 subagent 工具（pi-subagents）；任一不满足即降级为 solo/direct，报告 `Fallback: project custom agents unavailable -> solo`。
 >
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 27` 不一致时（标记缺失、字段缺失/非整数、小于或大于 27）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 27）` 并提示重新运行 `/skill:story-setup` 刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 27 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 27` 不一致时（标记缺失、字段缺失/非整数、小于或大于 27）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 27）` 并提示重新运行 `/skill:story-setup` 刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 27 时额外提示先更新 oh-story，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 ## 核心原则
 

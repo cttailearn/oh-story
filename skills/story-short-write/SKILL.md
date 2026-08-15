@@ -1,9 +1,12 @@
 ---
 name: story-short-write
 version: 1.0.0
-description: "短篇网文写作。辅助短篇小说创作，从构思到成稿，聚焦情绪拉扯与节奏把控。触发方式：/skill:story-short-write、/写短篇、「帮我写一篇短篇」「写个盐言故事」。"
+description: "短篇网文写作。辅助短篇小说创作，从构思到成稿，聚焦情绪拉扯与节奏把控。触发方式：/skill:story-short-write、/story-short-write、/写短篇、「帮我写一篇短篇」「写个盐言故事」。"
 ---
 # story-short-write：短篇网文写作
+
+> **双运行时**：pi 触发 `/skill:story-short-write`；dsh 触发 `/story-short-write`；自然语言均可。两端流程指令通用。
+> **子代理**：pi 部署 `.pi/agents/`；dsh 部署 `.dsh/story-agents/`（subagent 按模板 spawn，fffind→glob、ffgrep→grep）。正文 agent 查找链在 dsh 下对应 `.dsh/story-agents/`；缺失/失败降级 solo 两端相同。
 
 你是短篇网文写作执行器。从构思到成稿，完成一篇完整的短篇小说。
 
@@ -13,7 +16,7 @@ description: "短篇网文写作。辅助短篇小说创作，从构思到成稿
 
 > Agent 兼容性：检查专业 agent 是否可用时，检查 `.pi/agents/{agent}.md` 是否存在且运行时暴露 subagent 工具（pi-subagents）；任一不满足即降级为 solo/direct，报告 `Fallback: project custom agents unavailable -> solo`。
 >
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 27` 不一致时（标记缺失、字段缺失/非整数、小于或大于 27）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 27）` 并提示重新运行 `/skill:story-setup` 刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 27 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 27` 不一致时（标记缺失、字段缺失/非整数、小于或大于 27）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 27）` 并提示重新运行 `/skill:story-setup` 刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 27 时额外提示先更新 oh-story，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 ## 执行规则
 
@@ -178,6 +181,16 @@ description: "短篇网文写作。辅助短篇小说创作，从构思到成稿
 #### Agent 调用：character-designer
 
 设计任务完成后，如果项目已部署 character-designer agent（查找顺序见顶部），可 spawn `子代理`character-designer`（subagent 工具，task："项目目录：{dir}\n任务类型：角色设定\n查询参数：{人设速写+关系}")` 辅助角色设定和说话方式。如 agent 不可用，由主线程直接执行。
+
+**写入审查（Phase 2 完成后必做，solo 自查）**：设定.md 与 小节大纲.md 落盘后，按以下清单主动查冲突/矛盾（短篇不 spawn 一致性 agent，主线程自查；正文阶段的一致性检查仍由 Phase 4 的 consistency-checker 承担）：
+
+- 设定.md「基本信息/人设速写/核心反转」与小节大纲「人物/关系变化」一致（人名、身份、关系无前后矛盾）
+- 核心反转的前提条件已全部在设定/大纲中铺垫（反转信息差验证已过，此处复查一次）
+- 小节大纲各节「结尾承接/钩子」与下一节开头衔接；付费点卡位与小节划分一致
+- `追踪/伏笔.md` 已埋行与大纲一致（无"计划埋但没登记"或"登记了却无埋点"）
+- 轻量追踪契约（light-tracking.md）字段齐全
+
+发现 S1/S2 级矛盾 → 修本次写入文件或对照文件（二选一不并存）后再进 Phase 3；S3/S4 列出待用户确认。**不静默带矛盾进正文。**
 
 ---
 

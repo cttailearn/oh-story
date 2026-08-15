@@ -5,7 +5,7 @@ description: |
   钩子/悬念/反转等叙事工程、情绪弧线设计、范围控制审查。
   被 story-long-write（Phase 1-3）、story-short-write（Phase 1-2）调用。
   也可审查已有内容的结构问题。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 由 oh-story story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
 # 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
 model: opencode-go/deepseek-v4-pro
 tools: read, fffind, ffgrep, write, edit
@@ -214,3 +214,11 @@ skill 通过 subagent 工具（agent: story-architect）调用你。
 
 创作任务输出：结构化创作方案（题材定位表/世界观骨架/大纲结构/钩子设计/反转方案）。
 审查任务输出：审查报告（VERDICT + EVIDENCE + RECOMMENDATIONS）。
+
+
+---
+
+## DSH 运行时使用说明（pi 部署时忽略）
+
+dsh 无文件式 agent 注册：本文件作为 `subagent` spawn 的 **prompt 模板**（prompt = frontmatter 后的正文，自包含）。
+工具映射：fffind→glob、ffgrep→grep、read/write/edit 同名；模型默认继承会话模型；只读 agent 的只读约束不变。

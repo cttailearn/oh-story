@@ -1,8 +1,11 @@
 ---
 name: story
-description: "网络小说工具箱主入口。根据用户需求自动路由到对应 skill，并可启动本地 Dashboard 查看拆文库、写作项目和编辑文本。触发方式：/skill:story、/skill:story dashboard、/网文、「我想写小说」「打开工作台」「检查更新」。"
+description: "网络小说工具箱主入口。根据用户需求自动路由到对应 skill，并可启动本地 Dashboard 查看拆文库、写作项目和编辑文本。触发方式：/skill:story、/story、/story dashboard、/网文、「我想写小说」「打开工作台」「检查更新」。"
 ---
 # story：网文工具箱路由
+
+> **双运行时**：pi 触发 `/skill:story`；dsh 触发 `/story`；自然语言均可。两端流程指令通用。
+> **子代理**：pi 部署 `.pi/agents/`；dsh 部署 `.dsh/story-agents/`（subagent 按模板 spawn，fffind→glob、ffgrep→grep）。正文 agent 查找链在 dsh 下对应 `.dsh/story-agents/`；缺失/失败降级 solo 两端相同。
 
 你是网文工具箱的路由入口。用户的请求模糊时由你分发到具体 skill。
 
@@ -77,7 +80,7 @@ description: "网络小说工具箱主入口。根据用户需求自动路由到
 
 ## 查询降级
 
-> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 27` 不一致时（标记缺失、字段缺失/非整数、小于或大于 27）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 27）` 并提示重新运行 `/skill:story-setup` 刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 27 时额外提示先更新 oh-story-pi，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
+> Spawn 版本提示（不阻断 spawn）：先读取项目根 `.story-deployed` 的 `agents_version`。与本版 `agents_version: 27` 不一致时（标记缺失、字段缺失/非整数、小于或大于 27）**照常按文件存在性检查并 spawn**，同时报告 `Notice: agents bundle 版本不匹配（项目 {N}，本版 27）` 并提示重新运行 `/skill:story-setup` 刷新部署（重跑后下一次 spawn 即用新版 agent，无需新开会话；仅当运行时不暴露 subagent 工具时才需 `pi install npm:pi-subagents` 并新开会话）；大于 27 时额外提示先更新 oh-story，不要用本地旧版 setup 降级覆盖。只有 agent 文件缺失、或运行时不暴露 custom agent 时才降级 solo/direct，报告 `Fallback: ... -> solo`。
 
 「查故事资料」「查资料」走 agent 前先做轻量可用性检查（路由只做这一层，不承担全局部署策略）：当前不在子代理上下文、subagent 工具可用（pi-subagents）、且 `.pi/agents/{story-explorer|story-researcher}.md` 存在 → 可尝试 spawn。任一不满足，或运行时未暴露 custom-agent registry，则降级，不硬失败：
 
@@ -107,10 +110,10 @@ description: "网络小说工具箱主入口。根据用户需求自动路由到
 用户问"有没有新版本""检查更新""升级"时执行。**只通知，更不更新由用户定，不自动安装。**
 
 1. **当前版本**：读本 skill 同目录的 `VERSION` 文件；缺失则视为未知。
-2. **最新版本**：优先 `gh release view --json tagName,name,url -R cttailearn/oh-story-pi` 取 `tagName`；无 gh 用 `curl -fsS --max-time 5 https://api.github.com/repos/cttailearn/oh-story-pi/releases/latest` 取 `.tag_name`（jq 或 grep）。查不到 → 告知"暂时拉不到最新版本，可手动看 [Releases](https://github.com/cttailearn/oh-story-pi/releases)"，不报错。
+2. **最新版本**：优先 `gh release view --json tagName,name,url -R cttailearn/oh-story` 取 `tagName`；无 gh 用 `curl -fsS --max-time 5 https://api.github.com/repos/cttailearn/oh-story/releases/latest` 取 `.tag_name`（jq 或 grep）。查不到 → 告知"暂时拉不到最新版本，可手动看 [Releases](https://github.com/cttailearn/oh-story/releases)"，不报错。
 3. **比较**：去掉 `v` 前缀按语义版本比（major.minor.patch）。`gh release` 默认取 latest 稳定版，不含 pre-release。
 4. **告知**：
    - 已最新 → 「已是最新版 vX.Y.Z」。
-   - 有新版 → 列出 当前 vA → 最新 vB + [Releases](https://github.com/cttailearn/oh-story-pi/releases)/[CHANGELOG](https://github.com/cttailearn/oh-story-pi/blob/main/CHANGELOG.md)（能拿到 release notes 就附本次要点），再用 AskUserQuestion 问「现在更新吗？」：
-     - 选更新 → 跑 `pi update --extensions`（git 源会同步到已固定 ref；新版本先 `pi install git:github.com/cttailearn/oh-story-pi@新ref`）；完成后提示：已部署过的项目在项目根重跑 `/skill:story-setup` 同步 agents/references（重跑后下一次 spawn 即用新版 agent，无需新开会话；本会话若在更新前打开，用 `/reload` 加载新 skill 目录即可）。
+   - 有新版 → 列出 当前 vA → 最新 vB + [Releases](https://github.com/cttailearn/oh-story/releases)/[CHANGELOG](https://github.com/cttailearn/oh-story/blob/main/CHANGELOG.md)（能拿到 release notes 就附本次要点），再用 AskUserQuestion 问「现在更新吗？」：
+     - 选更新 → 跑 `pi update --extensions`（git 源会同步到已固定 ref；新版本先 `pi install git:github.com/cttailearn/oh-story@新ref`）；完成后提示：已部署过的项目在项目根重跑 `/skill:story-setup` 同步 agents/references（重跑后下一次 spawn 即用新版 agent，无需新开会话；本会话若在更新前打开，用 `/reload` 加载新 skill 目录即可）。
      - 选先不 → 不动，告知随时可再来。

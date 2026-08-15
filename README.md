@@ -1,6 +1,6 @@
-# oh-story-pi
+# oh-story
 
-网文写作工具箱（pi 专属版），覆盖长篇与短篇网络小说的扫榜、拆文、写作、去AI味、封面图全流程。13 个 skills + 7 个 pi-subagents 专业子代理 + 本地写作工作台，通过 pi 包分发。
+网文写作工具箱（**pi / dsh 双运行时**），覆盖长篇与短篇网络小说的扫榜、拆文、写作、去AI味、封面图全流程。13 个 skills + 7 个专业子代理 + 本地写作工作台，同时通过 pi 包与 dsh skills 根分发。
 
 ## 核心思路
 
@@ -16,32 +16,91 @@
 
 ## 安装
 
-### git 安装（当前唯一发布通道）
+### pi 通道（git 安装）
 
 ```bash
-pi install git:github.com/cttailearn/oh-story-pi@v1.7.0
+pi install git:github.com/cttailearn/oh-story@v2.0.0
 ```
 
 更新 / 卸载：
 
 ```bash
-pi update --extensions                                   # 更新全部包（含 oh-story-pi）
-pi install git:github.com/cttailearn/oh-story-pi@新ref   # 升级到新版本（改 ref 即可）
-pi remove git:github.com/cttailearn/oh-story-pi           # 卸载
+pi update --extensions                                 # 更新全部包（含 oh-story）
+pi install git:github.com/cttailearn/oh-story@新ref   # 升级到新版本（改 ref 即可）
+pi remove git:github.com/cttailearn/oh-story           # 卸载
 ```
+
+### dsh 通道（DeepSeek Harness · 插件式，方案 A）
+
+本仓库提供一键安装脚本（幂等，可重复执行），按 **dsh 插件机制**安装：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1
+```
+
+脚本做三件事（均幂等）：
+
+1. **插件安装**：`dsh plugin --profile web add link:<仓库>`（`link:` 协议创建 junction，
+   仓库即唯一事实源；npm 发布后自动改用 `dsh plugin --profile web add oh-story`）
+2. **挂载行**：在 `~/.dsh/cordis.patch.yml`（home 级，所有 profile 生效）`- insert:`
+   一个**独立 skill-filesystem 实例**（`providerName: oh-story`、`includeDefaultRoots: false`、
+   `customSkillDirs` 指向 `node_modules/oh-story/skills/`——与 dsh 官方 cordis preset
+   分发技能的方式一致，注册进 global 层，所有 preset 会话可见）
+3. **清理旧形态**：移除旧 `~/.dsh/skills` junction（若指向本仓库）
+
+参数与来源：
+
+| 参数 | 来源 | 说明 |
+|---|---|---|
+| `-Package <npm名>` | npm 发布版 | `dsh plugin add <包名>`（最高优先级） |
+| `-GitHub cttailearn/oh-story[@tag]` | GitHub 仓库 | pnpm `github:` 协议自动 clone+打包安装（副本形态，更新需重装） |
+| （默认）`-Repo <路径>` | 本地仓库 | `link:` 协议创建 junction，仓库即唯一事实源（单点更新） |
+
+更新检查与更新：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -CheckUpdate   # 对比本地 VERSION 与 GitHub tags
+powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Update        # link:源→git pull；GitHub/npm源→重装最新
+```
+
+> 会话内「检查更新」：任意 dsh/pi 会话中说「检查更新」（story skill 路由），模型对比 GitHub release
+> 与本地 `skills/story/VERSION` 给出结果，两端通用。
+
+卸载：`-Uninstall`（移除挂载行 + profile 依赖 + 旧 junction）。
+验证：**新开 dsh 会话**（web profile 的 HMR 已禁用，配置在启动时加载）后输入 `/story`（或自然语言
+「我想写小说」）应能触发；`/story-setup`、`/story-long-write` 等 13 个 skill 全部可见即安装成功。
+
+> 手动等价方式：`dsh plugin --profile web add link:<仓库>` 后，在 `~/.dsh/cordis.patch.yml` 追加：
+> ```yaml
+> - insert:
+>     - id: oh-story-skills
+>       name: '@deepseek-ai/dsh-skill-filesystem'
+>       config:
+>         providerName: oh-story
+>         includeDefaultRoots: false
+>         customSkillDirs:
+>           - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))
+> ```
+> 项目级替代：把 `skills/` 复制/链接到写作项目 `.dsh/skills` 或 `.agents/skills`（rank 100/200）。
+> 更新时重新执行脚本（link: junction 始终指向仓库，天然单点更新）。
 
 ### 部署专业子代理（多 agent 协作）
 
 7 个专业 agent（story-architect、narrative-writer、consistency-checker 等）由
-`/skill:story-setup` 写入写作项目 `.pi/agents/`；pi 在新会话启动时注册项目 subagents。
-判断是否生效：新会话里跑 `/skill:story-review`，报告头是 `Effective Mode: full/lean`
-即注册成功，是 `Fallback: ... -> solo` 说明当前运行时未暴露该 agent（检查是否安装
-pi-subagents：`pi install npm:pi-subagents`）。
+`/skill:story-setup`（dsh 下 `/story-setup`）按运行时部署：
 
-**导入续写顺序：** 推荐先在写作项目根运行 `/skill:story-setup`（部署子代理、合并
-AGENTS.md、建书目录），新开/刷新会话后运行 `/skill:story-import` 导入已有小说，再用
-`/skill:story-long-write 日更` 或 `/skill:story-long-write 写第N章` 续写。也可以直接
-运行 `/skill:story-import`；它会先检测是否已 setup，未部署时让你选择先去 setup 或
+- **pi**：写入写作项目 `.pi/agents/`（pi-subagents 格式），spawn 时实时发现。
+- **dsh**：写入 `.dsh/story-agents/` 作为 subagent prompt 模板（dsh 无文件式 agent 注册，
+  写作/审查 skill 用 `subagent` 工具按模板 spawn；工具名映射 fffind→glob、ffgrep→grep）。
+
+判断是否生效：跑 `/skill:story-review`（pi）或 `/story-review`（dsh），报告头是
+`Effective Mode: full/lean` 即注册成功；是 `Fallback: ... -> solo` 说明 agent 不可用
+（pi 检查是否安装 pi-subagents：`pi install npm:pi-subagents`；dsh 检查 `.dsh/story-agents/` 是否部署）。
+
+**导入续写顺序：** 推荐先在写作项目根运行 `/skill:story-setup`（dsh 下 `/story-setup`，部署子代理、合并
+AGENTS.md、建书目录），新开/刷新会话后运行 `/skill:story-import`（dsh 下 `/story-import`）导入已有小说，再用
+`/skill:story-long-write 日更`（dsh 下 `/story-long-write 日更`）续写。也可以直接
+运行导入 skill；它会先检测是否已 setup，未部署时让你选择先去 setup 或
 继续串行导入。
 
 ## 流程总览
@@ -116,7 +175,7 @@ flowchart LR
 | `story-deslop` | `/skill:story-deslop` `/去AI味` | 去AI味 · 检测并清除 AI 写作痕迹 |
 | `story-import` | `/skill:story-import` `/导入小说` | 逆向导入 · 将已有小说反向解析为标准项目结构 |
 | `story-review` | `/skill:story-review` `/审查` | 多视角审查 · 4 Agent 多视角审稿 + 番茄/起点/知乎评分标准 |
-| `story-image` | `/skill:story-image` `/封面` `/角色卡图` `/人物图` `/三视图` `/场景图` | 图像生成 · 封面/角色卡图（统一立绘+三视图参考表）/场景图，多后端（GPT-Image-2/GrsAI/火山方舟/通义万相/ComfyUI），未配置 API Key 时主动询问 |
+| `story-image` | `/skill:story-image` `/封面` `/角色卡图` `/人物图` `/三视图` `/场景图` | 图像生成 · 封面/角色卡图（统一立绘+三视图参考表）/场景图，多后端（GPT-Image-2/GrsAI/火山方舟/通义万相/ComfyUI）+ **自定义图像 API 接入**（文档+Key → 自动生成脚本并测试），未配置时主动询问 |
 | `browser-cdp` | `/skill:browser-cdp` | 浏览器操控 · CDP 协议复用登录态抓取数据（pi 内置 agent_browser 优先） |
 
 > `story-deslop` 的本地检查是写作 lint：blocking 只限确定性句式/标点问题，其他提示按读感判断；朱雀等外部检测只作自测参考，不替代人工读感。
@@ -200,15 +259,19 @@ pi 无 hooks 机制，原多端版的运行时硬拦截由两层等价物承担�
 
 `story-setup/references/agent-references/` 是 600KB+ 的共享写作知识库（题材卡、爽点
 钩子、人设方法、对话掌控、情绪曲线、去AI味语料等），由写作/审查 skill 与子代理按需
-加载。skill 本体与知识库随 pi 包更新（`pi update --extensions`），项目内不复制副本。
+加载。skill 本体与知识库随包更新（pi：`pi update --extensions`；dsh：重新执行 install-dsh.ps1 或 git pull 后刷新），项目内不复制副本。
 
 ## 适用平台
 
-- **pi**：原生支持（本包）。`pi install git:github.com/cttailearn/oh-story-pi@v1.7.0` 后 13 个 skill 自动可用，
-  `/story` 命令别名由包内扩展注册。npm 发布因账号 2FA 策略暂缓，待条件允许后补充（包名 `oh-story-pi` 已预留）。
+- **pi**：原生支持。`pi install git:github.com/cttailearn/oh-story@v2.0.0` 后 13 个 skill 自动可用，
+  `/story` 命令别名由包内扩展注册；子代理部署到 `.pi/agents/`。npm 发布因账号 2FA 策略暂缓，
+  待条件允许后补充（包名 `oh-story` 已预留）。
+- **dsh（DeepSeek Harness）**：原生支持。执行 `scripts/install-dsh.ps1` 后 13 个 skill 即被 home 级
+  skills 根发现（也可项目级放置）；触发 `/story`、`/story-*` 或自然语言；子代理 prompt 模板部署到
+  `.dsh/story-agents/`。dsh 的 AGENTS.md 自动加载让项目路由表直接生效。
 - 旧多端版（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）见上游仓库
   [oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) 的 v0.7.5
-  及更早版本；本仓库 v1.0.0 起为 pi 专属，不再维护其它 CLI 适配。
+  及更早版本；本仓库 v1.0.0 起为 pi 专属，**v2.0.0 起为 pi / dsh 双运行时**。
 
 ## 贡献
 

@@ -1,9 +1,12 @@
 ---
 name: story-long-scan
 version: 1.0.0
-description: "长篇网文扫榜。分析起点、番茄、晋江等平台排行榜数据，提炼市场趋势与热门题材。触发方式：/skill:story-long-scan、/长篇扫榜、「长篇什么火」「起点排行」。"
+description: "长篇网文扫榜。分析起点、番茄、晋江等平台排行榜数据，提炼市场趋势与热门题材。触发方式：/skill:story-long-scan、/story-long-scan、/长篇扫榜、「长篇什么火」「起点排行」。"
 ---
 # story-long-scan：长篇网文扫榜
+
+> **双运行时**：pi 触发 `/skill:story-long-scan`；dsh 触发 `/story-long-scan`；自然语言均可。两端流程指令通用。
+
 
 你是网络小说市场分析师。你的任务是基于榜单样本识别长篇网文市场格局，并输出可执行的题材候选、风险阈值和验证动作。
 

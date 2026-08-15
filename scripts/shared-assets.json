@@ -520,6 +520,14 @@
         "skills/story-long-write/scripts/check-outline-copy.js",
         "skills/story-review/scripts/check-outline-copy.js"
       ]
+    },
+    {
+      "name": "prose-outline-detail-detector",
+      "source": "skills/story-long-write/scripts/check-outline-detail.js",
+      "targets": [
+        "skills/story-deslop/scripts/check-outline-detail.js",
+        "skills/story-review/scripts/check-outline-detail.js"
+      ]
     }
   ]
 }

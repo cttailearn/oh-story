@@ -763,7 +763,7 @@ def spawn_preflight_findings(
             "surface the version mismatch notice",
         ),
         (
-            r"大于 {} 时额外提示先更新 oh-story-pi".format(current),
+            r"大于 {} 时额外提示先更新 oh-story".format(current),
             "tell future deployments to update the package first",
         ),
         (

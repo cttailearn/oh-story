@@ -1,10 +1,10 @@
-# oh-story-pi
+# oh-story
 
-Web-novel writing toolkit (pi-exclusive edition) covering the full pipeline for
+Web-novel writing toolkit (**dual-runtime: pi / dsh**) covering the full pipeline for
 long-form and short-form Chinese web fiction: market scanning, deconstruction,
 writing, review, de-AI polish, and cover/character-sheet image generation.
-13 skills + 7 pi-subagents professional agents + a local writing dashboard,
-distributed as a pi package.
+13 skills + 7 professional subagents + a local writing dashboard,
+distributed as a pi package and a dsh skill root.
 
 ## Core idea
 
@@ -24,35 +24,67 @@ layered context-state management · human-AI collaboration.
 
 ## Install
 
-### Git channel (the current only release channel)
+### pi channel (git)
 
 ```bash
-pi install git:github.com/cttailearn/oh-story-pi@v1.7.0
+pi install git:github.com/cttailearn/oh-story@v2.0.0
 ```
 
 Update / uninstall:
 
 ```bash
-pi update --extensions                                # update all packages (incl. oh-story-pi)
-pi install git:github.com/cttailearn/oh-story-pi@new-ref   # upgrade to a new ref
-pi remove git:github.com/cttailearn/oh-story-pi        # uninstall
+pi update --extensions                                # update all packages (incl. oh-story)
+pi install git:github.com/cttailearn/oh-story@new-ref   # upgrade to a new ref
+pi remove git:github.com/cttailearn/oh-story        # uninstall
 ```
+
+### dsh channel (DeepSeek Harness)
+
+One idempotent installer script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1
+```
+
+It performs two home-level registrations (applies to every profile / writing project):
+
+1. Creates the junction `~/.dsh/skills` -> this repo's `skills/` (dsh skill root rank 400;
+   hot-discovered; the repo stays the single source of truth).
+2. Appends a `skill-filesystem` `customSkillDirs` entry to `~/.dsh/cordis.patch.yml`
+   (belt and braces).
+
+Uninstall: `powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Uninstall`.
+For a checkout elsewhere: `-RepoSkills 'D:\\dev\\oh-story\\skills'`.
+Verify: after refreshing/opening a dsh session, typing `/story` (or natural language
+"我想写小说") should trigger; all 13 skills (`/story-setup`, `/story-long-write`, ...)
+should be listed.
+
+> Manual equivalent: copy or link this repo's `skills/` into `~/.dsh/skills`, a writing
+> project's `.dsh/skills`, or the project-root `.agents/skills` (project rank 200).
+> Re-run the script after updates (the junction always points at the repo).
 
 ### Deploy professional subagents (multi-agent collaboration)
 
 The 7 professional agents (story-architect, narrative-writer, consistency-checker,
-etc.) are written into your writing project's `.pi/agents/` by `/skill:story-setup`;
-pi registers project subagents on new sessions. To verify activation, run
-`/skill:story-review` in a new session — the report header shows
-`Effective Mode: full/lean` when registration succeeded, or
-`Fallback: ... -> solo` when the runtime does not expose the agents (check
-pi-subagents: `pi install npm:pi-subagents`).
+etc.) are deployed by `/skill:story-setup` (dsh: `/story-setup`) per runtime:
+
+- **pi**: written into the writing project's `.pi/agents/` (pi-subagents format,
+  discovered live at spawn time).
+- **dsh**: written into `.dsh/story-agents/` as subagent prompt templates (dsh has no
+  file-based agent registry; writing/review skills spawn via the `subagent` tool using
+  the template; tool mapping fffind→glob, ffgrep→grep).
+
+To verify activation, run `/skill:story-review` (pi) or `/story-review` (dsh) — the
+report header shows `Effective Mode: full/lean` when registration succeeded, or
+`Fallback: ... -> solo` when agents are unavailable (pi: check
+`pi install npm:pi-subagents`; dsh: check `.dsh/story-agents/`).
 
 **Import-then-continue order:** run `/skill:story-setup` first in the project root
-(deploys agents, merges AGENTS.md, creates the book directory), then (refresh or)
-start a new session and run `/skill:story-import` to import an existing novel, then
-`/skill:story-long-write 日更` or `/skill:story-long-write 写第N章` to continue
-writing. `/skill:story-import` can also run standalone — it detects whether setup
+(dsh: `/story-setup`; deploys agents, merges AGENTS.md, creates the book directory),
+then (refresh or) start a new session and run `/skill:story-import` (dsh:
+`/story-import`) to import an existing novel, then
+`/skill:story-long-write 日更` (dsh: `/story-long-write 日更`) to continue
+writing. The import skill can also run standalone — it detects whether setup
 was done and lets you choose between setting up first or continuing serially.
 
 ## Workflow overview
@@ -127,7 +159,7 @@ flowchart LR
 | `story-deslop` | `/skill:story-deslop` `/去AI味` | De-AI polish · detect and remove AI writing traces |
 | `story-import` | `/skill:story-import` `/导入小说` | Reverse import · parse an existing novel into the standard project layout |
 | `story-review` | `/skill:story-review` `/审查` | Multi-perspective review · 4-agent review + Fanqie/Qidian/Zhihu scoring rubrics |
-| `story-image` | `/skill:story-image` `/封面` `/角色卡图` `/人物图` `/三视图` `/场景图` | Image generation · covers/character sheets (unified portraits + three-view reference tables)/scenes, multiple backends (GPT-Image-2/GrsAI/Volcengine/DashScope/ComfyUI), asks for API keys when unconfigured |
+| `story-image` | `/skill:story-image` `/封面` `/角色卡图` `/人物图` `/三视图` `/场景图` | Image generation · covers/character sheets (unified portraits + three-view reference tables)/scenes, multiple backends (GPT-Image-2/GrsAI/Volcengine/DashScope/ComfyUI), asks for API keys when unconfigured  + **custom image API onboarding** (docs + key → auto-generated script, tested) |
 | `browser-cdp` | `/skill:browser-cdp` | Browser automation · CDP protocol reusing logged-in sessions (pi's built-in agent_browser takes priority) |
 
 > `story-deslop`'s local check is a writing lint: `blocking` findings are limited to
@@ -160,7 +192,7 @@ deconstruction library and long/short-form project file trees with search,
 Markdown preview, text editing, conflict-protected saving, and confirm-before-delete.
 The server listens on `127.0.0.1` only — novel content never leaves your machine.
 
-## Agent system (pi-subagents)
+## Agent system (pi-subagents / dsh prompt templates)
 
 7 professional subagents deployed to the project's `.pi/agents/` by `story-setup`
 (pi-subagents format):
@@ -228,15 +260,16 @@ subagents. Skill bodies and the knowledge base ship with the pi package
 
 ## Platforms
 
-- **pi**: natively supported (this package). After
-  `pi install git:github.com/cttailearn/oh-story-pi@v1.7.0` the 13 skills are
-  available and the `/story` alias is registered by the bundled extension. npm
-  publish is on hold due to the account 2FA policy (package name `oh-story-pi`
-  reserved).
-- The legacy multi-CLI edition (Claude Code / OpenCode / Codex / ZCode /
-  OpenClaw / Reasonix) lives in
-  [oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode)
-  (≤ v0.7.5). This repository is pi-exclusive from v1.0.0.
+- **pi**: first-class. `pi install git:github.com/cttailearn/oh-story@v2.0.0` makes all 13 skills
+  available; the `/story` command alias comes from the in-package extension; agents deploy to
+  `.pi/agents/`. npm publishing is deferred due to account 2FA policy (the `oh-story` name is reserved).
+- **dsh (DeepSeek Harness)**: first-class. Run `scripts/install-dsh.ps1` and the 13 skills are
+  discovered from the home-level skill root (project-level placement also works); trigger via
+  `/story`, `/story-*` or natural language; agent prompt templates deploy to `.dsh/story-agents/`.
+  dsh auto-loads the project `AGENTS.md`, so the routing table takes effect directly.
+- Legacy multi-CLI editions (Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix) live in
+  the upstream repo [oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode)
+  up to v0.7.5; this repo is pi-exclusive from v1.0.0 and **dual-runtime (pi / dsh) since v2.0.0**.
 
 ## Contributing
 

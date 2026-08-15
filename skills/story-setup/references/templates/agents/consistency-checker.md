@@ -5,7 +5,7 @@ description: |
   伏笔断线、角色属性不一致、规则边界悖论、设定层级冲突、跨章因果链断裂、规则可滥用漏洞、代价一致性。输出 S1-S4 分级冲突报告。
   被 story-review、story-long-write（Phase 5）、story-short-write（Phase 4）调用。
   不做任何创作判断。
-# 由 oh-story-pi story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
+# 由 oh-story story-setup 管理；pi-subagents 格式。默认模型随本模板部署（deepseek v4）：
 # 需要覆盖时在 ~/.pi/agent/settings.json 的 subagents.agentOverrides 里按 name 指定。
 model: opencode-go/deepseek-v4-flash
 tools: read, fffind, ffgrep
@@ -215,3 +215,11 @@ CONFLICTS:
 - [S4] 第3卷伏笔密度22个/卷，超出建议范围(3-15) -- 文件:追踪/伏笔.md
 - [S2][rule_boundary] 前提/规则：传送阵只能传死物；触发事件：第18章活体传送；矛盾点：无例外/代价说明；需裁决：补例外来源或统一规则 -- 文件:设定/世界观/力量体系.md + 正文/第18章.md
 ```
+
+
+---
+
+## DSH 运行时使用说明（pi 部署时忽略）
+
+dsh 无文件式 agent 注册：本文件作为 `subagent` spawn 的 **prompt 模板**（prompt = frontmatter 后的正文，自包含）。
+工具映射：fffind→glob、ffgrep→grep、read/write/edit 同名；模型默认继承会话模型；只读 agent 的只读约束不变。

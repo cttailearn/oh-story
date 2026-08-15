@@ -27,7 +27,9 @@
 | `test-current-skill-contracts.py` | current-contract manifest 类型/固定值与主产物 fail-fast 语义 fixture | 提交前 |
 | `test-shared-assets.py` | 共享资产 manifest 的 drift、sync、路径越界、basename 单一 owner 与未登记重复检测 | 提交前 |
 | `test-normalize-punctuation.js` | 标点归一化的只读检查、frontmatter/fence、CRLF、引号模式与幂等性 | 提交前 |
+| `test-outline-detail.sh` | 细纲字段完整性检测器 `check-outline-detail.js` 回归（硬字段 13 项/预算核对/目录与 json 参数/三副本） | 提交前 |
 | `test-scan-runtime.js` | CDP argv 边界/报错/JSON 契约与 scraper 无副作用 import | 提交前 |
+| `test-imagegen-custom.js` | story-image 自定义图像 API 后端端到端回归（本地 mock API：OpenAI 兼容 b64 / 自定义 url / 错误响应 + imagegen.sh 分发链路，8 用例；需 git bash） | 改动 imagegen-custom.sh / imagegen.sh / api-json.py 后 |
 | `test-charcount-portable.sh` | 跨平台字符统计命令在三平台 + Windows 的正确性 | 提交前 |
 | `test-skill-numbering.sh` | Step 重排级联安全、锚点 fail-closed、代码块引用、验证零写入/提交回滚、dry-run/write/幂等性 | 提交前 |
 
@@ -35,7 +37,7 @@
 
 | 脚本 | 干什么 | 何时跑 |
 |---|---|---|
-| `shared-assets.json` + `sync-shared-assets.py` | 为必须随 skill 独立部署的重复 runtime 脚本指定唯一源和目标（AI 句式检测器、退化检测器、标点归一化、追踪事务、CDP 工具） | 改共享 runtime 后跑 `sync`；提交前跑 `check` |
+| `shared-assets.json` + `sync-shared-assets.py` | 为必须随 skill 独立部署的重复 runtime 脚本指定唯一源和目标（AI 句式检测器、退化检测器、标点归一化、细纲照搬/字段完整性检测、追踪事务、CDP 工具） | 改共享 runtime 后跑 `sync`；提交前跑 `check` |
 
 ## 工作流编号维护
 
