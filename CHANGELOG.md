@@ -1,5 +1,14 @@
 ## v2.2.0
 
+> 双模式修订流程（大段修改/重写防重复防漏改）：修改清单驱动 + 分段执行 + diff 双层核验 + 硬停靠。
+> agents bundle 无变化（agents_version 29 保持）。
+
+### 新增
+
+- **双模式修订流程**（workflow-revision Step 3）：局部修改（修改清单 → 逐段修改 → 4 项衔接核对 → 清单勾选）与全文重写（三件套：原文事实 + 细纲硬要求 + 修改要求 → 不可变事实清单 → 整体重写 → 事实保留核对）；产物 `修改清单_第X章_YYYYMMDD.md` / `修订核验_第X章_YYYYMMDD.md`（review-log 模板）
+- **check-revision-duplicate.js**：重写残片检测（新稿 ≥15 字连续片段与原稿重叠，`--exempt <细纲>` 豁免复沓锚句登记原话）+ 新稿内部自重复（合并为最长片段单条报告）+ 字数统计；`--mode rewrite|patch`；test-revision-duplicate.js 5 用例
+- **修订硬停靠**：核验记录缺失 / 重复未清零 / 事实 ✗ 未补 / 衔接未过 → 修订未完成，不得进下一处或下一章；正文审查记录追加「修订复核」节（workflow-chapter 联动）
+
 > 真实使用复盘优化（时间戳实证：执行断点 + 重排遗留 + 部署缺失）：写章三查强制化、重排回写纪律、追踪工具部署、面板内容差异化。
 > agents bundle 变化：consistency-checker 模板加「面板同款检测」（agents_version 28 → 29）。
 

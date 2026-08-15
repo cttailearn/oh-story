@@ -83,6 +83,7 @@ node scripts/test-scan-runtime.js
 node scripts/test-imagegen-custom.js
 node scripts/test-project-consistency.js
 node scripts/test-chapter-consistency.js
+node scripts/test-revision-duplicate.js
 node scripts/test-imagegen-env.js
 bash scripts/test-outline-detail.sh
 bash scripts/test-ai-patterns.sh
