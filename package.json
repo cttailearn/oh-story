@@ -36,9 +36,6 @@
   "devDependencies": {
     "@playwright/test": "^1.62.0"
   },
-  "dependencies": {
-    "oh-story-pi": "github:cttailearn/oh-story"
-  },
   "files": [
     "skills",
     "extensions",
