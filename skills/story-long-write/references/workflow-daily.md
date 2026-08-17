@@ -89,8 +89,8 @@
      1. 从刚落盘的正文、细纲和上一版续写状态卡提取 `result / character_changes / foreshadow_changes / timeline_events / constraints / next_chapter_commitments`。只记录会影响未来章节的变化；过程日志、质检计数、参照章和去 AI 味统计全部排除。
      2. 需要长期复用的核心角色，把完整动态快照放进 `character_snapshots`，并在 `character_changes` 写对应变化；一次性路人只写变化、不交快照。已有动态快照的核心角色再次变化时必须提交新快照。静态人设继续以 `设定/角色/{名}.md` 为准。
      3. `context.long_term_constraints`、当前卷/故事时间/场景、活跃核心角色名、连贯性风险提交当前完整值；活跃伏笔、近三章速记和下一章承诺由工具从当前视图/本章增量派生，不重复手填。
-     4. 把最近一次 `tracking_commit.py check` 返回的 `state_revision` 写入事务 `expected_state_revision`，再把 JSON 写到临时文件并执行 `tracking_commit.py commit`。成功并复检后删除临时 JSON；脚本返回新的 `state_revision` 才能进入下一章。
-     5. 失败时 `_tracking-state.json` 尚未推进；保留临时 JSON，修正写入环境后重跑同一 `commit`。不得另写下一章、不得手工补派生视图、不得忽略返回码。
+     4. 把最近一次 `tracking_commit.py check` 返回的 `state_revision` 写入事务 `expected_state_revision`，再把 JSON 写到临时文件并执行 `tracking_commit.py commit`。**临时事务 JSON 固定写到 `{书项目根}/.story-txn/pending.json`**（不入 `追踪/`），成功并复检后删除 JSON；脚本返回新的 `state_revision` 才能进入下一章。
+     5. 失败时 `_tracking-state.json` 尚未推进；保留临时 JSON 于 `.story-txn/pending.json`（跨会话重跑仍从该路径取同一份事务），修正写入环境后重跑同一 `commit`。不得另写下一章、不得手工补派生视图、不得忽略返回码。
 
      `追踪/逐章记录/第NNN章.md` 由工具按 5 类变化生成，目标 ≤1536 字节、硬上限 3072 字节。它不是正文摘要大全，更不保存写作过程。`伏笔.md` 每个 ID 只有一行当前状态；角色状态按核心角色拆文件；时间线的客观事实和读者认知只在同一事件登记中维护，再派生作者/读者两个视图。
 

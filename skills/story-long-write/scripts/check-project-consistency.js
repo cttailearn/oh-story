@@ -35,6 +35,8 @@ function checkSetup(root) {
     const isName = (n) => {
       if (!n || n.length > 8 || badChar.test(n)) return false;
       if (stopWords.has(n)) return false;
+      // 「XX系统」是金手指/外挂而非角色（关系表常把系统列入），不索引
+      if (/系统$/.test(n)) return false;
       return /^[\u4e00-\u9fa5A-Za-z0-9·]+$/.test(n);
     };
     for (const l of rel) {
@@ -168,7 +170,11 @@ function main() {
     else { console.error(USAGE); process.exit(2); }
   }
   if (!project) { console.error(USAGE); process.exit(2); }
-  const scopes = scope === "all" ? ["setup", "outline", "detail", "review"] : scope.split(",").map((s) => s.trim()).filter(Boolean);
+  const KNOWN_SCOPES = ["setup", "outline", "detail", "review"];
+  const requested = scope === "all" ? KNOWN_SCOPES : scope.split(",").map((s) => s.trim()).filter(Boolean);
+  const unknown = requested.filter((s) => !KNOWN_SCOPES.includes(s));
+  if (unknown.length) { console.error(USAGE + "\nunknown scope(s): " + unknown.join(", ")); process.exit(2); }
+  const scopes = requested;
   const results = {};
   let fails = [];
   for (const s of scopes) {

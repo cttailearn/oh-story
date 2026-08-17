@@ -186,7 +186,7 @@ bash <skill-dir>/scripts/imagegen.sh auto \
 
 ### Step 5：平台尺寸导出（仅封面）
 
-设了 `UPLOAD_SIZE`（番茄 `600x800`）时把原图居中裁剪+缩放导出 `_上传` 版（magick/convert/sips 任选其一），原图保留。书名/笔名在中心安全区（内 85%），裁剪不切字。
+设了 `UPLOAD_SIZE`（番茄 `600x800`）时把原图居中裁剪+缩放导出 `_上传` 版，原图保留。裁剪工具按确定性顺序探测：`magick` → `convert` → `sips` → `python PIL`；全部缺失时显式报错并提示安装（如 `winget install ImageMagick`），**不静默跳过**。书名/笔名在中心安全区（内 85%），裁剪不切字。
 
 ### Step 6：质量检查 + 迭代
 

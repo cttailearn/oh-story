@@ -6,7 +6,8 @@
 //   --mode rewrite  全文重写：新稿中 ≥15 字连续片段若在原稿中出现 → [S1][rev-copy]（旧文残片/整句照抄）
 //   --mode patch    局部修改：只查新稿内部自重复（≥15 字片段出现 ≥2 次）→ [S1][rev-dup]
 //   两种模式都输出：字数统计（原稿/新稿/增/删）、内部自重复、可豁免清单提示
-//   豁免：引号内台词/弹幕刷屏/复沓锚句登记原话（由调用方在 SKILL 流程核对，脚本在输出中标注）
+//   豁免（--exempt <细纲文件>）：只取细纲中「复沓锚句」登记行的原话——重写本就要忠实细纲，
+//   若整文件豁免会系统性放过「照着细纲照抄」的残片；引号内台词/弹幕刷屏由调用方在 SKILL 流程核对
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -18,14 +19,21 @@ function readText(p) { try { return fs.readFileSync(p, "utf8"); } catch { return
 // 去空白后的文本用于片段检测（换行/空格不影响重复判定）
 function compact(t) { return t.replace(/\s+/g, ""); }
 
-// 新稿中长度 >= MIN_LEN 的连续片段集合（滑动窗口去重）
-function spans(text, n) {
-  const set = new Set();
-  for (let i = 0; i + n <= text.length; i++) {
-    const s = text.slice(i, i + n);
-    if (/[\u4e00-\u9fa5]/.test(s)) set.add(s);
+// 豁免语料：只取「复沓锚句」登记行（登记格式反引号包原话，如 `"xxx"（P3）`；
+// 无反引号时取冒号后整段）。细纲的其它内容（情节点/内容概括/情节细化等）不是豁免源。
+function extractAnchorSentences(text) {
+  if (!text) return "";
+  const parts = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!/复沓锚句/.test(line)) continue;
+    const bq = [...line.matchAll(/`([^`]+)`/g)];
+    if (bq.length) { for (const m of bq) parts.push(m[1]); }
+    else {
+      const rest = line.replace(/^[-\s]*复沓锚句\s*[：:]\s*/, "");
+      if (rest) parts.push(rest);
+    }
   }
-  return set;
+  return parts.join("");
 }
 
 // 新稿内部自重复：≥15 字片段出现 ≥2 次；合并为最长公共片段，每条重复只报一次
@@ -73,8 +81,9 @@ function main() {
   }
   const orig = compact(origText);
   const rev = compact(revText);
-  // 豁免文本（细纲复沓锚句登记原话等需保留的固定句）：命中片段同时出现在豁免文本中 → 跳过
-  const exempt = exemptFile ? compact(readText(exemptFile) || "") : "";
+  // 豁免语料（细纲「复沓锚句」登记行原话，见 extractAnchorSentences）：
+  // 命中片段同时出现在豁免语料中 → 跳过；细纲其它内容不豁免
+  const exempt = exemptFile ? compact(extractAnchorSentences(readText(exemptFile) || "")) : "";
 
   const issues = [];
   // 1. 重写模式：新稿片段与原稿重叠（残片/整句照抄）
@@ -101,7 +110,7 @@ function main() {
       const len = right - left;
       const frag = rev.slice(left, right);
       if (len >= 15 && !(exempt && exempt.includes(frag))) {
-        issues.push({ type: "rev-copy", severity: "S1", pos: left, snippet: rev.slice(left, left + 40) + "…", message: `重写残片：新稿含原稿连续片段（约 ${len} 字）——若非复沓锚句登记原话，删除旧文残片或改写表达；${exempt ? "" : "可用 --exempt <细纲文件> 豁免锚句"}` });
+        issues.push({ type: "rev-copy", severity: "S1", pos: left, snippet: rev.slice(left, left + 40) + "…", message: `重写残片：新稿含原稿连续片段（约 ${len} 字）——若非复沓锚句登记原话，删除旧文残片或改写表达；${exempt ? "" : "复沓锚句登记原话可用 --exempt <细纲文件> 豁免（只取复沓锚句行）"}` });
       }
     }
   }

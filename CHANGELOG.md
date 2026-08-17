@@ -25,6 +25,24 @@
 - agents_version 28 → 29（consistency-checker 模板变更）；check-project-consistency review scope 增加每章正文审查记录必选
 - shared-assets 登记 story-setup 的 tracking_commit.py / tracking-transaction.md 副本（4 副本同步）
 
+### 修复
+
+- **doc-budget 超限治理**：上轮审查实测确认 6c63ecc（v2.1.0 release）起 3 个热路径文件超预算、3d8aaed/1228015 继续增量（release 时守卫即红）；
+  按红线第②条显式调高 SKILL.md 14300→14800、workflow-chapter 11900→12900、workflow-setup 17300→18300、write-review 3700→3900
+  及两条路径预算，并在 doc-budget.json 记录决策依据（留 2% 余量）
+- **check-chapter-consistency.js 语义修正**：星期/日期/天数/倒计时变化降级为 S2 提示级（无周号/年份上下文时无法区分
+  真倒退与跨周/跨年/倒叙/时间跳跃，S1 阻断会误杀合法故事——周五→下周一、12月30日→1月2日实测误报）；
+  「细纲无正文」方向不再报告（滚动建纲正常状态），保留「正文无细纲」S1；workflow-revision 表述同步
+- **check-revision-duplicate.js 豁免收窄**：--exempt 只取细纲「复沓锚句」登记行，不再整文件豁免
+  （整文件豁免会系统性放过照着细纲照抄的残片）；删除 spans() 死代码
+- **check-project-consistency.js**：--scope 白名单校验（非法值打 USAGE 退 2）；角色索引排除「XX系统」类金手指（demo 文娱国运系统误报）
+- **demo 参考项目同步**：补 齐首长/钟嘉嘉爷爷 角色卡、大纲「全书体量与阶段总览」节、卷纲 剧情单元/伏笔/反转 三节；
+  guards.yml 新增 demo 一致性步骤（--scope setup,outline,detail）防漂移
+- **review-log.md 围栏结构修复**：8 个围栏重新配对（此前奇数围栏吞标题、末尾未闭合）
+- **story-image**：番茄封面生成尺寸改 1024x1536 + gpt-image-1/代理兼容注记（S5）；UPLOAD_SIZE 裁剪改为确定性探测顺序
+  magick→convert→sips→python PIL、全缺显式报错（S7）；check-imagegen-env.sh 补 python3 探测
+- **追踪事务临时文件路径约定**：统一写 `{书项目根}/.story-txn/pending.json`（S10，三处文档同步）
+
 ## v2.1.0
 
 > 小版本发布：逐级确认链、审查记录契约化、一致性机械校验、生成环境检查、默认画风（真实系真人）、反馈优化修复。

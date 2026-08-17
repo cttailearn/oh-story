@@ -27,7 +27,7 @@ echo "===== story-image 环境检查 =====";
 echo "--- 1. 运行依赖 ---";
 command -v bash >/dev/null 2>&1 && ok "bash（脚本执行环境）" || miss "bash：需 Git Bash（Windows）或系统 bash，安装后重试"
 command -v curl >/dev/null 2>&1 && ok "curl（API 请求）" || miss "curl：Windows 建议 Git Bash 自带；或 winget install curl"
-command -v python >/dev/null 2>&1 && ok "python（JSON 处理）" || miss "python：需 python3/python 任一（api-json.py 依赖）"
+if command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; then ok "python/python3（JSON 处理）"; else miss "python：需 python3/python 任一（api-json.py 依赖）"; fi
 command -v base64 >/dev/null 2>&1 && ok "base64（图片解码）" || miss "base64：Git Bash 自带；或装 coreutils"
 
 # 2. 后端配置探测

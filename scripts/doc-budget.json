@@ -18,13 +18,23 @@
     "    实际合计 36205 低于新预算）",
     "判断依据：CHANGELOG v1.3.2 明确记录这些是真实必需功能（不是冗余文本），",
     "且每条都被 doc-budget 字段和 Gate 严格验证机制保护；缩比另择。",
-    "调高后如未来再增删，这些预算值都应该回到 1.0 以下的实质量级。"
+    "调高后如未来再增删，这些预算值都应该回到 1.0 以下的实质量级。",
+    "",
+    "v2.2.1 预算调整（fix: doc-budget 超限治理——上轮审查确认 6c63ecc(v2.1.0 release) 起 3 文件超",
+    "限、3d8aaed/1228015 继续增量，release 时守卫即红）：",
+    "  - SKILL.md: 14300->14800（+500，v2.2 双模式修订流程/写章三查接线增量）",
+    "  - workflow-chapter.md: 11900->12900（+1000，修订联动 + 三查落盘 + 时间线一致性 S2 语义）",
+    "  - workflow-setup.md: 17300->18300（+1000，v2.1.0 逐级确认链/滚动补纲/审查记录完成定义增量）",
+    "  - write-review.md: 3700->3900（+200，v2.1 输出契约化增量）",
+    "  - paths.长篇日更主会话: 37350->39000、paths.长篇开书: 31550->33100（同步文件上调后的合计）",
+    "判断依据：均为 v2.1/v2.2 真实必需功能（逐级确认链/三查强制检查点/双模式修订流程），",
+    "非冗余文本（上轮审查已做过一轮精简）；调高留 2% 左右余量，未来增删仍需回到实质量级。"
   ],
   "files": [
     {
       "path": "skills/story-long-write/SKILL.md",
-      "budget": 14300,
-      "why": "长篇任一场景都无条件加载；v1.3.2 阶段门控与开书工作流概览增量；v2.0.0 双运行时说明；v2.1.0 Gate A/B/C + 写入审查接线 + 停靠点三元组（产出/机械校验/审查记录）增量"
+      "budget": 14800,
+      "why": "长篇任一场景都无条件加载；v1.3.2 阶段门控与开书工作流概览增量；v2.0.0 双运行时说明；v2.1.0 Gate A/B/C + 写入审查接线 + 停靠点三元组（产出/机械校验/审查记录）增量；v2.2.0 双模式修订流程/写章三查接线增量（超预算，显式调高）"
     },
     {
       "path": "skills/story-long-write/references/workflow-daily.md",
@@ -33,13 +43,13 @@
     },
     {
       "path": "skills/story-long-write/references/workflow-chapter.md",
-      "budget": 11900,
-      "why": "单章正文与质量检查，日更/单章路径都加载；细纲照搬复扫（check-outline-copy.js）调用点"
+      "budget": 12900,
+      "why": "单章正文与质量检查，日更/单章路径都加载；细纲照搬复扫（check-outline-copy.js）调用点；v2.2.0 修订联动 + 三查落盘 + 时间线一致性 S2 语义（超预算，显式调高）"
     },
     {
       "path": "skills/story-long-write/references/workflow-setup.md",
-      "budget": 17300,
-      "why": "开书必读（含细纲模板）；v2.1.0 Gate A/B/C 接入写入审查 + LEAN 充实度层 + 审查记录完成定义 + 长章情节点示例增量"
+      "budget": 18300,
+      "why": "开书必读（含细纲模板）；v2.1.0 Gate A/B/C 接入写入审查 + LEAN 充实度层 + 审查记录完成定义 + 长章情节点示例增量（超预算，显式调高）"
     },
     {
       "path": "skills/story-short-write/SKILL.md",
@@ -68,8 +78,8 @@
     },
     {
       "path": "skills/story-long-write/references/write-review.md",
-      "budget": 3700,
-      "why": "v2.1.0 写入审查协议：角色卡/设定/大纲/细纲每次写入后必读（热路径）；v2.1 输出契约化（审查记录落盘）+ 机械校验接线增量"
+      "budget": 3900,
+      "why": "v2.1.0 写入审查协议：角色卡/设定/大纲/细纲每次写入后必读（热路径）；v2.1 输出契约化（审查记录落盘）+ 机械校验接线增量（超预算，显式调高）"
     },
     {
       "path": "skills/story-long-write/references/review-log.md",
@@ -80,7 +90,7 @@
   "paths": [
     {
       "label": "长篇日更主会话",
-      "budget": 37350,
+      "budget": 39000,
       "why": "日更每章加载：SKILL.md + workflow-daily + workflow-chapter；v1.8 workflow-chapter 步骤 1 接线 check-outline-detail.js（写正文前细纲硬字段机械校验，THIN 即补建，防薄细纲）",
       "files": [
         "skills/story-long-write/SKILL.md",
@@ -90,7 +100,7 @@
     },
     {
       "label": "长篇开书",
-      "budget": 31550,
+      "budget": 33100,
       "why": "开书路径：SKILL.md + workflow-setup.md；v1.8 Gate C 升两步落盘校验（check-outline-detail.js 字段完整性 + 设定引用 grep）",
       "files": [
         "skills/story-long-write/SKILL.md",
@@ -109,3 +119,4 @@
     }
   ]
 }
+

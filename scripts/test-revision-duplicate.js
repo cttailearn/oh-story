@@ -25,6 +25,8 @@ const REWRITTEN = "雨夜，主角踏进茶馆。掌柜的目光在他身上停�
 const WITH_COPY = "雨夜，主角踏进茶馆。掌柜的规矩，从不问客从何来——这是旧文残片。他坐下，点了一壶茶，茶香漫开。天机阁的规矩，从不问客从何来。";
 const ANCHOR = "雨夜，主角踏进茶馆。掌柜的目光在他身上停了一瞬。\"天机阁的规矩，从不问客从何来。\"他说。茶香混着雨气漫开。";
 const OUTLINE = "# 细纲\n\n- 复沓锚句：\`\"天机阁的规矩，从不问客从何来。\"（P3）\`\n";
+// 豁免文件含非锚句行（内容概括照抄原稿句式）：不应被豁免（只取复沓锚句行）
+const OUTLINE_NARROW = "# 细纲\n\n- 复沓锚句：\`\"天机阁的规矩，从不问客从何来。\"（P3）\`\n- 内容概括：主角推开茶馆的门，掌柜抬头打量了他一眼。\n";
 const DUP = "主角推开大门，跨过门槛，走进落满灰尘的老宅。他环顾四周，只见蛛网结满梁柱。主角推开大门，跨过门槛，走进落满灰尘的老宅，这一次他的脚步更慢。";
 
 let failures = 0;
@@ -43,6 +45,10 @@ const r4 = run(ORIG, DUP, "patch");
 check("内部自重复检出（一条合并报告）", r4.status === 1 && r4.stdout.includes("rev-dup") && (r4.stdout.match(/rev-dup/g) || []).length <= 2, r4.stdout.slice(-300));
 const r5 = run(ORIG, REWRITTEN, "patch");
 check("patch 模式无重复 PASS", r5.status === 0, r5.stdout.slice(-120));
+// 豁免收窄：非锚句行内容出现在新稿中 → 仍报 rev-copy（不被豁免）
+const NARROW_REV = "主角推开茶馆的门，掌柜抬头打量了他一眼。他进了门，点了一壶热茶。";
+const r6 = run(ORIG, NARROW_REV, "rewrite", OUTLINE_NARROW);
+check("非锚句行不豁免（仍检出 rev-copy）", r6.status === 1 && r6.stdout.includes("rev-copy"), r6.stdout.slice(-200));
 
 console.log(failures === 0 ? "PASS: test-revision-duplicate.js" : `FAIL: ${failures} case(s)`);
 process.exit(failures === 0 ? 0 : 1);

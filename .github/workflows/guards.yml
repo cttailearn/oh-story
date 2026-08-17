@@ -33,8 +33,10 @@ jobs:
         run: python3 scripts/skill-numbering.py check
       - name: 当前契约校验（manifest、版本四源一致、agents_version 阈值、demo 产物）
         run: bash scripts/check-current-skill-contracts.sh
+      - name: demo 参考项目一致性（setup/outline/detail；review 需活项目审查记录，demo 不适用）
+        run: node skills/story-long-write/scripts/check-project-consistency.js --project "demo/长篇/让你管账号，你高燃混剪炸全网" --scope setup,outline,detail --check
       - name: 热路径文档预算
-        run: bash scripts/check-doc-budget.sh
+        run: bash scripts/check-doc-budget.sh --warn-margin 150
       - name: 共享资产单源同步
         run: python3 scripts/sync-shared-assets.py check
       - name: python 调用规范（hook 内嵌 python 不得文本模式输出）
