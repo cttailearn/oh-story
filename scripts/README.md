@@ -33,6 +33,7 @@
 | `test-revision-duplicate.js` | 修订重复检测（check-revision-duplicate.js）：重写残片/锚句豁免/内部自重复，5 用例 | 改动 check-revision-duplicate.js 或修订流程后 |
 | `test-chapter-consistency.js` | 正文时间线硬事实（check-chapter-consistency.js）：章编号对应/星期日期倒挂/天数与倒计时回退，good+bad 夹具 | 改动 check-chapter-consistency.js 或重排回写契约后 |
 | `test-project-consistency.js` | 写作项目机械一致性（check-project-consistency.js）：设定索引 vs 文件/角色线编号/卷纲字段/设定引用/审查记录，good+bad 双夹具 | 改动 check-project-consistency.js 或 Gate 契约后 |
+| `test-write-review-record.js` | 三查记录生成（write-review-record.js）：合法 JSON 落盘/缺字段 fail/blocking>0 fail-closed/--allow-blocking/零填充对齐/脏值类型门禁，7+ 用例 | 改动 write-review-record.js 或三查落盘协议后 |
 | `test-imagegen-env.js` | story-image 生成环境检查（check-imagegen-env.sh）：依赖/后端探测/专项可达性，无后端 MISSING + 有 key 全 OK 双状态 | 改动 check-imagegen-env.sh / imagegen.sh 探测后 |
 | `test-charcount-portable.sh` | 跨平台字符统计命令在三平台 + Windows 的正确性 | 提交前 |
 | `test-skill-numbering.sh` | Step 重排级联安全、锚点 fail-closed、代码块引用、验证零写入/提交回滚、dry-run/write/幂等性 | 提交前 |

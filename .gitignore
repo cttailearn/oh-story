@@ -15,6 +15,9 @@ __pycache__/
 .pi/
 .ruff_cache/
 
+# 追踪事务/三查记录的临时 JSON（模型每章的待提交载荷，成功后即删，绝不入库）
+.story-txn/
+
 # story-image 测试产物：环境生成的 PNG/JPG 二进制不入库（.md/.py/.json/.txt/.sh 入库）
 skills/story-image/tests/**/*.png
 skills/story-image/tests/**/*.jpg

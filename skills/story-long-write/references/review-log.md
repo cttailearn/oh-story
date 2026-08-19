@@ -34,12 +34,18 @@
 
 ## 正文审查（每章必写）
 
+> 正文审查记录由 `scripts/write-review-record.js` 按固定模板生成（`--data` 收三查结论 JSON；查1/查3 机械结果自动填入，查2 差异列表与 S1-S4 发现由模型提供；**查3 blocking>0 时脚本拒绝生成**）。
+
 ```markdown
 # 正文审查 — 第{N}章 {章名}
 
 - 查1 追踪状态（写前）：last_committed_chapter={N-1} / state_revision={值}；衔接 {正常/断档说明}
 - 查2 细纲兑现（写后）：差异列表——{逐项：核心事件/情节点/禁止提前释放/复沓锚句/结尾设定，每项 ✓ 或 ✗ + 处理}
 - 查3 禁用词 Gate（写后）：check-ai-patterns blocking={0/N}、check-degeneration blocking={0/N}；命中项 {已改/原因}
+
+## 发现（S1-S4）
+
+- {S 级发现逐条；无则写「- 无」}
 
 ## 结论
 

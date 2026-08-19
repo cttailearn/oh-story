@@ -15,7 +15,7 @@
 > - **查 2（写后）细纲硬要求兑现**：对照本章细纲逐项核对——核心事件/情节点序列/禁止提前释放/复沓锚句/结尾设定，输出差异列表（细纲要求 vs 正文实际，缺失项必须补写或记录原因）。
 >   - **面板内容差异化**：正文出现系统面板/金手指面板时，对照上一章同款面板核对——**内容字段（数值/状态/条目/文本）必须按追踪当前值变化**，整段同款（仅照抄）即 S1 规则违例，改写后再过查 3。
 > - **查 3（写后）禁用词 Gate**：`node scripts/check-ai-patterns.js --check --fail-on=blocking <本章正文>` + `node scripts/check-degeneration.js --check <本章正文>` → 0 blocking 才放行。
-> - 三查结论落盘 `大纲/审查记录/正文审查_第{N}章.md`（模板见 review-log.md「正文审查」节）——**未落盘 = 本章未完成**，`check-project-consistency.js --scope review` 会检出。
+> - 三查落盘：把查1/查2/查3 结论收进 JSON（`.story-txn/review.json`）后运行 `node scripts/write-review-record.js --project {项目根} --data .story-txn/review.json` 生成 `大纲/审查记录/正文审查_第{N}章.md`——查1/查3 机械结果由脚本自动填入，查2 差异与 S 级发现由你在 JSON 提供（schema 见脚本头注释与 review-log「正文审查」节）；**查3 blocking>0 时脚本拒绝生成（fail-closed）**。未生成 = 本章未完成，`check-project-consistency.js --scope review` 会检出。
 
 1. **检查细纲**：读取 `大纲/细纲/第{N}章.md`，并从对应 `大纲/卷纲/第X卷.md` 读取当前剧情单元（单元ID/位置、卷契约、本卷主推线/战果、终局底牌边界、风险等级）。如果不存在或缺少当前章节蓝图的必需字段，**必须先补建细纲再写正文**，不允许跳过细纲直接写作（先跑 `node scripts/check-outline-detail.js 大纲/细纲/第{N}章.md`，THIN 即补建）。补建时参考卷纲中本章对应的事件规划和上下文，补齐阶段位置、结构公式、禁止提前释放、内容概括、情节安排、人物关系/出场顺序、情节细化、结尾设定、本章设定引用；无法从已有证据判断的字段写 `[待补充]`，不杜撰副线或关系。
 2. **读取上下文**（按需选择；缺失时遵循各项及SKILL.md Phase 4 的「缺失文件处理」，仅明确标为可选的非主产物跳过。可选快捷路径：如果项目已部署 story-explorer agent（优先检查 `.pi/agents/story-explorer.md` 是否存在；不存在时检查 `~/.pi/agent/agents/`），可 spawn `子代理`story-explorer`（subagent 工具，task："项目目录：{dir}\n查询类型：context_load\n查询参数：准备写第 {N} 章\n追踪状态：last_committed_chapter={check 的值}，state_revision={check 的值}"）` 一次获取上下文）：
@@ -87,7 +87,7 @@
 12. **更新追踪**：按 workflow-daily「每章提交一次追踪事务」构造 JSON，执行 `scripts/tracking_commit.py commit`。工具先在内存完成全部合并/渲染/容量校验，再生成逐章记录、角色/伏笔/时间线/上下文派生视图，最后原子替换 `_tracking-state.json`。失败按类型处理：**写入失败**（工具不可用、权限被拒、磁盘满）时 `_tracking-state.json` 未推进，保留原事务 JSON（固定存 `.story-txn/pending.json`，跨会话重跑同路径）直接重跑同一 `commit`；**校验失败**要按报错改事务本身再提交，重跑同一份结果不变；**派生视图被手改**导致 `check` 报不一致时，重新提交该章的 `mode=revision` 事务让工具整份重建（`expected_state_revision` 取 `追踪/_tracking-state.json` 的 `state_revision` 字段——`check` 失败时只往 stderr 打 ERROR，不输出 JSON）。任何情况都不手改派生文件。本章首次引入会复用的具名角色/势力时，仍按 `references/workflow-setup.md` 的 Phase 3 规则补建静态 `设定/` 档案。
 > **修订场景**：本章发生大修/重写（走 workflow-revision）时，正文审查记录追加「修订复核」节（机械层 + 事实/衔接/要求核对结论），并附 修改清单/修订核验 文件链接。
 
-12b. **三查记录落盘**：把本章三查结论写入 `大纲/审查记录/正文审查_第{N}章.md`（固定模板：查1 追踪状态记录 / 查2 细纲兑现核对差异列表 / 查3 禁用词 Gate 结果 / 结论）——**未落盘 = 本章未完成**，不得进入下一章。
+12b. **三查记录落盘**：运行 `node scripts/write-review-record.js --project {项目根} --data .story-txn/review.json` 生成 `大纲/审查记录/正文审查_第{N}章.md`（JSON 字段见脚本头注释：查1/查3 自动填充，查2 items 与 findings/conclusion 由你提供）——**未生成 = 本章未完成**，不得进入下一章。生成成功后删除 `.story-txn/review.json`（与 tracking_commit 的 `pending.json` 同约定）。
 
 13. **中途快照**（长篇写作安全网）：每连续写完 3 章，在继续前执行以下快照操作：
 

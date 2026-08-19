@@ -107,7 +107,14 @@ function checkOutline(root) {
   return fails;
 }
 
-// --- detail: 细纲「本章设定引用」点名文件存在性 ---
+// --- detail: 细纲「本章设定引用」点名文件存在性 + 角色线阶段标题存在性 ---
+// 解析口径（与 workflow-setup「本章设定引用」模板示例一致）：
+//   - 按 ；/;，/, 拆 token（并剥掉 `——说明` 尾注）
+//   - 角色卡:A/B（一 token 多角色）→ 逐个查 设定/角色/{名}.md
+//   - 世界观:X§小节 / 势力:X → § 后是卡内小节定位，只取文件部分 X 查存在性
+//   - 角色线:{角色名}·阶段N → 查 设定/角色/{角色名}.md 存在 + 「角色线」内「### 阶段 N：」标题存在；
+//     多段如 ·阶段2·备注 时 stagePart 非纯阶段号 → want=null，跳过阶段核对（放宽行）
+//   - 物品:X 无独立归档目录，不查文件（语义一致性归写入审查）
 function checkDetail(root) {
   const fails = [];
   const kindDir = { 角色卡: "角色", 世界观: "世界观", 势力: "势力" };
@@ -117,16 +124,60 @@ function checkDetail(root) {
     for (const l of lines) {
       const m = l.match(/本章设定引用[：:]\s*(.*)$/);
       if (!m) continue;
-      const refs = m[1].match(/角色卡:[^；;，,]+|世界观:[^；;，,]+|势力:[^；;，,]+|物品:[^；;，,]+|角色线:[^；;·，,]+/g) || [];
-      for (const r of refs) {
-        const [kind, name] = r.split(":");
-        const n = name.trim();
-        if (!n || n === "无") continue;
-        if (kind === "角色线") {
-          if (!fs.existsSync(path.join(root, "设定", "角色", n + ".md"))) fails.push(`[S2][ref] ${f} 引用角色线:${n} 但 设定/角色/${n}.md 不存在`);
-        } else if (kindDir[kind]) {
-          if (!fs.existsSync(path.join(root, "设定", kindDir[kind], n + ".md"))) fails.push(`[S2][ref] ${f} 引用${kind}:${n} 但 设定/${kindDir[kind]}/${n}.md 不存在`);
+      for (const token of m[1].split(/[；;,，]/)) {
+        // 剥掉「——...」尾注（模板里「物品:X——按本章实际用到填写…」），防注释被并入假文件名
+        const t = token.split("——")[0].trim();
+        if (!t) continue;
+        if (t.startsWith("角色卡:")) {
+          for (const n of t.slice("角色卡:".length).split("/")) {
+            const name = n.trim();
+            if (!name || name === "无") continue;
+            if (!fs.existsSync(path.join(root, "设定", "角色", name + ".md"))) {
+              fails.push(`[S2][ref] ${f} 引用角色卡:${name} 但 设定/角色/${name}.md 不存在`);
+            }
+          }
+        } else if (t.startsWith("世界观:") || t.startsWith("势力:")) {
+          const kind = t.startsWith("世界观:") ? "世界观" : "势力";
+          const name = t.slice(kind.length + 1).split("§")[0].trim();
+          if (!name || name === "无") continue;
+          if (!fs.existsSync(path.join(root, "设定", kindDir[kind], name + ".md"))) {
+            fails.push(`[S2][ref] ${f} 引用${kind}:${name} 但 设定/${kindDir[kind]}/${name}.md 不存在`);
+          }
+        } else if (t.startsWith("角色线:")) {
+          const raw = t.slice("角色线:".length).trim();
+          const [namePart, stagePart] = raw.split("·");
+          const n = (namePart || "").trim();
+          if (!n || n === "无") continue;
+          const cardPath = path.join(root, "设定", "角色", n + ".md");
+          if (!fs.existsSync(cardPath)) {
+            fails.push(`[S2][ref] ${f} 引用角色线:${n} 但 设定/角色/${n}.md 不存在`);
+            continue;
+          }
+          // 机械核对被引用的阶段标题存在（### 阶段 N：）
+          if (stagePart) {
+            const st = stagePart.trim();
+            let want = null;
+            if (/^阶段\s*(\d+)$/.test(st)) want = parseInt(/^阶段\s*(\d+)$/.exec(st)[1], 10);
+            else if (/^\d+$/.test(st)) want = parseInt(st, 10);
+            if (want !== null) {
+              const cardLines = readLines(cardPath);
+              const stageNums = new Set();
+              let inRoleLine = false;
+              for (const cl of cardLines || []) {
+                if (/^##\s*角色线/.test(cl)) { inRoleLine = true; continue; }
+                if (inRoleLine && /^##\s/.test(cl)) break;
+                if (inRoleLine) {
+                  const sm = cl.match(/^###\s*阶段\s*(\d+)\s*[：:]/);
+                  if (sm) stageNums.add(parseInt(sm[1], 10));
+                }
+              }
+              if (!stageNums.has(want)) {
+                fails.push(`[S2][ref] ${f} ${n}.md「角色线」无「### 阶段 ${want}：」标题（引用 角色线:${n}·阶段${want}）`);
+              }
+            }
+          }
         }
+        // 物品: 等其余前缀无独立归档目录，不查文件（语义一致性归写入审查）
       }
     }
   }

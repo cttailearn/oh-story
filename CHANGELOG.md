@@ -1,3 +1,23 @@
+## v2.3.0
+
+> 写作流程 O1/O6 批：细纲密点「场景演化学」（视角 / 在场配角反应 / 关键台词 / 动作收束，含 story-architect 模板同步）+ 写章三查记录改由 `write-review-record.js` 脚本化生成（查1/查3 机械填充、查3 fail-closed）+ 细纲「本章设定引用」解析修正（角色卡:A/B 拆名、世界观:X§小节 取文件、角色线:名·阶段N 阶段标题机械核对）。
+> agents bundle 变化：story-architect 模板加「密点场景演化学」子项（agents_version 29 → 30）。
+
+### 新增
+
+- `write-review-record.js`：三查记录生成脚本（JSON 驱动，记录文件名与正文章号零填充对齐；`--allow-blocking` 显式放行）；`test-write-review-record.js` 7 用例
+- `check-outline-detail.js`：有密点但无「场景演化学」子项 → 非阻断提示（story-long-write / story-deslop / story-review 三副本同步）
+
+### 变更
+
+- 写章三查落盘从「手工写记录」改为调用 `write-review-record.js`（workflow-chapter 三查框 / 步骤 12b、review-log 正文审查节接线；查1/查3 自动填充，模型只填查2 差异列表与 S 级发现、结论）
+- `check-project-consistency --scope detail`：`角色卡:A/B` 逐个验证、`世界观:X§小节` 只查文件部分、`角色线:名·阶段N` 新增「阶段标题存在」机械核对；workflow-setup「本章设定引用」示例规范为单名写法
+- `write-review` 新增 D6「密点场景演化学」检查；doc-budget 调账（workflow-chapter 12900→13200，v2.3 注释记账）
+
+### 修复
+
+- 修复细纲「本章设定引用」在 `--scope detail` 下被当单个文件名导致的误报（`角色卡:江晨/张耀祖`、`世界观:力量体系§传送阵`、`角色线:角色·阶段N` 三处解析行为）
+
 ## v2.2.0
 
 > 双模式修订流程（大段修改/重写防重复防漏改）：修改清单驱动 + 分段执行 + diff 双层核验 + 硬停靠。

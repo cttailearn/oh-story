@@ -300,6 +300,15 @@ function checkOutline(text) {
 	for (const f of DETAIL_SUB_FIELDS) {
 		if (!f.re.test(text)) detailWarnings.push(f.name);
 	}
+	// 密点场景演化学（O1）：有密点但整节无「场景演化学」子项 → 非阻断提示（detailWarnings，不驱动 LEAN）
+	const detailSceneText = sectionBody(text, "情节细化");
+	if (
+		detailSceneText &&
+		/(?:【[^】]*密[^】]*】|·密|密\d{2,4})/.test(detailSceneText) &&
+		!/场景演化学/.test(detailSceneText)
+	) {
+		detailWarnings.push("情节细化·有密点但未见「场景演化学」子项（密点/慢镜头爽点建议附 视角/在场配角反应/关键台词/动作收束，见 workflow-setup「密点场景演化学」）");
+	}
 
 	// 预算核对（仅在硬字段齐全或预算合计存在时做）：预算值（或区间）应落在 [目标下限, 目标上限×1.1] 内
 	if (!detailWarnings.includes("预算合计")) {
