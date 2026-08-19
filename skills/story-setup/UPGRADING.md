@@ -2,7 +2,7 @@
 
 ## 当前版本
 
-- `setup_skill_version: 2.2.0`
+- `setup_skill_version: 2.3.0`
 - `agents_version: 30`
 
 `.story-deployed` 缺失任一字段，或 `agents_version` 缺失 / 非整数 / 小于 `30`，都视为待更新部署。直接重新运行 `/skill:story-setup`；不在运行时逐级兼容历史模板。如项目 `agents_version` 大于 `30`，说明本地 story-setup 比项目旧：先更新 oh-story，不得用旧版降级覆盖。历史版本改动见仓库根目录 `CHANGELOG.md`。
@@ -67,7 +67,7 @@ v2.0.0 起 oh-story 为 pi / dsh 双运行时包。pi 部署项目迁移：
 1. 更新包：pi → `pi update --extensions` 或 `pi install git:github.com/cttailearn/oh-story@<新 ref>`；
    dsh → 重新执行 `scripts/install-dsh.ps1`（或 git pull 后刷新会话）。
 2. 在项目根重跑 `/skill:story-setup`（dsh 下 `/story-setup`），确认 `.story-deployed` 写入
-   `agents_version: 30` 与 `setup_skill_version: 2.2.0`（`target_cli` 为 pi 或 dsh）。
+   `agents_version: 30` 与 `setup_skill_version: 2.3.0`（`target_cli` 为 pi 或 dsh）。
 3. 已有拆文工程核对 `_progress.md` 的 `schema_version: 2`（当前拆文契约；不符则按
    story-import 的修复流程重建）。
 4. 无需新开会话：pi-subagents 每次 spawn 实时从磁盘发现 `.pi/agents/` 下的 agent，重跑 setup 后下一次 spawn 即用新版。仅当运行时不暴露 subagent 工具（未安装 pi-subagents）时，才需 `pi install npm:pi-subagents` 并新开会话。
