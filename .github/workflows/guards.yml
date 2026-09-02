@@ -34,7 +34,10 @@ jobs:
       - name: 当前契约校验（manifest、版本四源一致、agents_version 阈值、demo 产物）
         run: bash scripts/check-current-skill-contracts.sh
       - name: demo 参考项目一致性（setup/outline/detail；review 需活项目审查记录，demo 不适用）
-        run: node skills/story-long-write/scripts/check-project-consistency.js --project "$(find demo/长篇 -mindepth 1 -maxdepth 1 -type d | head -1)" --scope setup,outline,detail --check
+        run: |
+          demo_proj="$(find demo/长篇 -mindepth 1 -maxdepth 1 -type d | head -1)"
+          node skills/story-long-write/scripts/check-project-consistency.js \
+            --project "$demo_proj" --scope setup,outline,detail --check
       - name: 热路径文档预算
         run: bash scripts/check-doc-budget.sh --warn-margin 150
       - name: 共享资产单源同步
@@ -81,5 +84,9 @@ jobs:
         run: node scripts/test-revision-duplicate.js
       - name: 回归：写作审查记录
         run: node scripts/test-write-review-record.js
+      - name: 回归：短篇交付契约
+        run: node scripts/test-delivery-contract.js
+      - name: 回归：跨会话作者记忆
+        run: python3 scripts/test-author-memory-commit.py
       - name: 回归：dashboard API（node test 套件）
         run: npm run test:dashboard

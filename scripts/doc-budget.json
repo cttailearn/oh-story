@@ -50,7 +50,7 @@
     },
     {
       "path": "skills/story-long-write/references/workflow-chapter.md",
-      "budget": 13200,
+      "budget": 13270,
       "why": "单章正文与质量检查，日更/单章路径都加载；细纲照搬复扫（check-outline-copy.js）调用点；v2.2.0 修订联动 + 三查落盘 + 时间线一致性 S2 语义；v2.3 三查落盘接线改 write-review-record.js + O1 密点场景演化学引用（超预算，显式调高）"
     },
     {
@@ -60,8 +60,8 @@
     },
     {
       "path": "skills/story-short-write/SKILL.md",
-      "budget": 17200,
-      "why": "短篇任一场景都无条件加载；v2.1.0 Phase 2 写后写入审查段增量"
+      "budget": 17650,
+      "why": "短篇任一场景都无条件加载；v2.1.0 Phase 2 写后写入审查段增量 + v2.4.0 Phase 4 交付形态验收（check-delivery-contract 确定性门禁，blocking 拦截，对齐长篇三查）"
     },
     {
       "path": "skills/story-setup/references/templates/agents/narrative-writer.md",
@@ -97,7 +97,7 @@
   "paths": [
     {
       "label": "长篇日更主会话",
-      "budget": 39000,
+      "budget": 39100,
       "why": "日更每章加载：SKILL.md + workflow-daily + workflow-chapter；v1.8 workflow-chapter 步骤 1 接线 check-outline-detail.js（写正文前细纲硬字段机械校验，THIN 即补建，防薄细纲）",
       "files": [
         "skills/story-long-write/SKILL.md",

@@ -2,6 +2,15 @@
   "version": 1,
   "groups": [
     {
+      "name": "author-memory-committer",
+      "source": "skills/story-setup/scripts/author_memory_commit.py",
+      "targets": [
+        "skills/story-long-write/scripts/author_memory_commit.py",
+        "skills/story-short-write/scripts/author_memory_commit.py",
+        "skills/story-deslop/scripts/author_memory_commit.py"
+      ]
+    },
+    {
       "name": "prose-ai-pattern-detector",
       "source": "skills/story-deslop/scripts/check-ai-patterns.js",
       "targets": [

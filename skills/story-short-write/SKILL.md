@@ -196,6 +196,8 @@ description: "短篇网文写作。辅助短篇小说创作，从构思到成稿
 
 ### Phase 3：逐场景写作
 
+> 作者偏好：若工作区已部署作者记忆，先 run `python scripts/author_memory_commit.py query --workspace .`——作者偏好 query 中的文风/故事设计项注入 `作者偏好：{query 命中的 prose_style/story_design 项}`。
+
 **项目文件结构**：文件结构见 Phase 2；设定.md/小节大纲.md 为 Phase 2 产出，正文.md 为 Phase 3 产出。
 
 **导入项目续写基线**：`设定.md` 存在「本书续写基线」时先读取，作为已写内容的内部连续性与既有写法约束；它不是对标摘要，不参与主/副对标排序，也不复制到 `对标/`。
@@ -363,6 +365,8 @@ description: "短篇网文写作。辅助短篇小说创作，从构思到成稿
 加载 `references/writing-workflow.md` 中的精修清单完成检查。
 重点：开头钩子、情绪曲线、反转铺垫、每句话价值、格式规范、AI 腔排查。伏笔核对：以 `追踪/伏笔.md` 为清单逐条核查（已埋→已回收/仍在铺垫；断线必须有裁决），契约见 [references/light-tracking.md](references/light-tracking.md)。文件模式先运行 `node scripts/check-ai-patterns.js --check --fail-on=blocking 正文.md`：blocking 先改正文并复扫；其他提示只作为读感风险，功能性写法标 `[需复核]`。再运行 `node scripts/normalize-punctuation.js 正文.md` 做标点兜底，并运行 `node scripts/check-degeneration.js --check 正文.md`；退化 blocking 要重新生成受影响段落，不靠润色。
 
+**交付形态验收**：`node scripts/check-delivery-contract.js --json --min-chars {下限} --max-chars {上限} --sections {节数} .`，blocking 项按 repair 只修形态（字数/分节/空行）不改情节；**用户明确的字数范围优先**，未明确用 8000-20000 短篇口径；不足只扩既有情节点行动/后果/对话，超字只删复述与无功能过场。
+
 #### Agent 调用：narrative-writer（去AI味）+ consistency-checker
 
 精修阶段，如果项目已部署对应 agent，可 spawn：
@@ -422,6 +426,7 @@ description: "短篇网文写作。辅助短篇小说创作，从构思到成稿
 | [scripts/normalize-punctuation.js](scripts/normalize-punctuation.js) | Phase 4 文件模式确定性标点收尾 |
 | [scripts/check-ai-patterns.js](scripts/check-ai-patterns.js) | Phase 3 完成门槛与 Phase 4 复扫；报告高危 AI 句式、破折号、碎句号、长段落、微动作复读、抽象总结、套词/比喻密度、解释链、系统公告腔、提纲感短段、低连接密度 |
 | [scripts/check-degeneration.js](scripts/check-degeneration.js) | Phase 3 完成门槛与 Phase 4 复扫；报告模型退化（复读/截断/工程词泄漏），blocking 需重新生成 |
+| [scripts/check-delivery-contract.js](scripts/check-delivery-contract.js) | Phase 4 交付前（正文.md 字数/分节/空行确定性验收，blocking 拦截） |
 | [references/dialogue-mastery.md](references/dialogue-mastery.md) | 写对话时 |
 | [references/output-contract.md](references/output-contract.md) | Phase 2 对标上下文加载时（理解 analyze 产出格式与消费规范） |
 

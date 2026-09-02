@@ -86,6 +86,8 @@ AI味不按语法错误处理，也不需要"修正"。它属于风格问题：�
 
 ### Phase 1：AI味扫描
 
+> 作者偏好：若工作区已部署作者记忆，先 run `python scripts/author_memory_commit.py query --kind prose_style --workspace .` → `作者偏好：{query 命中的 prose_style 项}`，去 AI 味按作者偏好收尾，不违反其稳定的文风约定。
+
 对用户提交的文本做快速扫描，标记AI味浓重的位置：
 
 ```
