@@ -332,7 +332,7 @@ function checkOutline(text) {
 
 function readText(file) {
 	try {
-		return fs.readFileSync(file, "utf8");
+		return fs.readFileSync(file, "utf8").replace(/^﻿/, "");
 	} catch (err) {
 		return null;
 	}

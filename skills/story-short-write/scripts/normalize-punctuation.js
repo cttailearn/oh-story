@@ -54,7 +54,7 @@ for (const file of options.files) {
   const fullPath = path.resolve(file);
   let input;
   try {
-    input = fs.readFileSync(fullPath, 'utf8');
+    input = fs.readFileSync(fullPath, 'utf8').replace(/^﻿/, '');
   } catch (error) {
     failed = true;
     console.error(`${file}: unable to read (${error.message})`);
