@@ -72,7 +72,17 @@ for (const file of options.files) {
   }
 
   if (result.output !== input) {
-    fs.writeFileSync(fullPath, result.output, 'utf8');
+    // 原子写：先写同目录临时文件再 rename，进程中断/断电不损坏原稿
+    const tmpPath = `${fullPath}.tmp-${process.pid}`;
+    try {
+      fs.writeFileSync(tmpPath, result.output, 'utf8');
+      fs.renameSync(tmpPath, fullPath);
+    } catch (writeError) {
+      try { fs.unlinkSync(tmpPath); } catch (_) {}
+      failed = true;
+      console.error(`${file}: unable to write (${writeError.message})`);
+      continue;
+    }
     changedFiles += 1;
     console.log(`${file}: normalized (${result.findings.length} issue${result.findings.length === 1 ? '' : 's'})`);
   }

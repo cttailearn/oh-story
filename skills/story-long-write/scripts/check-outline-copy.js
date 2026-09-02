@@ -79,7 +79,9 @@ function findLongestCommonRun(proseClean, outlineClean) {
 	// 连续窗口是否出现在 outline 中，再向两边扩展
 	const MIN_SEED = 8;
 	const seen = new Set();
-	for (let i = 0; i + MIN_SEED <= proseLen && i + MIN_SEED <= outlineLen; i++) {
+	// 上界只需保证 seed 在正文窗内，indexOf 不受细纲长度限制：
+	// 旧条件 i+MIN_SEED<=outlineLen 会让「正文后段抄细纲」的窗口永不播种 → 假 PASS
+	for (let i = 0; i + MIN_SEED <= proseLen; i++) {
 		const seed = proseClean.slice(i, i + MIN_SEED);
 		if (seen.has(seed)) continue;
 		seen.add(seed);
