@@ -55,7 +55,7 @@ description: "一句话描述。触发方式：/skill:skill-name、触发词1、
 
 1. 只改 `skills/story-setup/references/templates/agents/*.md`（唯一部署源）
 2. frontmatter 保持 pi-subagents 格式（`tools` 白名单、`systemPromptMode: replace`、
-   `turnBudget`；`model` 不写死）
+   `turnBudget`；`model` 默认钉档位，可经 `subagents.agentOverrides` 覆盖）
 3. 涉及新增 agent 时同步更新 story-setup `SKILL.md` 的自检清单与部署列表
 
 ## CI 检查
@@ -64,36 +64,13 @@ PR 与 main push 自动运行两套流水线：
 
 - `.github/workflows/guards.yml`：全部静态守卫 + 回归测试（static-check / skill-numbering /
   current-contract / doc-budget / shared-assets / python-invocation / AI 味基准 / 追踪事务 /
-  dashboard API 等 19 个 step），无路径过滤，任何改动都会触发。
+  dashboard API 等 22 个 step），无路径过滤，任何改动都会触发。
 - `.github/workflows/dashboard.yml`：dashboard e2e（playwright，仅 dashboard 相关路径）。
 
 提交前也可本地跑完整守卫清单：
 
 ```bash
-bash scripts/static-check.sh
-python3 scripts/test-static-check.py
-python3 scripts/skill-numbering.py check
-bash scripts/test-skill-numbering.sh
-bash scripts/check-current-skill-contracts.sh
-python3 scripts/test-current-skill-contracts.py
-bash scripts/check-doc-budget.sh
-python3 scripts/test-shared-assets.py
-node scripts/test-normalize-punctuation.js
-node scripts/test-scan-runtime.js
-node scripts/test-imagegen-custom.js
-node scripts/test-project-consistency.js
-node scripts/test-chapter-consistency.js
-node scripts/test-revision-duplicate.js
-node scripts/test-imagegen-env.js
-bash scripts/test-outline-detail.sh
-bash scripts/test-ai-patterns.sh
-bash scripts/test-outline-copy.sh
-bash scripts/test-degeneration.sh
-bash scripts/check-python-invocation.sh
-bash scripts/test-charcount-portable.sh
-python3 scripts/test-tracking-commit.py
-python3 scripts/test-tracking-workflow-contracts.py
-npm test
+npm run test:guards
 ```
 
 每个脚本的用途与触发时机见 [scripts/README.md](scripts/README.md)。

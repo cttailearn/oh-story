@@ -34,7 +34,7 @@ jobs:
       - name: 当前契约校验（manifest、版本四源一致、agents_version 阈值、demo 产物）
         run: bash scripts/check-current-skill-contracts.sh
       - name: demo 参考项目一致性（setup/outline/detail；review 需活项目审查记录，demo 不适用）
-        run: node skills/story-long-write/scripts/check-project-consistency.js --project "demo/长篇/让你管账号，你高燃混剪炸全网" --scope setup,outline,detail --check
+        run: node skills/story-long-write/scripts/check-project-consistency.js --project "$(find demo/长篇 -mindepth 1 -maxdepth 1 -type d | head -1)" --scope setup,outline,detail --check
       - name: 热路径文档预算
         run: bash scripts/check-doc-budget.sh --warn-margin 150
       - name: 共享资产单源同步
@@ -69,5 +69,17 @@ jobs:
         run: python3 scripts/test-tracking-commit.py
       - name: 回归：追踪工作流契约（14 项）
         run: python3 scripts/test-tracking-workflow-contracts.py
+      - name: 回归：章一致性
+        run: node scripts/test-chapter-consistency.js
+      - name: 回归：自定义图像 API（mock 后端 + 认证头 + 错误响应）
+        run: node scripts/test-imagegen-custom.js
+      - name: 回归：图像生成环境检测
+        run: node scripts/test-imagegen-env.js
+      - name: 回归：项目结构与 demo 一致性
+        run: node scripts/test-project-consistency.js
+      - name: 回归：修订重复检测
+        run: node scripts/test-revision-duplicate.js
+      - name: 回归：写作审查记录
+        run: node scripts/test-write-review-record.js
       - name: 回归：dashboard API（node test 套件）
         run: npm run test:dashboard

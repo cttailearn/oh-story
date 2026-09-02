@@ -10,11 +10,7 @@ const { spawnSync } = require("child_process");
 const repoRoot = path.resolve(__dirname, "..");
 const script = path.join(repoRoot, "skills/story-image/scripts/check-imagegen-env.sh");
 
-function findBash() {
-  const candidates = [process.env.GIT_BASH || "", "G:\\AI\\Langchain-Chatchat-0.2.10\\Git\\bin\\bash.exe", "C:\\Program Files\\Git\\bin\\bash.exe", "C:\\Program Files (x86)\\Git\\bin\\bash.exe"];
-  for (const c of candidates) if (c && fs.existsSync(c)) return c;
-  return "bash";
-}
+const findBash = require("./find-git-bash");
 
 function run(env) {
   const bash = findBash();

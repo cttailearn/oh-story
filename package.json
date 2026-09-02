@@ -14,6 +14,9 @@
     "小说"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/cttailearn/oh-story.git"
@@ -29,9 +32,10 @@
   },
   "scripts": {
     "dashboard": "node skills/story/scripts/dashboard-server.mjs",
+    "test:guards": "node scripts/run-guards.js",
     "test:dashboard": "node --test tests/dashboard-server.test.mjs tests/dashboard-trigger-contract.test.mjs",
     "test:dashboard:e2e": "playwright test",
-    "test": "npm run test:dashboard && npm run test:dashboard:e2e"
+    "test": "npm run test:guards && npm run test:dashboard && npm run test:dashboard:e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0"

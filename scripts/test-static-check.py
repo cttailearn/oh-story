@@ -16,6 +16,30 @@ CHECKER = REPO_ROOT / "scripts/static-check.py"
 LAUNCHER = REPO_ROOT / "scripts/static-check.sh"
 
 
+def find_bash() -> str | None:
+    """跨平台找 Git for Windows 的 bash，排除 WSL(Windows/System32)/WindowsApps 存根。"""
+    if os.name != "nt":
+        return shutil.which("bash")
+    for c in [
+        os.environ.get("GIT_BASH", ""),
+        r"C:\Program Files\Git\bin\bash.exe",
+        r"C:\Program Files (x86)\Git\bin\bash.exe",
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Git", "bin", "bash.exe"),
+    ]:
+        if c and os.path.exists(c):
+            return c
+    g = shutil.which("git")
+    if g:
+        cand = os.path.join(os.path.dirname(os.path.dirname(g)), "bin", "bash.exe")
+        if os.path.exists(cand):
+            return cand
+    for p in os.environ.get("PATH", "").split(os.pathsep):
+        cand = os.path.join(p, "bash.exe")
+        if p and os.path.exists(cand) and "System32" not in p and "WindowsApps" not in p:
+            return cand
+    return None
+
+
 def write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
@@ -464,7 +488,7 @@ def test_brace_enumerations_name_each_file() -> None:
 
 
 def test_launcher_reports_missing_git_repository() -> None:
-    bash = shutil.which("bash")
+    bash = find_bash()
     if bash is None:
         print("SKIP: bash unavailable, launcher guard not exercised")
         return

@@ -16,25 +16,10 @@ const { spawnSync, spawn } = require("child_process");
 const repoRoot = path.resolve(__dirname, "..");
 const script = path.join(repoRoot, "skills/story-image/scripts/imagegen-custom.sh");
 const scriptDir = path.dirname(script);
+const findBash = require("./find-git-bash");
 
 // 1x1 透明 PNG（经典 67 字节）
 const PNG1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
-
-function findBash() {
-  const candidates = [
-    process.env.GIT_BASH || "",
-    "C:\\Program Files\\Git\\bin\\bash.exe",
-    "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
-    process.env.LOCALAPPDATA + "\\Programs\\Git\\bin\\bash.exe",
-  ].filter(Boolean);
-  for (const c of candidates) if (fs.existsSync(c)) return c;
-  const which = spawnSync("where", ["bash"], { encoding: "utf8" });
-  if (which.status === 0) {
-    const first = which.stdout.split(/\r?\n/)[0];
-    if (first && fs.existsSync(first)) return first;
-  }
-  return "bash"; // 最后回退：PATH 上的 bash（CI/git bash 环境）
-}
 
 // mock 服务器：三种模式
 function startMock(mode) {

@@ -35,7 +35,7 @@ node -e '
 const fs = require("fs");
 const path = require("path");
 const [manifestPath, repoRoot, warnMargin] = process.argv.slice(1);
-const warnN = warnMargin === "" ? 0 : Number(warnMargin);
+const warnN = warnMargin === "" || !Number.isFinite(Number(warnMargin)) ? 0 : Number(warnMargin);
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
 // 去空白字符数：改标点/换行/缩进不影响，加删正文才影响。
