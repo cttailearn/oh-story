@@ -27,7 +27,7 @@ layered context-state management · human-AI collaboration.
 ### pi channel (git)
 
 ```bash
-pi install git:github.com/cttailearn/oh-story@v2.3.0
+pi install git:github.com/cttailearn/oh-story@v2.4.0
 ```
 
 Update / uninstall:
@@ -42,7 +42,7 @@ pi remove git:github.com/cttailearn/oh-story        # uninstall
 
 ```powershell
 # Install from GitHub (pinned release tag, recommended)
-dsh plugin --profile web add github:cttailearn/oh-story#v2.3.0
+dsh plugin --profile web add github:cttailearn/oh-story#v2.4.0
 
 # Or install the latest main-branch content (dev build)
 dsh plugin --profile web add github:cttailearn/oh-story
@@ -275,10 +275,10 @@ subagents. Skill bodies and the knowledge base ship with the pi package
 
 ## Platforms
 
-- **pi**: first-class. `pi install git:github.com/cttailearn/oh-story@v2.3.0` makes all 13 skills
+- **pi**: first-class. `pi install git:github.com/cttailearn/oh-story@v2.4.0` makes all 13 skills
   available; the `/story` command alias comes from the in-package extension; agents deploy to
   `.pi/agents/`. npm publishing is deferred due to account 2FA policy (the `oh-story` name is reserved).
-- **dsh (DeepSeek Harness)**: first-class. `dsh plugin --profile web add github:cttailearn/oh-story#v2.3.0` + one mount row (see the install section) and the 13 skills are
+- **dsh (DeepSeek Harness)**: first-class. `dsh plugin --profile web add github:cttailearn/oh-story#v2.4.0` + one mount row (see the install section) and the 13 skills are
   discovered from the home-level skill root (project-level placement also works); trigger via
   `/story`, `/story-*` or natural language; agent prompt templates deploy to `.dsh/story-agents/`.
   dsh auto-loads the project `AGENTS.md`, so the routing table takes effect directly.

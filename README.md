@@ -19,7 +19,7 @@
 ### pi 通道（git 安装）
 
 ```bash
-pi install git:github.com/cttailearn/oh-story@v2.3.0
+pi install git:github.com/cttailearn/oh-story@v2.4.0
 ```
 
 更新 / 卸载：
@@ -34,7 +34,7 @@ pi remove git:github.com/cttailearn/oh-story           # 卸载
 
 ```powershell
 # 安装（GitHub 源，指定发布 tag，推荐）
-dsh plugin --profile web add github:cttailearn/oh-story#v2.3.0
+dsh plugin --profile web add github:cttailearn/oh-story#v2.4.0
 
 # 或安装 main 分支最新内容（开发版）
 dsh plugin --profile web add github:cttailearn/oh-story
@@ -247,10 +247,10 @@ pi 无 hooks 机制，原多端版的运行时硬拦截由两层等价物承担�
 
 ## 适用平台
 
-- **pi**：原生支持。`pi install git:github.com/cttailearn/oh-story@v2.3.0` 后 13 个 skill 自动可用，
+- **pi**：原生支持。`pi install git:github.com/cttailearn/oh-story@v2.4.0` 后 13 个 skill 自动可用，
   `/story` 命令别名由包内扩展注册；子代理部署到 `.pi/agents/`。npm 发布因账号 2FA 策略暂缓，
   待条件允许后补充（包名 `oh-story` 已预留）。
-- **dsh（DeepSeek Harness）**：原生支持。`dsh plugin --profile web add github:cttailearn/oh-story#v2.3.0` + 一行挂载（见安装章节）后 13 个 skill 即被 global 层
+- **dsh（DeepSeek Harness）**：原生支持。`dsh plugin --profile web add github:cttailearn/oh-story#v2.4.0` + 一行挂载（见安装章节）后 13 个 skill 即被 global 层
   skills 根发现（也可项目级放置）；触发 `/story`、`/story-*` 或自然语言；子代理 prompt 模板部署到
   `.dsh/story-agents/`。dsh 的 AGENTS.md 自动加载让项目路由表直接生效。
 - 旧多端版（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）见上游仓库

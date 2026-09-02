@@ -1,3 +1,26 @@
+## v2.4.0
+
+> 移植上游可移植功能：跨会话作者记忆 + 短篇交付契约；并用脚本化守卫把一次性审查修复固定下来（BOM 容错、细纲照搬播种上界、标点归一化原子写、test:guards 聚合入门、CI 补齐游离回归、git-bash 探测防 WSL 遮蔽、grsai 大负载改文件/stdin）。
+
+### 新增
+
+- **跨会话作者记忆**：工作区级 `.story/作者记忆/` 事务工具 `author_memory_commit.py`（证据/候选/冲突/撤回；KINDS 文风/故事设计/流程/交付/协作；scope global/genre/book/workflow），经 shared-assets 部署到长写/短写/去AI味；长写 workflow-chapter、短写、去AI味三处注入作者偏好；`test-author-memory-commit.py` 全流程回归
+- **短篇交付契约**：`check-delivery-contract.js`（正文.md 非空白字数/分节标记样式与序列/段间空行确定性验收，blocking 拦截，对齐 short-format.md）；`test-delivery-contract.js`
+- **`npm run test:guards`**：本地一键跑齐 CI guards.yml 全部 28 步守卫与回归；新增 `scripts/find-git-bash.js`（跨平台探测 Git for Windows，排除 WSL/WindowsApps）
+
+### 变更
+
+- 短篇 Phase 4 交付形态验收（字数不足只扩既有情节点，超字只删复述与无功能过场）
+- CI guards.yml 补 6 个游离回归（章一致性/自定义图像API/图像环境/项目一致性/修订重复/写作审查记录）+ 短篇交付契约 + 作者记忆，demo 项目路径动态化；package.json 声明 `engines.node>=20`
+- 生图链路（grsai）：参考图 data URL 与请求体改文件/stdin 传参（绕开 Windows argv 32KB 上限）、URLS 统一 json.dumps 序列化、MINGW 判定修正
+
+### 修复
+
+- **BOM 容错**：check-outline-detail / chapter-consistency / project-consistency / revision-duplicate / normalize-punctuation 读 UTF-8 章节/细纲时去除开头 BOM（Windows 产物常见，防行首锚点误判）
+- 细纲照搬检测去除播种上界（正文后段抄细纲不再假 PASS）；标点归一化原子写（临时文件+rename）防进程中断损坏手稿
+- check-imagegen-env 裸 python3（Windows exit 49）改用 PYBIN 探测；imagegen-env 移除机器专属硬编码 git-bash 路径
+- 文档：清 Claude Code/旧名号残留（material-decomposition 分块执行指引、story-long-write 设定表、scan 工具名改 fetch_content、README link/知识库体积、CONTRIBUTING 22 step/model 描述）、story-setup 修复指令指向 @latest、story-import 门禁与横幅统一
+
 ## v2.3.0
 
 > 写作流程 O1/O6 批：细纲密点「场景演化学」（视角 / 在场配角反应 / 关键台词 / 动作收束，含 story-architect 模板同步）+ 写章三查记录改由 `write-review-record.js` 脚本化生成（查1/查3 机械填充、查3 fail-closed）+ 细纲「本章设定引用」解析修正（角色卡:A/B 拆名、世界观:X§小节 取文件、角色线:名·阶段N 阶段标题机械核对）。
