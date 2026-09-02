@@ -103,8 +103,8 @@ description: "逆向导入已有小说。将已写好的小说（半成品或完
 
 在进入 Phase 2 之前，先检测项目是否已部署 story-setup 基础设施：
 
-- 先读取 `.story-deployed` 并执行顶部 Spawn 版本门禁；旧版 `chapter-extractor` 文件即使仍在磁盘上也不可复用。
-- 只有 `agents_version: 30` 通过后，才检查 `.pi/agents/chapter-extractor.md` 是否存在，作为 Phase 2 长篇并行 agent 的可用信号。
+- 先读取 `.story-deployed` 并执行顶部 Spawn 版本门禁（版本不匹配**不阻断 spawn**，仅报 Notice，见顶部横幅）；旧 agent 文件仍按文件存在性复用，不与门禁绑定。
+- 按**本端文件存在性**检查：pi → `.pi/agents/chapter-extractor.md`；dsh → `.dsh/story-agents/` 对应模板。文件存在即作为 Phase 2 长篇并行 agent 的可用信号。
 
 **部署标记缺失、版本无效/过期，或当前端的 agent 不可用时**，提示用户：
 

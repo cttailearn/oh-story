@@ -71,7 +71,7 @@ dsh plugin --profile web remove oh-story                        # uninstall
 # After uninstall: delete the mount row above; remove any leftover node_modules/oh-story directory
 ```
 
-> **Local development**: `dsh plugin --profile web add link:G:/AI/oh-story-pi` (`link:` creates a
+> **Local development**: `dsh plugin --profile web add link:<local clone path>` (`link:` creates a
 > junction to the repo; `git pull` updates it without reinstalling).
 > **Note**: the web profile disables HMR, so **restart the dsh session** after install/update;
 > then typing `/story` (or natural language "我想写小说") should trigger — all 13 skills visible
@@ -267,7 +267,7 @@ Short-form projects are single-file: `{title}/正文.md` + `小节大纲.md` + `
 
 ## Knowledge base
 
-`story-setup/references/agent-references/` is a 600KB+ shared writing knowledge
+`story-setup/references/agent-references/` is a 500KB+ shared writing knowledge
 base (genre cards, gratification hooks, character methods, dialogue control,
 emotion curves, de-AI corpora) loaded on demand by writing/review skills and
 subagents. Skill bodies and the knowledge base ship with the pi package

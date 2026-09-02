@@ -184,7 +184,7 @@ description: "长篇网文写作。从大纲到正文，辅助长篇网络小说
 | 设定/题材定位.md（含 `主对标书` 字段，多对标时必填） | 全书 | Phase 2 | Phase 3 大纲、每卷开始前、Phase 4 写前召回 |
 | 设定/题材正文提示卡.md | 全书/题材 | Phase 2（缺失则 Phase 4 写前即时生成） | Phase 4 每章写作前：按 `genre-prose-cards.md` 索引匹配后读取 `genre-prose-cards/` 目录对应单题材卡优先、`style-genre-modules.md` 通用模块兜底，与通用正文要求、情绪/节奏召回和文风一起组装 prompt |
 | 设定/角色/{角色名}.md、设定/势力/{名}.md | 角色/势力 | Phase 3 细纲后增量补全（首批含主角/主要角色） | Phase 4 状态筛选/写作 |
-| 设定/文风.md（自定义文风·优先级最高） | 本书 | 用户自写（Claude Code 可代写）；导入/拆解不覆盖 | Phase 4 每章写作前：含实质内容则取代对标文风作权威风格基 |
+| 设定/文风.md（自定义文风·优先级最高） | 本书 | 用户自写（AI 可代写）；导入/拆解不覆盖 | Phase 4 每章写作前：含实质内容则取代对标文风作权威风格基 |
 | 对标/{书名}/文风.md | 对标书 | analyze Stage 6 输出 → story-import 显式绑定或本 skill 首次引用时同步 | Phase 4 每章写作前（文风召回；有自定义文风时降为参考/句长兜底） |
 | 大纲/卷纲/第X卷.md | 卷 | Phase 3 | Phase 4 写卷首章前 |
 | 追踪/_tracking-state.json | 全书 | Phase 3 初始化 | 唯一结构化权威，不进正文 prompt；每章运行 `tracking_commit.py check` 读取章号和修订号 |

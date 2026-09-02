@@ -62,7 +62,7 @@ dsh plugin --profile web remove oh-story                        # 卸载
 # 卸载后：删除上面追加的挂载行；若 node_modules/oh-story 目录残留一并删除
 ```
 
-> **本地开发**：`dsh plugin --profile web add link:G:/AI/oh-story-pi`（`link:` 协议创建 junction
+> **本地开发**：`dsh plugin --profile web add link:<本地克隆路径>`（`link:` 协议创建 junction
 > 指向仓库，git pull 即更新，无需重装）。
 > **注意**：web profile 的 HMR 被官方禁用，安装/更新后需**重启 dsh 会话**生效；
 > 之后输入 `/story`（或自然语言「我想写小说」）即可触发，13 个 skill 全部可见即安装成功。
@@ -241,7 +241,7 @@ pi 无 hooks 机制，原多端版的运行时硬拦截由两层等价物承担�
 
 ## 知识体系
 
-`story-setup/references/agent-references/` 是 600KB+ 的共享写作知识库（题材卡、爽点
+`story-setup/references/agent-references/` 是 500KB+ 的共享写作知识库（题材卡、爽点
 钩子、人设方法、对话掌控、情绪曲线、去AI味语料等），由写作/审查 skill 与子代理按需
 加载。skill 本体与知识库随包更新（pi：`pi update --extensions`；dsh：`dsh plugin --profile web add github:cttailearn/oh-story#新tag` 或 link: 源 git pull），项目内不复制副本。
 

@@ -40,7 +40,7 @@ description: "网文写作工具集项目初始化（pi / dsh 双运行时自适
 有缺即包没装全，**立即停止，不写任何部署文件**，报告里区分「缺目录」和「目录为空」，并给修复指令：
 
 > 「story-setup 参考资料包不完整，缺 {目录名}。重新安装 oh-story 后再执行：
-> pi → `pi install git:github.com/cttailearn/oh-story@v2.0.0`（更新 → `pi update --extensions`）；
+> pi → `pi install git:github.com/cttailearn/oh-story@latest`（更新 → `pi update --extensions`）；
 > dsh → 重新执行 oh-story 的 dsh 安装脚本（`scripts/install-dsh.ps1`）或按 README 检查 skills 根。」
 
 ### Step 2：检测项目状态
