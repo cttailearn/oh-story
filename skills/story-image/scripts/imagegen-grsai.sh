@@ -53,19 +53,28 @@ MODEL="${GRSAI_MODEL:-gpt-image-2}"
 # GrsAI 的 size 语义是宽高比（aspectRatio），如 1:1 / 2:3 / 3:4
 SIZE="${SIZE:-1:1}"
 
-command -v python >/dev/null 2>&1 || { echo "需要 python（JSON 处理依赖）" >&2; exit 1; }
-command -v base64 >/dev/null 2>&1 || { echo "需要 base64" >&2; exit 1; }
+command -v python >/dev/null 2>&1 || {
+	echo "需要 python（JSON 处理依赖）" >&2
+	exit 1
+}
+command -v base64 >/dev/null 2>&1 || {
+	echo "需要 base64" >&2
+	exit 1
+}
 mkdir -p "$(dirname "$OUT")"
 RESP=$(mktemp)
+BODY_FILE=$(mktemp)
+URLS_FILE=$(mktemp)
 REF_TMP=""
-trap '[ -n "$REF_TMP" ] && rm -f "$REF_TMP"; rm -f "$RESP"' EXIT
+trap '[ -n "$REF_TMP" ] && rm -f "$REF_TMP"; rm -f "$RESP" "$BODY_FILE" "$URLS_FILE"' EXIT
 
-URLS="[]"
 if [ -n "${REF:-}" ]; then
-	# 图生图：urls 数组传参考图（支持本地文件先转 data URL 或直接传 URL）
+	# 图生图：urls 数组传参考图（本地文件先转 data URL 或直接传 URL）。
+	# 统一用 python json.dumps 序列化：URL 走 argv（短），data URL 走 stdin 管道，
+	# 避免手工拼 JSON 损坏与 Windows argv 32KB 命令行上限（base64 参考图达数百 KB 必崩）
 	case "$REF" in
 	http://* | https://*)
-		URLS="[\"$REF\"]"
+		python -c 'import json, sys; sys.stdout.write(json.dumps([sys.argv[1]]))' "$REF" >"$URLS_FILE"
 		;;
 	*)
 		[ -f "$REF" ] || {
@@ -79,34 +88,45 @@ if [ -n "${REF:-}" ]; then
 		*.jpg | *.jpeg) MIME="image/jpeg" ;;
 		*.webp) MIME="image/webp" ;;
 		esac
-		DATA="data:$MIME;base64,$(cat "$REF_TMP")"
-		URLS="[\"$DATA\"]"
+		{
+			printf 'data:%s;base64,' "$MIME"
+			cat "$REF_TMP"
+		} | python -c 'import json, sys; sys.stdout.write(json.dumps([sys.stdin.read()]))' >"$URLS_FILE"
 		;;
 	esac
 fi
 
-BODY=$(python "$JSONPY" body grsai "$MODEL" "$PROMPT" "$SIZE")
-# urls 字段（参考图）单独注入：body 生成器不含它，这里用 python 合并
-if [ "$URLS" != "[]" ]; then
-	BODY=$(python -c "
+# 请求体：body 生成器写文件，再合并 urls（若提供）；全部走文件/标准输入，不经 argv
+python "$JSONPY" body grsai "$MODEL" "$PROMPT" "$SIZE" >"$BODY_FILE"
+if [ -s "$URLS_FILE" ]; then
+	python -c "
 import json, sys
-body = json.loads(sys.argv[1])
-body['urls'] = json.loads(sys.argv[2])
-print(json.dumps(body, ensure_ascii=False))
-" "$BODY" "$URLS")
+body_file, urls_file = sys.argv[1], sys.argv[2]
+with open(body_file, encoding='utf-8') as f:
+    body = json.load(f)
+with open(urls_file, encoding='utf-8') as f:
+    urls = json.load(f)
+body['urls'] = urls
+with open(body_file, 'w', encoding='utf-8') as f:
+    json.dump(body, f, ensure_ascii=False)
+" "$BODY_FILE" "$URLS_FILE"
 fi
 
 # Windows curl（schannel）在国内网络下证书吊销检查会超时（CRYPT_E_REVOCATION_OFFLINE），
 # 加 --ssl-no-revoke 跳过吊销检查（仅 Windows 有效，Linux/macOS 忽略）
 CURL_SSL_OPTS=""
-if [ -n "${WINDIR:-}" ] || [ "$(uname -s 2>/dev/null)" = "MINGW*" ] || [ "$(uname -s 2>/dev/null)" = "MSYS*" ]; then
+if [ -n "${WINDIR:-}" ]; then
 	CURL_SSL_OPTS="--ssl-no-revoke"
+else
+	case "$(uname -s 2>/dev/null)" in
+	MINGW* | MSYS*) CURL_SSL_OPTS="--ssl-no-revoke" ;;
+	esac
 fi
 curl -fsS $CURL_SSL_OPTS --max-time 300 --retry 2 --retry-delay 5 \
 	"$BASE_URL/v1/draw/completions" \
 	-H "Authorization: Bearer $GRSAI_API_KEY" \
 	-H "Content-Type: application/json" \
-	-d "$BODY" >"$RESP"
+	-d @"$BODY_FILE" >"$RESP"
 
 # GrsAI 响应带 `data: ` 前缀（SSE 风格单帧），剥离后才是 JSON
 if head -c 6 "$RESP" | grep -q "^data: "; then
