@@ -41,7 +41,7 @@ npm i @earendil-works/pi-ai@0.85.1 @earendil-works/pi-agent-core@0.85.1
 | M1.2 | 任务队列 + SSE 事件桥 | api-contract §4 | `server/engine/queue.ts`, `routes/jobs.ts` | SSE 按事件类型下发；断线重连 |
 | M1.3 | pi-ai 运行时装配 + 渠道 | agents-runtime §1 | `server/ai/` | 配置 orenica 渠道，`models.getAvailable()` 出模型 |
 | M1.4 | Agent + StreamFn 接缝 + 角色模板库 | agents-runtime §2 | `server/agents/` | `story-architect` 一次真实调用出结构化产物 |
-| M1.5 | Context 组装器（intake/concept/characters/outline/chapter 首批） | process §5, agents-runtime §3 | `server/agents/contexts/` | 单测各 glue 组装；预算裁剪生效 |
+| M1.5 | Context 组装器（intake/concept/characters/outline/chapter 首批，含**角色线块** glue） | process §5, agents-runtime §3, character-card-line §4 | `server/agents/contexts/` | 单测各 glue 组装；预算裁剪生效；角色线块注入单项通过 |
 | M1.6 | ⭐ 移植一批：tracking-commit / author-memory / normalize-punctuation / write-review-record → TS | gates-runner §3 | `server/gates/impl/*.ts` | `test:gates-migration` 对拍全绿 |
 | M1.7 | 流程：intake→concept→characters→outline 全挂门禁 | process §3 | `engine/stageRunner.ts` | UI 逐阶段确认产出大纲（真实模型），门禁报告可见，成本入 jobs |
 | M1.8 | 配置页（渠道/角色路由/预算）+ 设置向导 + 冒烟 | api-contract §3.8 | `routes/config.ts`, frontend 设置页 | 增加渠道→测试连通→保存热更新 |
@@ -78,6 +78,9 @@ npm i @earendil-works/pi-ai@0.85.1 @earendil-works/pi-agent-core@0.85.1
 - [ ] 真渠道（orenica）新建一本测试书，UI 逐步确认产出大纲，无 Python 运行时
 - [ ] 成本/token 可见、预算熔断生效
 - [ ] 主案 §14 决策点 5 项已有实施结论
+- [ ] `characters` 阶段产出 **角色卡 + 角色线骨架**（设定/角色 + 设定/角色线），前端双视图（卡网格+线看板）可浏览
+
+> **M2 前瞻（角色线主链路）**：`context-chapter` 角色线块常驻 → `role-line-consistency` 门禁上岗（阶段链/进度指针/验收证据，见 gates-runner）+ 卷末写后记账审计回填（character-card-line §5）→ 前端 `RoleStageTable`/`ArcProposalDrawer` 落地。
 
 ---
 

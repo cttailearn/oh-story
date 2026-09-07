@@ -108,6 +108,24 @@ CREATE TABLE IF NOT EXISTS audit (
 );
 CREATE INDEX idx_audit_ts ON audit(ts);
 CREATE INDEX idx_audit_target ON audit(target);
+
+CREATE TABLE IF NOT EXISTS modules (            -- 剧情模块库（拆文→新书复用，见 teardown-module）
+  id           TEXT PRIMARY KEY,                -- md_<ulid>
+  kind         TEXT NOT NULL,                   -- plot|emotion|rhythm|hook|character-trait|worldbuilding
+  title        TEXT NOT NULL,
+  summary      TEXT NOT NULL DEFAULT '',
+  source       TEXT NOT NULL,                   -- 拆文库:{书名}/路径 或 user
+  tags         TEXT NOT NULL DEFAULT '[]',
+  usable_for   TEXT NOT NULL DEFAULT '[]',
+  body         TEXT NOT NULL,
+  usage_count  INTEGER NOT NULL DEFAULT 0,
+  used_in_json TEXT NOT NULL DEFAULT '[]',      -- [{book_id, stage, at}] 使用历史
+  deleted_at   TEXT,                            -- 软删标记（非 NULL=回收）
+  created_at   TEXT NOT NULL,
+  updated_at   TEXT NOT NULL
+);
+CREATE INDEX idx_modules_lookup ON modules(kind, deleted_at);
+CREATE INDEX idx_modules_usage  ON modules(usage_count DESC);
 ```
 
 要点：

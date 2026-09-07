@@ -74,6 +74,7 @@ interface AiEditResult {
 ---
 
 ## 5. 门禁修复闭环（`fix-gates`，blocked 的"一键修复"）
+> **次序（与引擎自动重试的关系）**：`blocked` 的产生顺序是 **引擎全自动内循环（≤retry_limit，携带 blocking 报告给 Agent 修复）→ 仍未过 → 阶段置 blocked → 人工点「让 AI 修复」进 `fix-gates`**。二者不重复：内循环是无人值守兜底，`fix-gates` 是人工介入的深度修复（可控 diff）。
 ```
 [阶段 blocked]
  → 看板「让 AI 修复」  → POST /ai-edit { mode:'fix-gates', demand:{ kind:'resolve-blocking' } }

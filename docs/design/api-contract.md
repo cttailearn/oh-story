@@ -43,6 +43,9 @@
 | POST | `/books/:id/modules/archive` | 拆文批量入库（单元列表 → SSE 进度） |
 | POST | `/books/:id/modules/recommend` | 新书向导按 {genre,kinds} 推荐模块 |
 | POST | `/novels/:id/modules/attach` | 注入模块到书 → 影响预估 + 生效 |
+| GET | `/books/:id/characters` | 角色卡列表（含红线计数/关联角色线） |
+| GET/PUT | `/books/:id/characters/:name/arc` | 角色线：阶段/进度指针/审计（读/推进·写线文件+audit） |
+| POST | `/books/:id/characters/:name/arc/propose` | AI 提议下阶段（architect→diff 草案→人工采纳） |
 | POST | `/books/:id/export` | 交付导出 |
 | GET/PUT | `/config` | 配置（渠道/路由/偏好/预算） |
 | POST | `/config/channels/:id/test` | 渠道连通性自检 |
@@ -162,6 +165,21 @@
 // req { "module_ids": ["md_07","md_12"], "scope": "outline" }
 // 200 { "attached": 2, "impact": { "glue": ["context-outline"], "knowledge_blocks": 2, "tokens_est": 1480 },
 //        "annotate": "细纲头注释 <!-- 参考模块: md_07 -->" }
+```
+
+### 3.11 角色卡 / 角色线（character-card-line）
+```jsonc
+// 推进角色线阶段 PUT /books/:id/characters/:name/arc
+// req
+{ "action": "advance", "to_stage": 2, "to_status": "done",
+  "acceptance_done": ["第6章 默许帮忙"], "note": "阶段1验收通过" }
+// 200
+{ "ok": true, "arc": { "current_stage": 2, "status": "active", "audit": "pending(卷末回填)" }, "audit_id": "au_81" }
+
+// AI 提议下阶段 POST /books/:id/characters/:name/arc/propose
+// req { "at_stage": 2, "hint": "第30章困境：沈栀被迫独行" }
+// 200 { "proposal": { "stage_no": 3, "target_3layer": {...}, "acceptance": "...", "gradient": ["第31章…"] },
+//        "diff": [...], "applied": false }   // 采纳后再 PUT /arc
 ```
 
 ---

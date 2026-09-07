@@ -133,7 +133,7 @@ interface ConfirmSpec {
       "type": "single",
       "requires": ["concept"],
       "entry": { "assemble": "context-characters", "templates": ["agents/character-designer.md"], "knowledge_refs": ["character-basics.md", "character-design-methods.md", "dialogue-mastery.md"], "model_role": "writer" },
-      "artifact": { "kind": "file-set", "path": "${book}/设定/角色/*.md" },
+      "artifact": { "kind": "file-set", "path": "${book}/设定/{角色/*.md, 角色线/*.md}" },  // 卡+线骨架（character-card-line）
       "gates": [{ "name": "project-consistency", "args": ["--scope", "setup"] }],
       "confirm": { "required": true, "actions": ["approve", "edit_rerun"], "rerun_scope": "this_stage" }
     },
@@ -288,6 +288,8 @@ type Glue = { key: string; assemble(book, stage, role): Promise<ContextBundle> }
       "text": "position=火箭军文工团，如愿破亿后第二天；recent_chapters=[18,19,20] 摘要…；next_chapter_commitments=先补细纲再承接老兵邀请；continuity_risks=卷界未确认勿开新卷；金手指=前世MCN经验/天王唱功/导演能力（未用尽）" },
     { "kind": "tracking", "title": "伏笔与时间线（涉本章）", "tokens": 400,
       "text": "F054(已埋·高)=老兵邀江晨上门听故事→本章应承接；E013(未揭示)=军方培养安排，读者未知，本章不得提前揭示。" },
+    { "kind": "tracking", "title": "角色线（涉场角色·active 阶段）", "tokens": 400,
+      "text": "江晨·线「军宣顶流传奇」阶段2(爆款确立→责任的重量,9-30章,active)：本章验收=借老兵故事让'责任的重量'落地；渐变证据末条=第19章 采访动容却坚持发视频。\n钟嘉嘉·线「背景揭秘」阶段2(active)：本章无需推进，避免越阶段。" },
     { "kind": "memory",  "title": "作者记忆", "tokens": 200,
       "text": "[文风] 战士对话口语化、不喊口号；[流程] 军宣爽点必须靠作品效果/数据/围观反应链兑现。" },
     { "kind": "knowledge", "title": "知识检索 top-K", "tokens": 800,
