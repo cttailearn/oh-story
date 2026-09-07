@@ -298,7 +298,40 @@
 | AI 编辑 | `POST /api/books/:id/ai-edit` | `Agent`(writer/architect) + 上下文组装(§5 主案) + audit |
 | 拆文分析 | `POST .../teardowns/:id/analyze` | `chapter-extractor` 等只读 agent |
 | 设置·渠道 | `GET/PUT /api/config` | `createModels/createProvider`（pi-ai） |
+| AI 编辑（fix-gates） | `POST /ai-edit {mode:'fix-gates'}` + 重新门禁 | 见 ai-edit-spec §5 |
+| 门禁历史/诊断 | `GET /health?depth=full` | —（ops §2） |
 
 ---
 
-*前端设计 v0.1 —— 与主方案 v0.3 对齐；进入 M0 后按 §3 线框先行实现「书房 + 小说工作台 + 编辑器」最小集。*
+## 9. 效率与通知（面向日更作者）
+
+### 9.1 键盘快捷键
+| 快捷键 | 动作 |
+|---|---|
+| `Ctrl/Cmd+S` | 保存（并提示可跑门禁，不自动跑） |
+| `Ctrl/Cmd+Shift+S` | 保存并跑门禁 |
+| `Ctrl/Cmd+E` | 打开 AI 编辑（选中文本时以选区为目标） |
+| `Ctrl/Cmd+Alt+R` | 流程看板：运行当前阶段 |
+| `Ctrl/Cmd+Enter` | 批阅栏「通过」（focus 在批阅栏时） |
+| `Alt+1..4` | 切换 设定/大纲/正文/状态 |
+| `Ctrl/Cmd+P` | 当前书内快速跳转（章节/角色/伏笔） |
+| `Ctrl/Cmd+Shift+K` | 打开追踪看板浮层 |
+- 全站设置里可关闭/改绑（存储于 localStorage + `webui-config.prefs.keymap`）。
+
+### 9.2 浏览器通知（任务结束/阻塞）
+- 权限：`Notification.requestPermission()`（设置页开关，默认开）。
+- 触发：`job:done`（阶段可确认）、`job:blocked`（门禁未过）、`gate blocking`、AI 编辑完成。
+- 桌面场景下通知体带书名/阶段/小结；No-Do：不打扰进行中编辑（仅当标签不可见时弹）。
+- 界面「设置→通知」：开关 / 仅阻塞 / 全部。
+
+### 9.3 会话与多标签
+- **服务重启恢复**：前端刷新后从 `GET /books/:id/stages` 重建；`running` 均已复位 `review`（ops §5），无"卡在运行中"假象。
+- **多标签冲突**：同一文件双 tab 编辑 → 双方持 mtime，后者保存 409 → 提示 reload 或 diff 合并（MVP：提示 + 放弃后重载）。
+- **书签角标**：左栏项目/书籍书签显示「待确认 N / 阻塞 M」小红章，跨标签 SSE 同步。
+
+### 9.4 全局搜索
+- `Ctrl/Cmd+P` 打开：搜章节标题/角色名/伏笔 ID/设定小节（后端 `GET /api/search?q=`，索引=文件名+标题+`_tracking-state.json` 摘要），结果按模块分组，回车跳转。
+
+---
+
+*前端设计 v0.2 —— 与主方案 v0.5+ 对齐；§9 快捷键/通知随 M1-M2 落地；进入 M0 后按 §3 线框先行实现「书房 + 小说工作台 + 编辑器」最小集。*

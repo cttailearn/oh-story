@@ -1,10 +1,11 @@
 # oh-story 独立 WebUI 网文写作工具 —— 详细设计方案
 
-> 状态：**设计方案（v0.5，待评审）**
+> 状态：**设计方案（v0.6，待评审）**
 > 决策基线：**① 完全独立 Web 应用（前后端分离，不依赖 pi/dsh 运行时）② 个人单机（仅 127.0.0.1）③ 每步人工确认（human-in-the-loop at every stage）④ 从「聊天驱动」转为「用户需求 + 智能体自动调用 + 流程门禁」⑤ 技术栈 TypeScript + React；模型配置用 `@earendil-works/pi-ai`，智能体核心用 `@earendil-works/pi-agent-core`**
 > 目标读者：后续 P0–P4 的实现者。
 >
 > 变更记录：
+> - **v0.6** — 深化剩项第三批：AI 编辑规格（[ai-edit-spec.md](ai-edit-spec.md)，含门禁一键修复闭环）、规模与性能（[scale-performance.md](scale-performance.md)）、导出与发布（[export-publish.md](export-publish.md)）、运维与可观测（[ops-observability.md](ops-observability.md)）；前端文档升 v0.2 追加「效率与通知」章节。
 > - **v0.5** — 深化与补缺口第二批：智能体运行时（[agents-runtime.md](agents-runtime.md)，代码级装配/Context/内循环）、拆文+剧情模块库（[teardown-module.md](teardown-module.md)）、已有小说导入（[importing-existing.md](importing-existing.md)）、门禁执行器与报告契约（[gates-runner.md](gates-runner.md)）、实施计划（[implementation-plan.md](implementation-plan.md)）；同期收纳外部并稿「角色线管理方案」（[character-line-management.md](character-line-management.md)）。
 > - **v0.4** — 补全实现级规格文档包：流程定义规范（[process-definition.md](process-definition.md)）、API 契约（[api-contract.md](api-contract.md)）、数据模型（[data-model.md](data-model.md)）；本文档增设「设计文档地图」。
 > - **v0.3** — 确定层策略调整：Python/bash 脚本**移植为 Node/TS 同栈**（首选），`tracking_commit` / `author_memory_commit` / `check-imagegen-env` / 图像 prompt 组装列为必须移植项；WebUI 运行时目标为**零 Python/bash 依赖**。脚本保留 CLI 契约（`--project/--out`）与产物 schema，保证与现有 skill 互操作，回归用同一份 fixture 对齐。
@@ -24,6 +25,10 @@
 | [**importing-existing.md**](importing-existing.md) | 已有小说导入：分章/追踪生成(置信度)/校对页/幂等 | M4 导入 |
 | [**webui-frontend.md**](webui-frontend.md) | 前端信息架构/线框/交互/组件/设计系统「书稿编辑部」 | M0-M2 前端 |
 | [**implementation-plan.md**](implementation-plan.md) | M0/M1 WBS、逐任务验收、测试策略、风险门与 DoD | 开工指引 |
+| [**ai-edit-spec.md**](ai-edit-spec.md) | AI 编辑：入口/需求模板库/三模式/diff 多轮/Revision/门禁修复闭环 | M1-M2 |
+| [**scale-performance.md**](scale-performance.md) | 大规模书稿性能：前端虚拟化/上下文缓存/DB 归档/门禁耗时预算 | M0 起约束 |
+| [**export-publish.md**](export-publish.md) | 导出形态与平台对齐（txt/md/zip）、字数口径、发布前检查 | M3 |
+| [**ops-observability.md**](ops-observability.md) | 日志/diag/trace、审计查询、备份恢复 SOP、升级链 | M0/M4 |
 | [**character-line-management.md**](character-line-management.md) | 角色线（人物变化）管理与规划：三层结构、现状基线、4 套方案（A 弧线文件/D 审计闸门推荐）、规划模板 | 角色弧线深化（并稿·外部引入） |
 
 > 阅读顺序：本文 1-3 章 → agent/process/api/data-model（核心）→ frontend → teardown/import → implementation-plan 开工。
@@ -465,4 +470,4 @@ docs/design/standalone-webui.md   # 本文档
 
 ---
 
-*本方案 v0.5 —— 所有 stage/gate/API 名称以最终实现为准；实现时以本地安装的 `pi-ai@0.85.x` / `pi-agent-core@0.85.x` 的 `.d.ts` 为 API 权威；确定层脚本一律 Node/TS 化、零 Python/bash 运行时依赖；完整规格九篇见文档地图，开工顺序以 [implementation-plan.md](implementation-plan.md) 为准。*
+*本方案 v0.6 —— 所有 stage/gate/API 名称以最终实现为准；实现时以本地安装的 `pi-ai@0.85.x` / `pi-agent-core@0.85.x` 的 `.d.ts` 为 API 权威；确定层脚本一律 Node/TS 化、零 Python/bash 运行时依赖；完整规格十五篇见文档地图，开工顺序以 [implementation-plan.md](implementation-plan.md) 为准。*
