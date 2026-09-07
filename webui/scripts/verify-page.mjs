@@ -1,0 +1,11 @@
+const base = 'http://127.0.0.1:3081';
+const r = await fetch(base + '/');
+const txt = await r.text();
+console.log('root status=' + r.status + ' len=' + txt.length + ' hasRoot=' + txt.includes('id="root"'));
+const spa = await fetch(base + '/novels/nb_xxx');
+const stxt = await spa.text();
+console.log('spa fallback status=' + spa.status + ' hasRoot=' + stxt.includes('id="root"'));
+const api = await fetch(base + '/api/books/nope');
+console.log('api 404 status=' + api.status + ' body=' + (await api.text()));
+const books = await (await fetch(base + '/api/books')).json();
+console.log('books total=' + books.total + ' kinds=' + books.items.map((b) => b.kind).join(','));

@@ -32,3 +32,14 @@ skills/story-image/tests/**/*.gif
 # pnpm æµ‹è¯•æ®‹ç•™ï¼ˆæœ¬ä»“åº“ä¸æ˜¯ pnpm é¡¹ç›®ï¼‰
 .pnpm-store/
 pnpm-lock.yaml
+
+# oh-story WebUI ±¾µØ¹¹½¨²úÎï
+webui/dist/
+webui/node_modules/
+webui/.webui/
+webui/*.db
+
+
+# oh-story WebUI ÔËĞĞÊı¾İ£¨SQLite + ±¾µØÅäÖÃ/ÃÜÔ¿£©
+.webui/
+
