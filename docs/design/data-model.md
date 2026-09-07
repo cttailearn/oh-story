@@ -136,6 +136,7 @@ CREATE INDEX idx_audit_target ON audit(target);
 
 ### 2.1 追踪状态约束（`_tracking-state.json`）
 - 顶层字段对齐现有 `schema_version: 4`：`characters / context / foreshadow / timeline / imported_through_chapter / last_committed_chapter / state_revision`。
+- **角色线深化**：弧线分「内在/外在/关系」三层，「阶段状态机 / 渐变证据 / 弧线审计」四套方案见 [character-line-management.md](character-line-management.md)；落地不破坏 `_tracking-state.json` 唯一权威（角色线文件作为派生视图，取值仍以角色卡 + 追踪快照为准）。
 - **唯一写路径**：`tracking-commit.ts`（Node 化）事务提交；WebUI 任何界面不得直写（AI 编辑/正文编辑只写正文文件 → 之后再走 commit）。
 - `state_revision` 每次 commit +1；读取端按 `last_committed_chapter` 判定进度。
 - 文件命名与章节编号严格零填充（`第001章`）；check-chapter-consistency 校验编号/星期/倒计时硬事实。

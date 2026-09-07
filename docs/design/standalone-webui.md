@@ -1,10 +1,11 @@
 # oh-story 独立 WebUI 网文写作工具 —— 详细设计方案
 
-> 状态：**设计方案（v0.4，待评审）**
+> 状态：**设计方案（v0.5，待评审）**
 > 决策基线：**① 完全独立 Web 应用（前后端分离，不依赖 pi/dsh 运行时）② 个人单机（仅 127.0.0.1）③ 每步人工确认（human-in-the-loop at every stage）④ 从「聊天驱动」转为「用户需求 + 智能体自动调用 + 流程门禁」⑤ 技术栈 TypeScript + React；模型配置用 `@earendil-works/pi-ai`，智能体核心用 `@earendil-works/pi-agent-core`**
 > 目标读者：后续 P0–P4 的实现者。
 >
 > 变更记录：
+> - **v0.5** — 深化与补缺口第二批：智能体运行时（[agents-runtime.md](agents-runtime.md)，代码级装配/Context/内循环）、拆文+剧情模块库（[teardown-module.md](teardown-module.md)）、已有小说导入（[importing-existing.md](importing-existing.md)）、门禁执行器与报告契约（[gates-runner.md](gates-runner.md)）、实施计划（[implementation-plan.md](implementation-plan.md)）；同期收纳外部并稿「角色线管理方案」（[character-line-management.md](character-line-management.md)）。
 > - **v0.4** — 补全实现级规格文档包：流程定义规范（[process-definition.md](process-definition.md)）、API 契约（[api-contract.md](api-contract.md)）、数据模型（[data-model.md](data-model.md)）；本文档增设「设计文档地图」。
 > - **v0.3** — 确定层策略调整：Python/bash 脚本**移植为 Node/TS 同栈**（首选），`tracking_commit` / `author_memory_commit` / `check-imagegen-env` / 图像 prompt 组装列为必须移植项；WebUI 运行时目标为**零 Python/bash 依赖**。脚本保留 CLI 契约（`--project/--out`）与产物 schema，保证与现有 skill 互操作，回归用同一份 fixture 对齐。
 > - **v0.2** — 接入真实包 API 固化技术栈（pi-ai / pi-agent-core 0.85.1 的 `.d.ts` 为准）：渠道=createProvider、Agent=有状态循环 + StreamFn 接缝、成本/预算直接复用 pi-ai Usage、图片走 images 注册机制。Node 引擎要求升至 ≥22.19。
@@ -13,13 +14,19 @@
 
 | 文档 | 内容 | 何时用 |
 |---|---|---|
-| **standalone-webui.md** | 总览：架构/模块/里程碑/风险/决策（本文） | 评审与总体把握 |
-| [**process-definition.md**](process-definition.md) | 流程定义类型 + long/short 完整 JSON + 状态机 + Context 组装示例 | M1 实现流程引擎 |
+| **[standalone-webui.md](standalone-webui.md)** | 总览：架构/模块/里程碑/风险/决策（本文） | 评审与总体把握 |
+| [**process-definition.md**](process-definition.md) | 流程定义类型 + long/short 完整 JSON + 状态机 + Context 组装示例 | M1 流程引擎 |
+| [**agents-runtime.md**](agents-runtime.md) | 智能体运行时：pi-ai/pi-agent-core 装配、StreamFn 桥、Role 库、Context 组装器、内循环、ai-edit、成本安全 | M1 智能体层 |
+| [**gates-runner.md**](gates-runner.md) | 门禁执行器 + 每个 gate 报告契约 + Python→Node 对拍 harness | M0/M1 确定层 |
 | [**api-contract.md**](api-contract.md) | 全端点 + JSON 示例 + SSE 事件 + 错误码 | M1 起前后端对拍 |
 | [**data-model.md**](data-model.md) | SQLite DDL + 文件系统约束 + webui-config + 备份迁移 | M0 建库与数据层 |
+| [**teardown-module.md**](teardown-module.md) | 拆文工作台建模 + 剧情模块库「拆→重组→新书」闭环 | M2 拆文 |
+| [**importing-existing.md**](importing-existing.md) | 已有小说导入：分章/追踪生成(置信度)/校对页/幂等 | M4 导入 |
 | [**webui-frontend.md**](webui-frontend.md) | 前端信息架构/线框/交互/组件/设计系统「书稿编辑部」 | M0-M2 前端 |
+| [**implementation-plan.md**](implementation-plan.md) | M0/M1 WBS、逐任务验收、测试策略、风险门与 DoD | 开工指引 |
+| [**character-line-management.md**](character-line-management.md) | 角色线（人物变化）管理与规划：三层结构、现状基线、4 套方案（A 弧线文件/D 审计闸门推荐）、规划模板 | 角色弧线深化（并稿·外部引入） |
 
-> 阅读顺序：先本文件 1-3 章 → process/api/data-model → frontend → 回到本文件里程碑逐项实现。
+> 阅读顺序：本文 1-3 章 → agent/process/api/data-model（核心）→ frontend → teardown/import → implementation-plan 开工。
 
 ---
 
@@ -390,6 +397,7 @@ audit(id, ts, who, action, target, detail_json);         -- 每步确认/重跑�
 - 上下文组装（Context 模块）+ 知识检索（关键词 RAG）
 - 一致性快检（consistency-checker 独立辅助任务）
 - 作者记忆读写接入
+- 角色线深化：按 [character-line-management.md](character-line-management.md) 方案 **A（弧线文件+阶段状态机）+ D（写后记账代理+弧线审计闸门）** 增量落地，弧线状态并入追踪派生视图
 - **验收**：连续写 3 章，追踪状态正确演进，blocking 门禁可中断。
 
 ### M3 兜底与交付
@@ -457,4 +465,4 @@ docs/design/standalone-webui.md   # 本文档
 
 ---
 
-*本方案 v0.4 —— 所有 stage/gate/API 名称以最终实现为准；实现时以本地安装的 `pi-ai@0.85.x` / `pi-agent-core@0.85.x` 的 `.d.ts` 为 API 权威；确定层脚本一律 Node/TS 化、零 Python/bash 运行时依赖；配套规格见 [process-definition.md](process-definition.md) / [api-contract.md](api-contract.md) / [data-model.md](data-model.md) / [webui-frontend.md](webui-frontend.md)。确定该基线后进入 M0 实现。*
+*本方案 v0.5 —— 所有 stage/gate/API 名称以最终实现为准；实现时以本地安装的 `pi-ai@0.85.x` / `pi-agent-core@0.85.x` 的 `.d.ts` 为 API 权威；确定层脚本一律 Node/TS 化、零 Python/bash 运行时依赖；完整规格九篇见文档地图，开工顺序以 [implementation-plan.md](implementation-plan.md) 为准。*
