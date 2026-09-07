@@ -54,6 +54,7 @@ type GateImpl = (ctx: GateCtx, spec: GateSpec) => Promise<GateReport>;
 | `tracking-commit` | 追踪状态缺失/不一致/提交失败 | `ok:false`；成功后 `meta:{commit:{last_committed_chapter,state_revision}}` | Node 化，事务协议 |
 | `author-memory` | 事务协议错误 | `meta:{kinds,scopes}` | 注入作者偏好（非强制 gate） |
 | `imagegen-env` | 仅 warning（环境缺工具提示） | `meta:{deps:[{name,ok}]}` | 不再依赖 bash |
+| `role-line-consistency` | 阶段链非法/进度指针越出 active 范围/卡线事实重复（blocking）；验收证据缺失/与追踪大向冲突（warning） | `blocking[]/warnings[]` + `meta:{arcs:{name,phase,done_checks}}` | Node 化；卷末回填审计（见 character-card-line §5） |
 
 > 字段级 `level`/`evidence` 在 `gate:batch` SSE 里逐条下发，前端按 rule 归类展示（朱批浮动 label）。
 

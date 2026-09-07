@@ -64,7 +64,8 @@ type GateName =
   | 'char-count' | 'ai-patterns' | 'degeneration' | 'outline-detail'
   | 'outline-copy' | 'chapter-consistency' | 'project-consistency'
   | 'revision-duplicate' | 'delivery-contract' | 'normalize-punctuation'
-  | 'write-review-record' | 'tracking-commit' | 'author-memory' | 'imagegen-env';
+  | 'write-review-record' | 'tracking-commit' | 'author-memory' | 'imagegen-env'
+  | 'role-line-consistency';  // 角色线审计：阶段链/进度指针/验收证据/卡线一致（character-card-line §5）
 
 interface GateSpec {
   name: GateName;
@@ -263,9 +264,9 @@ type Glue = { key: string; assemble(book, stage, role): Promise<ContextBundle> }
 |---|---|---|
 | `context-intake` / `context-topic` | 向导/选题 | 需求卡 + prose-card 检索 |
 | `context-concept` | 题材/世界观/金手指 | 题材定位已有内容 + 题材卡 + 世界观骨架 |
-| `context-characters` | 人设 | 世界观要点 + 已有人设去重校验 |
-| `context-outline` | 卷纲/细纲 | 题材定位 + 角色卡摘要 + 情绪曲线模板 |
-| `context-chapter` | 单章正文 | 详见 5.3 |
+| `context-characters` | 人设（卡 + 线骨架） | 世界观要点 + 已有人设去重校验 + 弧线起点（角色卡核心锚点） |
+| `context-outline` | 卷纲/细纲 | 题材定位 + 角色卡摘要 + 角色线摘要（active 阶段）+ 情绪曲线模板 |
+| `context-chapter` | 单章正文 | 详见 5.3（含**角色线块**：涉场角色 active 阶段/验收/进度指针） |
 | `context-review` | 审查 | 涉审章节 + 追踪摘要 + 平台评分标准 |
 | `context-deslop` | 去AI味 | 目标章 + AI 味检查报告(blocking 明细) + 规范化规则 |
 | `context-image` | 封面/角色图 | 角色卡→structured json（`character-card` 提取） |

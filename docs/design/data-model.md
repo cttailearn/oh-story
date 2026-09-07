@@ -128,7 +128,8 @@ CREATE INDEX idx_audit_target ON audit(target);
 │   └── {书名}/
 │       ├── 正文/第%03d章_标题.md
 │       ├── 大纲/{大纲.md, 卷纲/, 细纲/, 审查记录/}
-│       ├── 设定/{题材定位.md, 文风.md, 关系.md, 世界观/, 角色/}
+│       ├── 设定/{题材定位.md, 文风.md, 关系.md, 世界观/, 角色/, 角色线/}
+│       │      └── 角色线/{名}.md ← 弧线规划（阶段状态机/验收/审计）；契约三态见 character-card-line §2.3
 │       ├── 追踪/_tracking-state.json   ← 唯一权威（schema_version 4）
 │       └── .story/作者记忆/             （author_memory_commit Node 版数据）
 └── 拆文库/{书名}/             ← 拆文工作台数据（角色/设定/剧情模块/章节摘要…）
