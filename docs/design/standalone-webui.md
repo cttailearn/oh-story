@@ -1,10 +1,11 @@
 # oh-story 独立 WebUI 网文写作工具 —— 详细设计方案
 
-> 状态：**设计方案（v0.6，待评审）**
+> 状态：**设计方案（v0.7，待评审）**
 > 决策基线：**① 完全独立 Web 应用（前后端分离，不依赖 pi/dsh 运行时）② 个人单机（仅 127.0.0.1）③ 每步人工确认（human-in-the-loop at every stage）④ 从「聊天驱动」转为「用户需求 + 智能体自动调用 + 流程门禁」⑤ 技术栈 TypeScript + React；模型配置用 `@earendil-works/pi-ai`，智能体核心用 `@earendil-works/pi-agent-core`**
 > 目标读者：后续 P0–P4 的实现者。
 >
 > 变更记录：
+> - **v0.7** — 拆文→模块库→新书 前端 UI 流程专章（[teardown-module-ui.md](teardown-module-ui.md)：拆文入库抽屉/模块库页/向导 seed/大纲注入预览/RefBadge 标注/组件与状态机）；同步补 modules 相关 API 端点与 SSE 事件（api-contract §3.10）。
 > - **v0.6** — 深化剩项第三批：AI 编辑规格（[ai-edit-spec.md](ai-edit-spec.md)，含门禁一键修复闭环）、规模与性能（[scale-performance.md](scale-performance.md)）、导出与发布（[export-publish.md](export-publish.md)）、运维与可观测（[ops-observability.md](ops-observability.md)）；前端文档升 v0.2 追加「效率与通知」章节。
 > - **v0.5** — 深化与补缺口第二批：智能体运行时（[agents-runtime.md](agents-runtime.md)，代码级装配/Context/内循环）、拆文+剧情模块库（[teardown-module.md](teardown-module.md)）、已有小说导入（[importing-existing.md](importing-existing.md)）、门禁执行器与报告契约（[gates-runner.md](gates-runner.md)）、实施计划（[implementation-plan.md](implementation-plan.md)）；同期收纳外部并稿「角色线管理方案」（[character-line-management.md](character-line-management.md)）。
 > - **v0.4** — 补全实现级规格文档包：流程定义规范（[process-definition.md](process-definition.md)）、API 契约（[api-contract.md](api-contract.md)）、数据模型（[data-model.md](data-model.md)）；本文档增设「设计文档地图」。
@@ -21,7 +22,8 @@
 | [**gates-runner.md**](gates-runner.md) | 门禁执行器 + 每个 gate 报告契约 + Python→Node 对拍 harness | M0/M1 确定层 |
 | [**api-contract.md**](api-contract.md) | 全端点 + JSON 示例 + SSE 事件 + 错误码 | M1 起前后端对拍 |
 | [**data-model.md**](data-model.md) | SQLite DDL + 文件系统约束 + webui-config + 备份迁移 | M0 建库与数据层 |
-| [**teardown-module.md**](teardown-module.md) | 拆文工作台建模 + 剧情模块库「拆→重组→新书」闭环 | M2 拆文 |
+| [**teardown-module.md**](teardown-module.md) | 拆文工作台建模 + 剧情模块库「拆→重组→新书」闭环（数据） | M2 拆文 |
+| [**teardown-module-ui.md**](teardown-module-ui.md) | 拆文→模块库→新书 前端 UI 流程专章（入库抽屉/模块库页/seed/注入预览/RefBadge/组件） | M2-M3 拆文复用 |
 | [**importing-existing.md**](importing-existing.md) | 已有小说导入：分章/追踪生成(置信度)/校对页/幂等 | M4 导入 |
 | [**webui-frontend.md**](webui-frontend.md) | 前端信息架构/线框/交互/组件/设计系统「书稿编辑部」 | M0-M2 前端 |
 | [**implementation-plan.md**](implementation-plan.md) | M0/M1 WBS、逐任务验收、测试策略、风险门与 DoD | 开工指引 |
@@ -470,4 +472,4 @@ docs/design/standalone-webui.md   # 本文档
 
 ---
 
-*本方案 v0.6 —— 所有 stage/gate/API 名称以最终实现为准；实现时以本地安装的 `pi-ai@0.85.x` / `pi-agent-core@0.85.x` 的 `.d.ts` 为 API 权威；确定层脚本一律 Node/TS 化、零 Python/bash 运行时依赖；完整规格十五篇见文档地图，开工顺序以 [implementation-plan.md](implementation-plan.md) 为准。*
+*本方案 v0.7 —— 所有 stage/gate/API 名称以最终实现为准；实现时以本地安装的 `pi-ai@0.85.x` / `pi-agent-core@0.85.x` 的 `.d.ts` 为 API 权威；确定层脚本一律 Node/TS 化、零 Python/bash 运行时依赖；完整规格十六篇见文档地图，开工顺序以 [implementation-plan.md](implementation-plan.md) 为准。*

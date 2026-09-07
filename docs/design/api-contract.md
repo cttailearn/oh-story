@@ -38,6 +38,11 @@
 | GET | `/books/:id/jobs/events` | SSE 事件流 |
 | GET | `/books/:id/tracking` | 追踪状态投影（只读） |
 | POST | `/books/:id/ai-edit` | AI 需求式编辑 |
+| GET | `/modules?kind&tag&usable_for&source&sort` | 模块库列表（项目级/全局） |
+| GET/PUT/DELETE | `/modules/:id` | 模块详情 / 编辑(tags,摘要,正文) / 软删 |
+| POST | `/books/:id/modules/archive` | 拆文批量入库（单元列表 → SSE 进度） |
+| POST | `/books/:id/modules/recommend` | 新书向导按 {genre,kinds} 推荐模块 |
+| POST | `/novels/:id/modules/attach` | 注入模块到书 → 影响预估 + 生效 |
 | POST | `/books/:id/export` | 交付导出 |
 | GET/PUT | `/config` | 配置（渠道/路由/偏好/预算） |
 | POST | `/config/channels/:id/test` | 渠道连通性自检 |
@@ -138,6 +143,27 @@
 { "format": "markdown", "include": ["chapters", "outline"], "target": "交付/《…》md 打包.zip" }
 ```
 
+### 3.10 模块库（拆文→新书复用）
+```jsonc
+// 拆文批量入库 POST /books/:id/modules/archive
+// req
+{ "teardown_id": "td_0T3", "units": [
+    { "kind": "plot", "title": "越级打脸三连", "body": "弱者挑衅→碾压→围观反转→爽点结算",
+      "tags": ["爽文","打脸"], "usable_for": ["都市系统流"], "source_path": "剧情/情节点.md" } ],
+  "batch_tags": ["都市系统流"] }
+// 202 → SSE module:archived（逐条）→ 终态
+{ "ok": true, "created": 12, "skipped_existing": 1, "module_ids": ["md_01…"] }
+
+// 推荐 POST /books/:id/modules/recommend
+// req { "genre": "都市系统流", "kinds": ["plot","hook"] }
+// 200 { "items": [ { "module_id": "md_07", "score": 0.93, "reason": "题材匹配+本周常用" } ] }
+
+// 注入 POST /novels/:id/modules/attach
+// req { "module_ids": ["md_07","md_12"], "scope": "outline" }
+// 200 { "attached": 2, "impact": { "glue": ["context-outline"], "knowledge_blocks": 2, "tokens_est": 1480 },
+//        "annotate": "细纲头注释 <!-- 参考模块: md_07 -->" }
+```
+
 ---
 
 ## 4. SSE 事件流 `GET /books/:id/jobs/events`（`text/event-stream`）
@@ -149,6 +175,8 @@
 | `gate:batch` | `{ jobId, gate, ok, blocking[], warnings[] }` | 门禁逐个落卡 |
 | `job:review` | `{ jobId, stage, revision, latest_gates, cost }` | 唤起批阅栏 + 产物预览 |
 | `edit:diff` | `{ editId, diff[] }` | AI 编辑抽屉 diff 流式展开 |
+| `module:archived` | `{ moduleId, title, created|updated }` | 入库逐个盖章，模块库计数 +1 |
+| `module:attached` | `{ novelId, moduleIds[], tokens_est }` | 注入生效，RefBadge 呈现 |
 | `job:error` | `{ jobId, code, message }` | 浮签（朱批式） |
 | `heartbeat` | `{ ts }` | 保活（每 25s） |
 
