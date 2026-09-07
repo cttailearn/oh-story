@@ -256,6 +256,13 @@
 | `CharacterLineBoard` / `RoleStageTable` / `ArcProposalDrawer` / `AuditBadge` | 角色线看板 / 阶段表（状态切换·验收）/ AI 提议下阶段 / 审计徽章 | §3.1（见 character-card-line） |
 | `StateBoard` | 追踪看板（进度/位置/角色/伏笔/时间线/风险） | §3.4 |
 | `ForeshadowTimeline` / `TimelineLane` | 伏笔/时间线泳道 | §3.4 |
+| `ForeshadowRegisterDrawer` / `TimelineRegisterDrawer` / `CommitItemForm` | 伏笔/事件登记（写后/AI 提议→走 tracking-commit） | §10.6 |
+| `RevisionDiff` | 正文 Revision 对比（左旧右新 diff，设为正式） | §10.2 |
+| `ChartCard`（ECharts） | 情绪曲线/节奏条带/成本曲线（统一 `{x,series,markers}` 契约） | §10.1/§10.3 |
+| `CostPanel` | 成本仪表（Gauge + 阶段/模型排行 + 曲线 + 熔断横幅） | §10.3 |
+| `AuditPanel` | 审计页（筛选/展开 JSON/导出 CSV） | §10.4 |
+| `ExportFlow` | 导出流程页（形态→平台→统计预览→job→下载） | §10.5 |
+| `SearchPanel` | 全局搜索结果（分组 + `<mark>` 高亮 + 跳转） | §9.4 |
 | `PipelineBoard` | 阶段轴 + 运行流式进度 | §3.5 |
 | `ReviewBar`（批阅栏） | 通过/改后重跑/驳回/跳过 | §3.5 |
 | `GateReportCard` | 门禁报告卡（blocking/warning 印徽 + 明细） | §3.3/§3.5 |
@@ -334,7 +341,49 @@
 
 ### 9.4 全局搜索
 - `Ctrl/Cmd+P` 打开：搜章节标题/角色名/伏笔 ID/设定小节（后端 `GET /api/search?q=`，索引=文件名+标题+`_tracking-state.json` 摘要），结果按模块分组，回车跳转。
+- **结果面板**：分组列表（正文/角色/伏笔/设定/大纲），每项带命中片段高亮 `<mark>`，快捷键 Enter 跳转、↑↓ 切换；空态「没找到，试试搜角色线/伏笔号」。异步节流 200ms，结果缓存于 Query。
 
 ---
 
-*前端设计 v0.2 —— 与主方案 v0.5+ 对齐；§9 快捷键/通知随 M1-M2 落地；进入 M0 后按 §3 线框先行实现「书房 + 小说工作台 + 编辑器」最小集。*
+## 10. 实现级补充规格（完整性补缺）
+
+> 前 9 章为"交互与骨架"，本节补 **"照此可直接写组件"** 的 6 项缺口：图表数据契约、正文 Revision 对比、追踪的修改路径、成本仪表、审计页、导出流程页。
+
+### 10.1 图表组件与数据契约（选型 ECharts 5 轻量包）
+- **选型**：`echarts`（按需引入 `LineChart/BarChart/Gauge`），主题色走 CSS 变量映射（墨/朱/青/鎏金），Canvas 渲染适配大表格。
+- **情绪曲线**：`GET /books/:id/curves/emotion` → `{ x: 章号[], y: [-3..3][], markers: [{chap,label:'爽点',flag:'🚩'}] }`（数据源自拆文/追踪情绪模块）。
+- **节奏条带**：`GET .../curves/rhythm` → `{ x: 章号[], value: 'slow'|'steady'|'fast'|'climax'[] }`；渲染为横向条带（暖=fast/climax，冷=slow）。
+- **伏笔泳道 / 时间线泳道**：`GET /books/:id/tracking` 直出（前端按 `planted→due` 分泳道；未揭示事件淡显）。
+- **大纲时间轴**：`GET /books/:id/outline` 的卷/章列表 → 色带横轴，点击下钻。
+- **饼/仪表（成本）**：见 10.3。
+> 契约统一为 `{x:[], series:[], markers?:[]}`，图表组件只消费契约、不直接读文件。
+
+### 10.2 正文 Revision 对比（diff）
+- 入口：正文顶栏 `Rev: [r2 ▾]`（当前正式/各 rN）→ 「与 r1 对比」。
+- 视图：左右两栏差分行高亮（左旧右新，`+`青/`-`朱），可「以此 Revision 设为正式」「放弃对比」；与 AI 编辑 diff 同一 `DiffView` 组件复用。
+- 数据：`GET /files?path=正文/第021章.md&revision=r2` 取历史快照（由 `_rev/` 保存，见 ai-edit-spec §4）。
+
+### 10.3 成本仪表（全局/书级）
+- 位置：左侧书签下「成本」页签 + 流程看板右下角小仪表。
+- `GET /api/books/:id/cost` → `{ day_cents, month_cents, by_stage:{chapter:…}, by_model:{deepseek-v4-pro:…}, curve:[{date,cents}] }`。
+- UI：Gauge 显示月度预算使用率（>80% 鎏金、100% 朱）＋ 表格（按阶段/模型排行）＋ 曲线。
+- 预算触顶时全站横幅「今日预算已用尽，写作任务停用」（见 budgets 熔断 api-contract）。
+
+### 10.4 审计页（设置 → 审计）
+- 表格：时间 / 操作（run/approve/ai-edit…）/ 目标 / 详情(可展开 JSON)；筛选 + 导出 CSV。
+- 关键入口：每步确认后自动滚动到最新一条；`audit` 只读展示（ops §3 的 SQL 落成界面）。
+
+### 10.5 导出流程页
+- 步骤：①选形态（md/txt/zip/epub灰）＋平台（txt 时选 起点/番茄/晋江/盐言）→ ②预览统计（章节数/双口径字数/达标红黄）→ ③运行 job（SSE 进度）→ ④「下载」(24h 链接) + 结果清单。
+- 发布前检查（export-publish §5）在②以 checklist 呈现（blocking 红 / warning 黄），未清零不能进入③。
+
+### 10.6 追踪"如何修改"路径（伏笔/时间线登记）
+- 原则：看板**只读投影**，但提供两条受控改入口：
+  1. **写后登记**：正文保存/章节提交成功 → 弹「登记本章新伏笔/事件？」（`🐉 登记`）→ 表单（类型 伏笔F/事件E、摘要、重要性、计划揭示章）→ 写入"待 commit"载荷 → 随 `tracking-commit` 一并提交（唯一权威不动摇）。
+  2. **AI 编辑提议**：在伏笔/时间线泳道点「＋ AI 提议」→ `ai-edit` 生成候选条目（diff 展示）→ 人工采纳 → 同上走 commit。
+- 禁止：直接改 `_tracking-state.json`；所有变更经 `tracking-commit` 事务（fail-closed）。
+- 组件：`ForeshadowRegisterDrawer` / `TimelineRegisterDrawer`（两者复用 `CommitItemForm`）。
+
+---
+
+*前端设计 v0.3 —— 前 9 章=交互/线框，§10=实现级补缺（图表契约/Rev diff/追踪修改路径/成本/审计/导出）；与主方案 v0.8 对齐；补缺项随 M1-M2 落地。*

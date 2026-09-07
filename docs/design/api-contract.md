@@ -46,6 +46,9 @@
 | GET | `/books/:id/characters` | 角色卡列表（含红线计数/关联角色线） |
 | GET/PUT | `/books/:id/characters/:name/arc` | 角色线：阶段/进度指针/审计（读/推进·写线文件+audit） |
 | POST | `/books/:id/characters/:name/arc/propose` | AI 提议下阶段（architect→diff 草案→人工采纳） |
+| GET | `/books/:id/curves/emotion` · `/curves/rhythm` | 情绪曲线 / 节奏条带数据（`{x,series,markers}`） |
+| GET | `/books/:id/cost` | 成本仪表（日/月/按阶段/按模型/曲线） |
+| GET | `/api/search?q=` | 全局搜索（正文/角色/伏笔/设定/大纲，带命中片段） |
 | POST | `/books/:id/export` | 交付导出 |
 | GET/PUT | `/config` | 配置（渠道/路由/偏好/预算） |
 | POST | `/config/channels/:id/test` | 渠道连通性自检 |
@@ -180,6 +183,20 @@
 // req { "at_stage": 2, "hint": "第30章困境：沈栀被迫独行" }
 // 200 { "proposal": { "stage_no": 3, "target_3layer": {...}, "acceptance": "...", "gradient": ["第31章…"] },
 //        "diff": [...], "applied": false }   // 采纳后再 PUT /arc
+```
+
+### 3.12 图表 / 成本 / 搜索（webui-frontend §10 数据源）
+```jsonc
+// 情绪曲线 GET /books/:id/curves/emotion
+{ "x": [1,2,3], "series": [ { "name": "情绪", "data": [1.2, -0.5, 2.3] } ],
+  "markers": [ { "chap": 3, "label": "爽点", "flag": "🚩" } ] }
+// 成本仪表 GET /books/:id/cost
+{ "day_cents": 32, "month_cents": 156, "budget_month_cents": 1000,
+  "by_stage": { "chapter": 120 }, "by_model": { "deepseek-v4-pro": 140 },
+  "curve": [ { "date": "2026-09-01", "cents": 12 } ] }
+// 全局搜索 GET /api/search?q=江晨
+{ "results": { "chapters": [ { "path": "正文/第003章…", "snippet": "…<mark>江晨</mark>…" } ],
+               "characters": [...], "foreshadow": [...], "settings": [...], "outline": [...] } }
 ```
 
 ---
