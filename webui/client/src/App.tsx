@@ -11,6 +11,7 @@ export function AppShell() {
         <span className="spacer" />
         <nav>
           <NavLink to="/">书房</NavLink>
+          <NavLink to="/modules">模块库</NavLink>
           <NavLink to="/settings">设置</NavLink>
         </nav>
       </header>
@@ -32,6 +33,9 @@ function SideNav() {
       </NavLink>
       <NavLink to="/settings" title="设置">
         ⚙
+      </NavLink>
+      <NavLink to="/modules" title="模块库">
+        🧩
       </NavLink>
     </nav>
   );

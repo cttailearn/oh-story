@@ -9,6 +9,7 @@ import { NewProjectPage } from './pages/NewProjectPage.tsx';
 import { NovelWorkspacePage } from './pages/NovelWorkspacePage.tsx';
 import { PipelinePage } from './pages/PipelinePage.tsx';
 import { SettingsPage } from './pages/SettingsPage.tsx';
+import { ModulesPage } from './pages/ModulesPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
       { path: 'projects/:projectId', element: <BookShelfPage inside /> },
       { path: 'novels/:bookId', element: <NovelWorkspacePage /> },
       { path: 'novels/:bookId/pipeline', element: <PipelinePage /> },
+      { path: 'modules', element: <ModulesPage /> },
       { path: 'settings', element: <SettingsPage /> },
     ],
   },
