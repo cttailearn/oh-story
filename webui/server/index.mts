@@ -14,6 +14,7 @@ import { registerGateRoutes } from './routes/gates.ts';
 import { registerModuleRoutes } from './routes/modules.ts';
 import { registerCharacterRoutes } from './routes/characters.ts';
 import { registerImportRoute } from './routes/import.ts';
+import { registerExportRoute } from './routes/export.ts';
 
 const here = import.meta.dirname ?? fileURLToPath(new URL('.', import.meta.url));
 
@@ -88,6 +89,7 @@ async function main() {
   await registerModuleRoutes(app, ctx);
   await registerCharacterRoutes(app, ctx);
   await registerImportRoute(app, ctx);
+  await registerExportRoute(app, ctx);
   if (!ai.hasAnyChannel()) {
     console.log('⚠️ 未配置渠道 —— 流程可用 demo/假渠道运行（POST run 传 fake:true），真实生成需在设置页配置渠道与模型路由');
   }
