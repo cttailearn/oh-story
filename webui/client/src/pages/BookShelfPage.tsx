@@ -33,7 +33,7 @@ export function BookShelfPage({ inside }: { inside?: boolean }) {
           <div
             key={b.id}
             className="tt-card shelf-card"
-            onClick={() => navigate(`/novels/${b.id}`)}
+            onClick={() => navigate(b.kind === 'teardown' ? `/teardowns/${b.id}` : `/novels/${b.id}`)}
           >
             <div className="tt-colorbar" style={{ background: b.theme_color ?? '#B8860B' }} />
             <div className="tt-title">《{b.name}》</div>
