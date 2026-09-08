@@ -17,6 +17,8 @@ import { registerImportRoute } from './routes/import.ts';
 import { registerExportRoute } from './routes/export.ts';
 import { registerAnalyticsRoutes } from './routes/analytics.ts';
 import { registerTeardownRoutes } from './routes/teardowns.ts';
+import { registerOpsRoutes } from './routes/ops.ts';
+import { recoverJobsOnBoot, runBackup } from './ops/service.ts';
 
 const here = import.meta.dirname ?? fileURLToPath(new URL('.', import.meta.url));
 
@@ -45,6 +47,9 @@ async function main() {
   initConfig(workspace, webuiDir);
 
   const db = openDatabase(join(webuiDir, 'webui.db'));
+
+  // 启动自愈（ops §5）：running/queued 任务复位为 killed（单机无在途 LLM）
+  recoverJobsOnBoot(db.db);
 
   const app = Fastify({
     logger: {
@@ -94,6 +99,19 @@ async function main() {
   await registerExportRoute(app, ctx);
   await registerAnalyticsRoutes(app, ctx);
   await registerTeardownRoutes(app, ctx);
+  await registerOpsRoutes(app, { db, workspace, webuiDir });
+
+  // 每日维护（scale-performance §5）：optimize + checkpoint + gate_runs 归档；启动 2min 后做一次日备份
+  const DAY = 24 * 3600 * 1000;
+  setTimeout(() => { try { runBackup(db.db, webuiDir, 'daily'); } catch { /* ignore */ } }, 2 * 60 * 1000);
+  setInterval(() => {
+    (async () => {
+      try {
+        const { maintain } = await import('./ops/service.ts');
+        maintain(db.db, webuiDir);
+      } catch { /* ignore */ }
+    })();
+  }, DAY);
   if (!ai.hasAnyChannel()) {
     console.log('⚠️ 未配置渠道 —— 流程可用 demo/假渠道运行（POST run 传 fake:true），真实生成需在设置页配置渠道与模型路由');
   }

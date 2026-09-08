@@ -70,10 +70,23 @@ export async function registerRoutes(
   const { db } = ctx;
 
   // ---------- Health ----------
-  app.get('/api/health', async () => {
+  app.get('/api/health', async (req) => {
+    const qp = req.query as { depth?: string };
+    if (qp.depth === 'full') {
+      // ops-observability §2 / scale-performance §6：完整诊断
+      const cfg = cfgmgr.getConfig();
+      const { collectHealthDeep } = await import('../ops/service.ts');
+      const deep = collectHealthDeep(db.db, {
+        dbPath: db.path,
+        workspace: ctx.workspace,
+        channels: cfg.channels,
+        lastTested: ((cfg.prefs as any)?.last_tested ?? {}) as Record<string, string>,
+      });
+      return { ...deep, db: { ...deep.db, user_version: db.user_version } };
+    }
     return {
       ok: true,
-      version: '0.1.0-m0',
+      version: '0.1.0-m4',
       node: process.version,
       db: { user_version: db.user_version },
       no_python: true,
@@ -154,12 +167,10 @@ export async function registerRoutes(
   app.delete<{ Params: Params1 }>('/api/books/:id', async (req, reply) => {
     const row = db.db.prepare(`SELECT * FROM books WHERE id = ?`).get(req.params.id) as BookRow | undefined;
     if (!row) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '书不存在' } });
-    // M0：仅从库移除 + audit 留痕，目录保留（不硬删；归档到 _archive/ 属 M4）
-    db.db.prepare(`DELETE FROM books WHERE id = ?`).run(req.params.id);
-    db.db
-      .prepare(`INSERT INTO audit (ts, who, action, target, detail_json) VALUES (?,?,?,?,?)`)
-      .run(nowIso(), 'user', 'delete', `book:${req.params.id}`, JSON.stringify({ name: row.name }));
-    return { ok: true };
+    // M4（ops §4）：删除 = 软删 —— 目录移入 workspace/_archive/ 再从库移除，可 relink 恢复
+    const { deleteToArchive } = await import('../ops/service.ts');
+    const { archivedDir } = deleteToArchive(db.db, { id: row.id, name: row.name, dir: row.dir }, ctx.workspace);
+    return { ok: true, archived: archivedDir, hint: '已移入 ' + (archivedDir ?? '（无目录）') + '，可在设置→恢复 用 relink 找回' };
   });
 
   // ---------- 文件树 ----------
@@ -328,12 +339,18 @@ export async function registerRoutes(
         : Array.isArray(data?.models)
           ? data.models.map((m: any) => (typeof m === 'string' ? m : m?.id)).filter(Boolean)
           : [];
+      // 记录最近测试时间（health?depth=full 展示）
+      const cfg = cfgmgr.getConfig();
+      const lastTested = { ...(((cfg.prefs as any)?.last_tested ?? {}) as Record<string, string>) };
+      lastTested[ch.id] = new Date().toISOString();
+      cfgmgr.updateConfig((c) => ({ ...c, prefs: { ...c.prefs, last_tested: lastTested } }));
       return reply.send({
         ok: true,
         llm: { models: modelIds.length, ping_ms: pingMs },
         images: { ok: false },
         msg: `渠道可用（${modelIds.length} 模型）`,
         models: modelIds,
+        tested_at: lastTested[ch.id],
       });
     } catch (e: any) {
       return reply.send({

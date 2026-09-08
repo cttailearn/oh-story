@@ -145,7 +145,16 @@ export const api = {
   teardownAnalyze: (bookId: string) =>
     http<any>(`/teardowns/${bookId}/analyze`, { method: 'POST', body: JSON.stringify({}) }),
   jobs: () => http<{ items: any[] }>('/jobs'),
-  audit: () => http<{ items: any[] }>('/audit'),
+  audit: (q: string = '') => http<{ items: any[] }>('/audit?' + q),
+  healthFull: () => http<any>('/health?depth=full'),
+  stats: () => http<any>('/stats'),
+  opsBackup: (mode = 'daily') => http<any>('/ops/backup', { method: 'POST', body: JSON.stringify({ mode }) }),
+  opsMaintain: () => http<any>('/ops/maintain', { method: 'POST', body: JSON.stringify({}) }),
+  opsBackups: () => http<any>('/ops/backups'),
+  relinkBook: (bookId: string, dir: string) =>
+    http<any>('/books/' + bookId + '/relink', { method: 'POST', body: JSON.stringify({ dir }) }),
+  killJob: (jobId: string) => http<any>('/jobs/' + jobId + '/kill', { method: 'POST', body: JSON.stringify({}) }),
+  auditCsvUrl: (q: string = '') => '/api/stats/audit.csv?' + q,
 };
 
 /** SSE 订阅：调用方自行关闭 */

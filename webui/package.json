@@ -18,6 +18,10 @@
     "test:watch": "vitest",
     "test:gates-migration": "vitest run server/gates/__migration_spec__",
     "check:no-python": "node scripts/check-no-python.mjs",
+    "diag": "tsx scripts/diag.mjs",
+    "trace": "tsx scripts/trace.mjs",
+    "backup": "tsx scripts/backup.mjs",
+    "snapshot": "tsx scripts/backup.mjs -- --snapshot",
     "guards": "npm run typecheck && npm run test && npm run check:no-python"
   },
   "dependencies": {
