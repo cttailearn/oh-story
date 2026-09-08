@@ -5,6 +5,13 @@
 - 规格：docs/design/（standalone-webui / process-definition / agents-runtime / gates-runner / api-contract / data-model / importing-existing / export-publish / ops-observability / scale-performance / webui-frontend 等十七篇）
 - 技术栈：Node ≥ 22.19 · Fastify + better-sqlite3(WAL) · React 18 + Vite + antd + CodeMirror 6 · pi-ai / pi-agent-core @0.85.x
 
+## 运行环境（重要）
+
+- Node **>= 22.19**（`engines`）。
+- **better-sqlite3 必须 >= 13**（本仓库已锁 `^13.0.3`）：Node **v24.19.0** 存在 `node::ObjectWrap` 清理钩子回归（[nodejs/node#65446](https://github.com/nodejs/node/issues/65446)），会让 better-sqlite3 < 13 的 `Statement` 在 GC 时命中 `Assertion failed: (env) != nullptr` 并**直接 abort 整个进程**（本仓库实测：打开小说工作台页即复现，服务当场消失；见 [better-sqlite3#1515](https://github.com/WiseLibs/better-sqlite3/issues/1515)）。13 起改用 N-API（node-addon-api），不再走该路径，且自带跨 Node 版本预编译产物（无需 node-gyp / Python）。
+- 该下限由 `server/db/runtimeGuard.test.ts` 锁定：依赖被降级会直接测试失败。
+- 若必须在 24.19.0 上跑旧依赖，只能改用 Node 22.x / 24.18.x；本项目不依赖该环境。
+
 ## 快速开始（开发）
 ```bash
 cd webui
@@ -24,7 +31,7 @@ npm start -- --port 3081 --root <workspace>
 
 ## 检查（guards）
 ```bash
-npm install        # npm 11 需先批准原生构建脚本：npm approve-scripts better-sqlite3 esbuild
+npm install        # npm 11 需先批准原生构建脚本：npm approve-scripts esbuild
 npm run guards     # typecheck(server+client) + vitest + check:no-python
 npm run guards:full  # guards + smoke（起临时后端跑端到端断言）
 ```

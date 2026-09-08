@@ -11,6 +11,7 @@
 
 ### 修复（webui）
 
+- **启动即崩（致命）**：Node v24.19.0 的 `node::ObjectWrap` 清理钩子回归（nodejs/node#65446）使 better-sqlite3 < 13 的 `Statement` 在 GC 时 abort 整个进程 —— 实测打开小说工作台页即复现，服务进程直接消失。升级 `better-sqlite3` 到 `^13.0.3`（N-API，自带跨版本预编译产物，无需 node-gyp），新增 `server/db/runtimeGuard.test.ts` 锁定版本下限；30 轮工作台/看板页面压测不再复现
 - **job 永不落终态**（engine/state.ts、stageRunner.ts）：跑完的 job 停在 `queued`，导致成本面板恒为 0、`health?depth=full` 永远报挂起任务、重启自愈把已完成任务误标 `killed(restart-recovery)`；且 `INSERT OR REPLACE` 命中 `idx_jobs_busy` 部分唯一索引后**整行替换**上一条 job，任务历史被静默抹除。现改为 `queued→running→review|done|error` 显式收尾 + 普通 INSERT + 在途 job 复用
 - **空阶段被批阅放行**（engine/state.ts）：确认通过后会把「下一个 pending 阶段」置为 `review`，从未运行过的阶段因此可直接被「通过」，流程可在无任何产物的情况下推进。现仅在真实产出后进入 review
 - **成本面板恒为 0 / by_model 恒为空**（routes/pipeline.ts）：统计口径改为已执行任务，并从 `jobs.detail_json` 聚合实际渠道/模型
@@ -22,7 +23,7 @@
 
 - 首屏体积：CodeMirror 6 改按需加载 + 三方库拆 chunk，首屏 JS 由 384 kB(gz) 降至约 210 kB(gz)，编辑器 chunk 仅在打开手稿时加载
 - 脚本可配置：`e2e-fake` / `verify-api` / `verify-ui` 支持 `--base` 与 `WEBUI_BASE`，不再硬编码 3081 与本机路径；`e2e-fake` 由「只打印」改为断言式（可进 CI）
-- `package.json` 记录 `allowScripts`（npm 11 安装脚本白名单：better-sqlite3/esbuild），使 `npm install` 可复现
+- `package.json` 记录 `allowScripts`（npm 11 安装脚本白名单：esbuild；better-sqlite3 13 起自带预编译产物、无需安装脚本），使 `npm install` 可复现
 - 仓库 `.gitignore` 修复乱码注释并补充本地验证残留（`.npm-cache/`、`.tmp-webui-*/`、`webui/.tmp-*/`）
 
 ## v2.4.0
