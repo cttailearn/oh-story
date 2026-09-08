@@ -130,6 +130,9 @@ export const api = {
   proposeArc: (bookId: string, name: string, body: any) =>
     http<any>(`/books/${bookId}/characters/${encodeURIComponent(name)}/arc/propose`, { method: 'POST', body: JSON.stringify(body) }),
   importNovel: (body: any) => http<any>('/import', { method: 'POST', body: JSON.stringify(body) }),
+  importReviewStatus: (bookId: string) => http<any>(`/books/${bookId}/import-review/status`),
+  applyImportReview: (bookId: string, body: any) =>
+    http<any>(`/books/${bookId}/import-review/apply`, { method: 'POST', body: JSON.stringify(body) }),
   exportBook: (bookId: string, body: any) =>
     http<any>(`/books/${bookId}/export`, { method: 'POST', body: JSON.stringify(body) }),
   listModules: (q: string = '') => http<any>(`/modules?${q}`),

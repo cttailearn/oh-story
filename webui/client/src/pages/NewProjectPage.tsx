@@ -40,7 +40,8 @@ export function NewProjectPage() {
     try {
       if (s.projectType === 'import') {
         const r = await api.importNovel({ name: s.name.trim(), mode: 'clipboard', text: importText });
-        navigate(`/novels/${r.book.id}`);
+        // M4：进入「导入校对」页（审核分章/角色/伏笔/时间线后解锁续写）
+        navigate(`/novels/${r.book.id}/import-review`);
       } else {
         const book = await api.createBook({ name: s.name.trim(), type: s.projectType, theme_color: s.themeColor });
         navigate(`/novels/${book.id}`);

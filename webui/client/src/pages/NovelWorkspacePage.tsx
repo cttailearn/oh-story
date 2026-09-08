@@ -21,6 +21,7 @@ export function NovelWorkspacePage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [emotion, setEmotion] = useState<any>(null);
   const [rhythm, setRhythm] = useState<any>(null);
+  const [importPending, setImportPending] = useState(false);
   const navigate = useNavigate();
 
   const module = (params.get('module') ?? 'chapters') as Module;
@@ -36,6 +37,11 @@ export function NovelWorkspacePage() {
       .tree(bookId)
       .then((r) => setTree(r.tree))
       .catch(() => setTree([]));
+    // 导入书待校对 → 顶栏黄条引导（fail-closed：未复核不能开启正文续写）
+    api
+      .importReviewStatus(bookId)
+      .then((r) => setImportPending(!!r.pending && !!r.review))
+      .catch(() => setImportPending(false));
   }, [bookId]);
 
   const moduleTabs: Array<[Module, string]> = [
@@ -127,6 +133,14 @@ export function NovelWorkspacePage() {
       </aside>
 
       <section className="manuscript">
+        {importPending && (
+          <div style={{ border: '1px solid var(--gold-saffron)', background: 'color-mix(in srgb, var(--gold-saffron) 12%, var(--paper))', padding: '10px 14px', borderRadius: 6, marginBottom: 12, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>这是一本「导入」的书，正文续写前需先完成 <strong>导入校对</strong>（复核分章/角色/伏笔/时间线并认定 last_committed_chapter）。</span>
+            <Link to={'/novels/' + bookId + '/import-review'} className="ink-btn primary" style={{ margin: 0 }}>
+              去导入校对 →
+            </Link>
+          </div>
+        )}
         {error && <div style={{ color: 'var(--red-vermillion)', marginBottom: 10 }}>⚠️ {error}</div>}
         {module === 'state' ? (
           <div>

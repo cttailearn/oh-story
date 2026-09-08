@@ -13,6 +13,7 @@ import {
 } from '../engine/state.ts';
 import { runStageJob } from '../engine/stageRunner.ts';
 import { publish, subscribe } from '../engine/sse.ts';
+import { importReviewPending } from '../import/service.ts';
 
 export interface EngineRouteCtx {
   db: DbHandle;
@@ -70,6 +71,14 @@ export async function registerPipelineRoutes(app: FastifyInstance, ctx: EngineRo
       const row = getStageRow(db.db, book.id, req.params.stage);
       if (row?.status === 'running') {
         return reply.code(409).send({ error: { code: 'STAGE_BUSY', message: '该阶段正在运行' } });
+      }
+      // fail-closed（importing-existing §3）：导入书未完成校对 → 不解锁 chapter 阶段
+      if (req.params.stage === 'chapter') {
+        let meta: Record<string, unknown> | null = null;
+        if (book.meta_json) { try { meta = JSON.parse(book.meta_json); } catch { /* noop */ } }
+        if (importReviewPending(book.dir, meta)) {
+          return reply.code(409).send({ error: { code: 'IMPORT_REVIEW_PENDING', message: '该书为导入项目，尚未完成「导入校对」（last_committed_chapter 未认定）。请先到导入校对页复核分章与追踪条目后「开始续写」。' } });
+        }
       }
       const job = await runStageJob({
         db,

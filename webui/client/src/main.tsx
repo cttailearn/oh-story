@@ -13,6 +13,7 @@ import { ModulesPage } from './pages/ModulesPage.tsx';
 import { TeardownPage } from './pages/TeardownPage.tsx';
 import { ExportPage } from './pages/ExportPage.tsx';
 import { NewNovelPage } from './pages/NewNovelPage.tsx';
+import { ImportReviewPage } from './pages/ImportReviewPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: 'projects/:projectId', element: <BookShelfPage inside /> },
       { path: 'novels/new', element: <NewNovelPage /> },
       { path: 'novels/:bookId', element: <NovelWorkspacePage /> },
+      { path: 'novels/:bookId/import-review', element: <ImportReviewPage /> },
       { path: 'novels/:bookId/pipeline', element: <PipelinePage /> },
       { path: 'modules', element: <ModulesPage /> },
       { path: 'teardowns/:bookId', element: <TeardownPage /> },
