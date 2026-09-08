@@ -11,6 +11,7 @@ import { PipelinePage } from './pages/PipelinePage.tsx';
 import { SettingsPage } from './pages/SettingsPage.tsx';
 import { ModulesPage } from './pages/ModulesPage.tsx';
 import { TeardownPage } from './pages/TeardownPage.tsx';
+import { ExportPage } from './pages/ExportPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: 'novels/:bookId/pipeline', element: <PipelinePage /> },
       { path: 'modules', element: <ModulesPage /> },
       { path: 'teardowns/:bookId', element: <TeardownPage /> },
+      { path: 'export', element: <ExportPage /> },
       { path: 'settings', element: <SettingsPage /> },
     ],
   },

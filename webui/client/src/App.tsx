@@ -12,6 +12,7 @@ export function AppShell() {
         <nav>
           <NavLink to="/">书房</NavLink>
           <NavLink to="/modules">模块库</NavLink>
+          <NavLink to="/export">导出</NavLink>
           <NavLink to="/settings">设置</NavLink>
         </nav>
       </header>

@@ -15,6 +15,7 @@ interface WizardState {
 /** P1 新建项目向导（三步） */
 export function NewProjectPage() {
   const navigate = useNavigate();
+  const [importText, setImportText] = useState('');
   const [s, setS] = useState<WizardState>({
     step: 'type',
     projectType: 'novel-project',
@@ -31,10 +32,19 @@ export function NewProjectPage() {
       setS((p) => ({ ...p, error: '请填写项目名' }));
       return;
     }
+    if (s.projectType === 'import' && !importText.trim()) {
+      setS((p) => ({ ...p, error: '请粘贴要导入的小说文本' }));
+      return;
+    }
     setS((p) => ({ ...p, creating: true, error: null }));
     try {
-      const book = await api.createBook({ name: s.name.trim(), type: s.projectType, theme_color: s.themeColor });
-      navigate(`/novels/${book.id}`);
+      if (s.projectType === 'import') {
+        const r = await api.importNovel({ name: s.name.trim(), mode: 'clipboard', text: importText });
+        navigate(`/novels/${r.book.id}`);
+      } else {
+        const book = await api.createBook({ name: s.name.trim(), type: s.projectType, theme_color: s.themeColor });
+        navigate(`/novels/${book.id}`);
+      }
     } catch (e: any) {
       setS((p) => ({ ...p, creating: false, error: e?.message ?? String(e) }));
     }
@@ -43,6 +53,19 @@ export function NewProjectPage() {
   return (
     <div style={{ maxWidth: 720 }}>
       <h1 className="serif">新建项目</h1>
+
+      {s.projectType === 'import' && s.step === 'confirm' && (
+        <div className="rail-block" style={{ marginBottom: 12 }}>
+          <div className="rb-title">粘贴已有小说全文（导入后会：分章 → 生成追踪状态(schema v4) → 建书）</div>
+          <textarea
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            rows={10}
+            placeholder="支持 第一章/第1章/Chapter N 锚点分章…"
+            style={{ width: '100%', border: '1px solid var(--line)', background: 'var(--paper)', color: 'var(--ink)', padding: 8, fontFamily: 'var(--font-serif)', fontSize: 14 }}
+          />
+        </div>
+      )}
 
       {/* 题签式步骤条 */}
       <div style={{ display: 'flex', gap: 8, margin: '18px 0', borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
