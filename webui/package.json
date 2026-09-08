@@ -24,6 +24,7 @@
     "verify:api": "node scripts/verify-api.mjs",
     "verify:page": "node scripts/verify-page.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
+    "verify:settings": "node scripts/verify-settings.mjs",
     "diag": "tsx scripts/diag.mjs",
     "pack:standalone": "node scripts/build-standalone.mjs",
     "trace": "tsx scripts/trace.mjs",

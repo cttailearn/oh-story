@@ -7,6 +7,9 @@ import * as cfgmgr from '../config/index.ts';
 import { runAiEdit, type AiEditRequest } from '../agents/aiEdit.ts';
 import { publish } from '../engine/sse.ts';
 import { seedNovelRequirements, type NovelRequirements } from '../fs/seed.ts';
+import { classifyModels, parseModelList, modelsUrl, type ModelCatalog } from '../config/models.ts';
+
+const EMPTY_CATALOG: ModelCatalog = { models: [], chat: [], image: [], other: [] };
 
 export interface RouteCtx {
   db: DbHandle;
@@ -284,15 +287,9 @@ export async function registerRoutes(
     const updated = cfgmgr.updateConfig((cfg) => {
       // 仅允许白名单字段更新（避免覆盖密钥）
       if (Array.isArray(body.channels)) {
-        cfg.channels = (body.channels as any[]).map((c) => ({
-          id: String(c.id ?? ''),
-          name: String(c.name ?? ''),
-          base_url: String(c.base_url ?? ''),
-          models: Array.isArray(c.models) ? c.models.map(String) : [],
-          image_models: Array.isArray(c.image_models) ? c.image_models.map(String) : undefined,
-          enabled: c.enabled !== false,
-          api_key: c.api_key ? String(c.api_key) : undefined,
-        }));
+        // 密钥语义见 mergeChannels：GET 回显的掩码值不得写回（曾把 sk-a****z 存成真实密钥），
+        // 未提供 = 保留既有，'' = 显式清空，其它 = 覆盖
+        cfg.channels = cfgmgr.mergeChannels(cfg.channels, body.channels as unknown[]);
       }
       if (body.model_routing && typeof body.model_routing === 'object') {
         cfg.model_routing = body.model_routing as Record<string, { channel: string; model: string }>;
@@ -311,6 +308,79 @@ export async function registerRoutes(
     }
     const safe = { ...updated, channels: updated.channels.map((c) => ({ ...c, api_key: c.api_key ? maskSecret(c.api_key) : undefined })) };
     return safe;
+  });
+
+  // ---------- 渠道模型目录探测（设置页：填 base_url + key → 获取可用模型 → 勾选） ----------
+  // 保存前即可调用；api_key 缺省时回退到该渠道已存密钥；密钥只用于请求上游，绝不回显。
+  app.post('/api/config/channels/probe', async (req, reply) => {
+    const body = (req.body ?? {}) as { base_url?: string; api_key?: string; id?: string };
+    const baseUrl = String(body.base_url ?? '').trim().replace(/\/+$/, '');
+    if (!baseUrl) {
+      return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: '缺少 base_url' } });
+    }
+    if (!/^https?:\/\//i.test(baseUrl)) {
+      return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: 'base_url 需以 http:// 或 https:// 开头' } });
+    }
+    const stored = body.id ? cfgmgr.getConfig().channels.find((c) => c.id === body.id)?.api_key : undefined;
+    const typed = String(body.api_key ?? '').trim();
+    const apiKey = typed && !cfgmgr.isMaskedSecret(typed) ? typed : stored;
+
+    const url = modelsUrl(baseUrl);
+    const started = Date.now();
+    try {
+      const headers: Record<string, string> = { Accept: 'application/json' };
+      if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+      const pingMs = Date.now() - started;
+      const text = await res.text();
+      let payload: unknown = null;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        return reply.send({
+          ok: false,
+          status: res.status,
+          ping_ms: pingMs,
+          msg: res.ok ? '上游 /models 未返回 JSON（该网关可能不支持模型目录，请手填模型名）' : `HTTP ${res.status}`,
+          detail: text.slice(0, 200),
+          ...EMPTY_CATALOG,
+        });
+      }
+      if (!res.ok) {
+        const upstreamMsg = (payload as { error?: { message?: string } })?.error?.message;
+        return reply.send({
+          ok: false,
+          status: res.status,
+          ping_ms: pingMs,
+          msg: `HTTP ${res.status}${upstreamMsg ? '：' + upstreamMsg : ''}`,
+          ...EMPTY_CATALOG,
+        });
+      }
+      const catalog = classifyModels(parseModelList(payload));
+      if (catalog.models.length === 0) {
+        return reply.send({
+          ok: false,
+          status: res.status,
+          ping_ms: pingMs,
+          msg: '连通正常，但 /models 未返回可解析的模型列表（请手填模型名）',
+          ...EMPTY_CATALOG,
+        });
+      }
+      return reply.send({
+        ok: true,
+        status: res.status,
+        ping_ms: pingMs,
+        msg: `获取到 ${catalog.models.length} 个模型（对话 ${catalog.chat.length} / 图像 ${catalog.image.length} / 其它 ${catalog.other.length}）`,
+        ...catalog,
+      });
+    } catch (e: any) {
+      return reply.send({
+        ok: false,
+        ping_ms: Date.now() - started,
+        msg: `请求失败：${e?.name === 'TimeoutError' ? '超时（10s）' : (e?.message ?? String(e))}`,
+        ...EMPTY_CATALOG,
+      });
+    }
   });
 
   // ---------- 渠道连通性自检（M1.8，api-contract §3.8） ----------

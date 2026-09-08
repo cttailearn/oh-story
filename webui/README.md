@@ -43,6 +43,7 @@ npm run guards:full  # guards + smoke（起临时后端跑端到端断言）
 | `npm run smoke` | 临时 workspace 起真后端 → 假渠道全链路（建书→4 阶段→产物落位→job 生命周期→每步确认→成本/门禁留痕）+ 前端托管自检 | 45 |
 | `npm run verify:api` | 全量 REST（books/files/tree/gates/export×5/modules/characters/curves/search/stats/ops/config/ai-edit/import/teardown/软删） | 63 |
 | `npm run verify:ui` | 真实 Chromium 打开 9 个页面，断言关键文案 + 零 console/page 错误（截图落 `.tmp-ui-shots/`） | 16 |
+| `npm run verify:settings` | 真实 Chromium + 本地假网关：设置页「填 base_url+key → 获取模型 → 勾选 → 保存」全流程（含掩码密钥往返回归），跑完自动还原配置 | 17 |
 | `npm run e2e:fake` | 只跑端到端断言（需已有后端；`--base` 指定地址） | 45 |
 
 > `verify:api` / `verify:ui` 需要后端已启动（`npm start`）且已 `npm run build`；`verify:ui` 需仓库根已装 playwright（`npx playwright install chromium`）。
@@ -53,6 +54,7 @@ npm run guards:full  # guards + smoke（起临时后端跑端到端断言）
 - **review 只属于「已产出产物」的阶段**：确认通过后不得把从未运行的后续阶段置为 review，否则批阅栏能放行空阶段（假流程）。
 - **假渠道产物按 file-set 契约落位**：`设定/角色/*.md`、`大纲/细纲/第NNN章.md` 等，使 demo e2e 真实覆盖分块与门禁口径；fake 产物模板按**阶段 id** 选择，不依赖上下文块标题启发式。
 - **demo 结果必须可辨识**：无渠道时 ai-edit 降级 demo，响应带 `fake: true` + 文案标注，前端加橙色标记并要求二次确认。
+- **密钥只有一条写入路径**：`PUT /api/config` 的渠道密钥语义是「缺省/掩码 = 保留既有、`''` = 清空、其它 = 覆盖」。GET 回显的 `sk-a****z` 绝不能被写回（见 `server/config/channels.test.ts`）。
 
 ## 诊断 / 运维（ops）
 
@@ -62,6 +64,7 @@ npm run guards:full  # guards + smoke（起临时后端跑端到端断言）
 | `npm run trace -- --job <job_id>` | 追踪单次任务的事件序列（门禁/审计/耗时/成本） |
 | `npm run backup` / `npm run snapshot` | 每日备份（保留 7 份）/ 升级前快照，VACUUM INTO 落 `.webui/backups/` |
 | 设置页 → 运维 | 诊断卡片 / 门禁统计 / 审计筛选+CSV 导出 / 一键备份维护 / relink 恢复 / 任务 kill |
+| 设置页 → 渠道 | 填 `base_url` + `API Key` → 「⤓ 获取模型」拉取 `/models` 目录（自动分对话/图像/其它）→ 点选入目录 → 保存即热生效；密钥不回显 |
 
 数据自愈：启动时 running/queued 任务置 `killed(restart-recovery)`；删除书 = 软删（目录移入 `workspace/_archive/`，可 relink 找回）；`gate_runs` 冷数据（>3 个月）按季度归档；每日自动维护（PRAGMA optimize + wal_checkpoint）。
 

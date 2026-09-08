@@ -95,6 +95,18 @@ export const api = {
   putConfig: (cfg: any) => http<any>('/config', { method: 'PUT', body: JSON.stringify(cfg) }),
   testChannel: (id: string) =>
     http<any>(`/config/channels/${id}/test`, { method: 'POST', body: JSON.stringify({}) }),
+  /** 保存前探测渠道可用模型：填了 base_url(+key) 即可拉 /models 目录 */
+  probeChannelModels: (body: { base_url: string; api_key?: string; id?: string }) =>
+    http<{
+      ok: boolean;
+      status?: number;
+      ping_ms?: number;
+      msg: string;
+      models: string[];
+      chat: string[];
+      image: string[];
+      other: string[];
+    }>('/config/channels/probe', { method: 'POST', body: JSON.stringify(body) }),
 
   stages: (bookId: string) => http<any>(`/books/${bookId}/stages`),
   runStage: (bookId: string, stage: string, fake = false) =>

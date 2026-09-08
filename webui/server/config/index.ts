@@ -84,6 +84,46 @@ export function getConfig(): WebuiConfig {
   return cache;
 }
 
+/** 掩码标记：GET /api/config 回显的密钥形如 sk-a****z，绝不能被当作真实密钥写回 */
+export const MASK_MARK = '****';
+export function isMaskedSecret(v: unknown): boolean {
+  return typeof v === 'string' && v.includes(MASK_MARK);
+}
+
+/**
+ * 合并前端提交的渠道列表（PUT /api/config 白名单字段）。
+ *
+ * 密钥语义（修复：前端把 GET 到的整份配置原样 PUT 回来，曾把掩码写进配置文件，真实密钥被抹掉）：
+ *   - api_key 缺省 / 掩码值 → 保留既有密钥
+ *   - api_key === ''        → 显式清空
+ *   - 其它非空字符串         → 覆盖为新密钥
+ */
+export function mergeChannels(prev: ChannelConfig[], incoming: unknown[]): ChannelConfig[] {
+  const prevKey = new Map(prev.map((c) => [c.id, c.api_key]));
+  return incoming.map((raw) => {
+    const c = (raw ?? {}) as Record<string, unknown>;
+    const id = String(c.id ?? '');
+    let api_key: string | undefined;
+    if (typeof c.api_key === 'string') {
+      const v = c.api_key.trim();
+      if (v === '') api_key = undefined;
+      else if (isMaskedSecret(v)) api_key = prevKey.get(id);
+      else api_key = v;
+    } else {
+      api_key = prevKey.get(id);
+    }
+    return {
+      id,
+      name: String(c.name ?? ''),
+      base_url: String(c.base_url ?? '').trim(),
+      models: Array.isArray(c.models) ? (c.models as unknown[]).map(String) : [],
+      image_models: Array.isArray(c.image_models) ? (c.image_models as unknown[]).map(String) : undefined,
+      enabled: c.enabled !== false,
+      api_key,
+    };
+  });
+}
+
 export function persist(): void {
   if (!cache) return;
   writeFileSync(configPath, JSON.stringify(cache, null, 2), 'utf8');

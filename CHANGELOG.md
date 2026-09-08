@@ -8,10 +8,14 @@
 - **`npm run verify:api`**：全量 REST 63 条断言（books/files/tree/gates/export×5/modules/characters/curves/search/stats/ops/config/ai-edit/import/teardown/软删）
 - **`npm run verify:ui`**：真实 Chromium 打开 9 个页面，16 条断言（关键文案 + 零 console/page 错误 + 截图）
 - **`server/engine/jobLifecycle.test.ts`**：job 终态 / 重跑保留历史 / 空阶段不得 review / 阻塞落 error 的回归锁定
+- **设置页「获取模型」**：填 `base_url` + `API Key` 后一键拉取该渠道 `/models` 目录（保存前即可探测），自动分「对话 / 图像 / 其它（embedding·语音等）」，点选即写入模型目录；新增 `POST /api/config/channels/probe`（密钥只用于请求上游、绝不回显；不传 key 时回退该渠道已存密钥）
+- **`npm run verify:settings`**：真实 Chromium + 本地假网关（`scripts/mock-gateway.mjs`）跑完整设置流程 17 条断言，含「掩码密钥往返不得覆盖真实密钥」回归；跑完自动还原配置
 
 ### 修复（webui）
 
 - **启动即崩（致命）**：Node v24.19.0 的 `node::ObjectWrap` 清理钩子回归（nodejs/node#65446）使 better-sqlite3 < 13 的 `Statement` 在 GC 时 abort 整个进程 —— 实测打开小说工作台页即复现，服务进程直接消失。升级 `better-sqlite3` 到 `^13.0.3`（N-API，自带跨版本预编译产物，无需 node-gyp），新增 `server/db/runtimeGuard.test.ts` 锁定版本下限；30 轮工作台/看板页面压测不再复现
+- **保存设置会抹掉真实密钥（严重）**（config/index.ts、routes/index.ts）：GET `/api/config` 回显掩码 `sk-a****z`，而前端「保存设置」把整份配置原样 PUT 回来，服务端照单全收 —— 真实密钥被掩码字符串覆盖，渠道当场失效且密钥不可恢复。现密钥语义收敛到 `mergeChannels`：缺省/掩码 = 保留既有、`''` = 清空、其它 = 覆盖，并加单测锁定
+- **设置页无法录入密钥**：此前只展示掩码文本、没有输入框，用户只能手改 `webui-config.json`；现每渠道提供密码输入框（留空即不改），与「获取模型」流程打通
 - **job 永不落终态**（engine/state.ts、stageRunner.ts）：跑完的 job 停在 `queued`，导致成本面板恒为 0、`health?depth=full` 永远报挂起任务、重启自愈把已完成任务误标 `killed(restart-recovery)`；且 `INSERT OR REPLACE` 命中 `idx_jobs_busy` 部分唯一索引后**整行替换**上一条 job，任务历史被静默抹除。现改为 `queued→running→review|done|error` 显式收尾 + 普通 INSERT + 在途 job 复用
 - **空阶段被批阅放行**（engine/state.ts）：确认通过后会把「下一个 pending 阶段」置为 `review`，从未运行过的阶段因此可直接被「通过」，流程可在无任何产物的情况下推进。现仅在真实产出后进入 review
 - **成本面板恒为 0 / by_model 恒为空**（routes/pipeline.ts）：统计口径改为已执行任务，并从 `jobs.detail_json` 聚合实际渠道/模型
