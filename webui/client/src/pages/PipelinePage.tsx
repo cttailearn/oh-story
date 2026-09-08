@@ -7,6 +7,7 @@ const ACTIONS = [
   { id: 'edit_rerun', label: '✎ 改后重跑', cls: 'seal-pending' },
   { id: 'reject_regen', label: '✕ 驳回重写', cls: 'seal-blocking' },
   { id: 'skip', label: '→ 跳过', cls: '' },
+  { id: 'force_approve', label: '⚠ 人工放行（记审计）', cls: 'seal-blocking' },
 ] as const;
 
 interface StageView {
@@ -340,7 +341,7 @@ export function PipelinePage() {
           </div>
         </div>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="批语 / 修改要求（可选）…" />
-        {ACTIONS.map((a) => (
+        {ACTIONS.filter((a) => a.id !== 'force_approve' || stages.find((s) => s.id === reviewing)?.status === 'blocked').map((a) => (
           <button
             key={a.id}
             className="ink-btn"

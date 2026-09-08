@@ -1,6 +1,6 @@
 // 流程定义类型（process-definition §2 权威接口）
 export type StageStatus = 'pending' | 'running' | 'review' | 'blocked' | 'done' | 'skipped';
-export type ConfirmAction = 'approve' | 'edit_rerun' | 'reject_regen' | 'skip';
+export type ConfirmAction = 'approve' | 'edit_rerun' | 'reject_regen' | 'skip' | 'force_approve';
 export type JobStatus = 'queued' | 'running' | 'review' | 'done' | 'error' | 'killed';
 
 export interface ProcessDefinition {

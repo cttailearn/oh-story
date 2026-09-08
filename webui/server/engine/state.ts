@@ -26,7 +26,7 @@ export interface EngineOptions {
   def: ProcessDefinition;
 }
 
-const VALID_ACTIONS: ConfirmAction[] = ['approve', 'edit_rerun', 'reject_regen', 'skip'];
+const VALID_ACTIONS: ConfirmAction[] = ['approve', 'edit_rerun', 'reject_regen', 'skip', 'force_approve'];
 
 export function ensureStageRows(db: Sqlite, bookId: string, def: ProcessDefinition): void {
   const ins = db.prepare(
@@ -185,15 +185,17 @@ export function confirmStage(
   const { db, def } = opts;
   if (!VALID_ACTIONS.includes(params.action)) throw new Error(`INVALID_ACTION: ${params.action}`);
   const stage = getStage(def, params.stageId);
-  if (!stage.confirm.actions.includes(params.action)) {
+  // force_approve（人工放行）：人类最终拍板，不受门禁阻塞限制，始终记 audit
+  const isForce = params.action === 'force_approve';
+  if (!isForce && !stage.confirm.actions.includes(params.action)) {
     throw new Error(`ACTION_NOT_ALLOWED: ${params.action} for stage ${params.stageId}`);
   }
   const cur = getStageRow(db, params.bookId, params.stageId);
   const revision = params.revision ?? cur?.revision ?? 0;
   const ts = new Date().toISOString();
 
-  if (params.action === 'approve') {
-    if (cur && cur.status === 'blocked') throw new Error('GATE_BLOCKING');
+  if (params.action === 'approve' || isForce) {
+    if (!isForce && cur && cur.status === 'blocked') throw new Error('GATE_BLOCKING');
     setStageStatus(db, params.bookId, params.stageId, 'done', { revision, reviewed_at: ts });
     const next = nextPendingStage(def, db, params.bookId);
     if (next) {

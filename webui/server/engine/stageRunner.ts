@@ -273,7 +273,7 @@ function snapshotDeslopBase(bookDir: string): string {
 function writeArtifact(opts: StageRunOptions, stage: StageDefinition, revision: number, text: string): string[] {
   const { bookDir } = opts;
   const art = stage.artifact;
-  if (art.kind === 'file-set' && /细纲|第%\d+d章.*\*\.md/.test(art.path)) {
+  if (art.kind === 'file-set') {
     return writeFileSet(bookDir, art.path, text);
   }
   let rel: string;
@@ -297,6 +297,10 @@ function artifactDirOf(spec: string): string {
     if (i >= 0 && (marker < 0 || i < marker)) marker = i;
   }
   if (marker > 0) {
+    if (s[marker] === '{') {
+      // file-set 集合：降级目录取 { 前缀（如 设定/{角色/*.md, 角色线/*.md} → 设定）
+      return s.slice(0, marker).replace(/\/+$/, '') || '.story/artifacts';
+    }
     const slash = s.lastIndexOf('/', marker);
     if (slash >= 0) return s.slice(0, slash) || '.story/artifacts';
     return '.story/artifacts';
@@ -360,45 +364,103 @@ function safeFileName(name: string): string {
 }
 
 /** file-set 拆写：按「第N章」拆单章文件（正文/第NNN章_标题.md 或 大纲/细纲/第NNN章.md）；细纲额外写汇总 大纲/大纲.md */
+/** 文件块头（模型按 file-set 目标路径输出的分块）：### 《设定/角色/陆沉舟.md》 / ### 设定/文风.md / ## `大纲/卷纲/卷一.md` */
+export function splitFileBlocks(text: string): Array<{ rel: string; body: string }> {
+  const out: Array<{ rel: string; body: string[] }> = [];
+  let cur: { rel: string; body: string[] } | null = null;
+  const re = /^#{1,6}\s*[`《]?([^《》`\n]+?\.md)[`》]?\s*$/;
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(re);
+    if (m && looksLikeRel(m[1]!)) {
+      if (cur) out.push(cur);
+      cur = { rel: cleanRel(m[1]!), body: [] };
+      continue;
+    }
+    if (cur) cur.body.push(line);
+  }
+  if (cur) out.push(cur!);
+  return out.map((b) => ({ rel: b.rel, body: b.body.join('\n') }));
+}
+
+/** 相对路径合法性：中文/字母/数字/空格/._-/斜杠；含 /；非 .. 逃逸；非绝对路径 */
+function looksLikeRel(p: string): boolean {
+  const v = cleanRel(p);
+  return (
+    /^[\u4e00-\u9fff0-9A-Za-z_ .\\/\-]+$/.test(v) &&
+    v.includes('/') &&
+    !v.startsWith('/') &&
+    !/^\.\.(\/|$)/.test(v) &&
+    !/\/\.\.(\/|$)/.test(v)
+  );
+}
+
+function cleanRel(p: string): string {
+  return p.trim().replace(/^`+|`+$/g, '').replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+/**
+ * file-set 拆写（顺序）：
+ *  1) 「file-block」分块头《<rel>.md》→ 各自落盘（设定/角色、设定/角色线、大纲/卷纲、大纲/细纲…）
+ *  2) 「第N章」标题 → 正文/第NNN章_标题.md 或 大纲/细纲/第NNN章.md（细纲 + 汇总 大纲/大纲.md）
+ *  3) 无分块 → 整篇落到第一个可解析路径
+ */
 function writeFileSet(bookDir: string, spec: string, text: string): string[] {
   const written: string[] = [];
-  const isOutline = /细纲/.test(spec);
+  const isOutline = /细纲|卷纲|大纲/.test(spec);
   const dir = isOutline ? '大纲/细纲' : artifactDirOf(spec);
-  const chapters = splitChapters(text);
+  const blocks = splitFileBlocks(text);
 
+  if (blocks.length > 0) {
+    for (const b of blocks) {
+      if (!looksLikeRel(b.rel)) continue;
+      const abs = join(bookDir, cleanRel(b.rel));
+      mkdirSync(dirname(abs), { recursive: true });
+      writeFileSync(abs, b.body.trimStart().replace(/^#+\s*\n/, '').trimEnd() + '\n', 'utf8');
+      written.push(cleanRel(b.rel));
+    }
+    // 大纲类：整篇额外汇总到 大纲/大纲.md（编辑器可直接浏览全套）
+    if (isOutline) {
+      const abs = join(bookDir, '大纲', '大纲.md');
+      mkdirSync(dirname(abs), { recursive: true });
+      writeFileSync(abs, text.trimEnd() + '\n', 'utf8');
+      written.push('大纲/大纲.md');
+    }
+    return written;
+  }
+
+  // 2) 「第N章」拆分（正文/细纲）
+  const chapters = splitChapters(text);
   if (chapters.length > 0) {
     for (const ch of chapters) {
       const num = String(ch.num).padStart(3, '0');
       const title = safeFileName(ch.title);
       const rel = isOutline
         ? `${dir}/第${num}章.md`
-        : `${dir}/第${num}章${title ? '_' + title : ''}.md`;
+        : `${dir}/第${num}章${title ? '_' + title : ''}.md`
       const abs = join(bookDir, rel);
       mkdirSync(dirname(abs), { recursive: true });
       const heading = `# 第${num}章${ch.title ? ' ' + ch.title : ''}`;
       writeFileSync(abs, heading + '\n' + ch.body.trimEnd() + '\n', 'utf8');
       written.push(rel);
     }
+    if (isOutline) {
+      const abs = join(bookDir, '大纲', '大纲.md');
+      mkdirSync(dirname(abs), { recursive: true });
+      writeFileSync(abs, text.trimEnd() + '\n', 'utf8');
+      written.push('大纲/大纲.md');
+    }
+    return written;
   }
 
-  if (isOutline) {
-    // 细纲阶段同时落一份全集到 大纲/大纲.md
-    const abs = join(bookDir, '大纲', '大纲.md');
-    mkdirSync(dirname(abs), { recursive: true });
-    writeFileSync(abs, text.trimEnd() + '\n', 'utf8');
-    written.push('大纲/大纲.md');
-  }
-
-  if (written.length === 0) {
-    // 无分章且无汇总 → 整篇落到第一个可解析路径
-    const rel = resolveArtifactPath(spec) || `${dir}/产物.md`;
-    const abs = join(bookDir, rel);
-    mkdirSync(dirname(abs), { recursive: true });
-    writeFileSync(abs, text.trimEnd() + '\n', 'utf8');
-    written.push(rel);
-  }
+  // 3) 无分块 → 整篇落到第一个可解析路径
+  const rel = firstResolvable(spec) || `${dir}/产物.md`;
+  const abs = join(bookDir, rel);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, text.trimEnd() + '\n', 'utf8');
+  written.push(rel);
   return written;
 }
+
 
 function resolveArtifactPath(spec: string): string {
   // 简单解析 `${book}/...` 占位与 `{a.md, b.md}` 集合

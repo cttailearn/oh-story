@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, BookDetail, FileNode } from '../api/client.ts';
 import { PageEditor } from '../components/PageEditor.tsx';
@@ -22,6 +22,7 @@ export function NovelWorkspacePage() {
   const [emotion, setEmotion] = useState<any>(null);
   const [rhythm, setRhythm] = useState<any>(null);
   const [importPending, setImportPending] = useState(false);
+  const [aiEdit, setAiEdit] = useState<{ open: boolean; path: string; mtime: number | null }>({ open: false, path: '', mtime: null });
   const navigate = useNavigate();
 
   const module = (params.get('module') ?? 'chapters') as Module;
@@ -181,6 +182,7 @@ export function NovelWorkspacePage() {
             module={module}
             bookId={bookId!}
             filePath={filePath}
+            tree={tree}
             onSaved={() => {
               api
                 .tree(bookId!)
@@ -192,10 +194,31 @@ export function NovelWorkspacePage() {
       </section>
 
       <aside className="tool-rail">
-        <ToolRail bookId={bookId!} module={module} navigate={navigate} />
+        <ToolRail
+          bookId={bookId!}
+          module={module}
+          navigate={navigate}
+          tree={tree}
+          onRequestAiEdit={(path, mtime) => setAiEdit({ open: true, path, mtime })}
+        />
       </aside>
 
       <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} onOpenPath={openSearchPath} />
+
+      {/* 工作台级 AI 编辑抽屉（右侧工具廊也走这里） */}
+      <AIEditDrawer
+        open={aiEdit.open}
+        onClose={() => setAiEdit((s) => ({ ...s, open: false }))}
+        bookId={bookId!}
+        targetPath={aiEdit.path}
+        mtime={aiEdit.mtime}
+        onApplied={() => {
+          api
+            .tree(bookId!)
+            .then((r) => setTree(r.tree))
+            .catch(() => {});
+        }}
+      />
     </div>
   );
 }
@@ -259,25 +282,41 @@ function FileModule({
   bookId,
   filePath,
   onSaved,
+  tree,
 }: {
   module: Module;
   bookId: string;
   filePath?: string | null;
   onSaved: () => void;
+  tree: FileNode[];
 }) {
-  const defaultCandidates =
-    module === 'chapters'
-      ? ['正文/第001章_军宣新星.md']
-      : module === 'outline'
-        ? ['大纲/大纲.md']
-        : module === 'settings'
-          ? ['设定/题材定位.md']
-          : [];
+  const dir = module === 'chapters' ? '正文' : module === 'outline' ? '大纲' : module === 'settings' ? '设定' : '';
+  // 候选 = 默认文件 + 树里该模块目录下已有 .md 文件（保证总能打开到已有内容）
+  const candidates = useMemo(() => {
+    const list: string[] = [];
+    const defaults =
+      module === 'chapters'
+        ? ['正文/第001章_军宣新星.md']
+        : module === 'outline'
+          ? ['大纲/大纲.md']
+          : module === 'settings'
+            ? ['设定/题材定位.md']
+            : [];
+    list.push(...defaults);
+    const walk = (nodes: FileNode[]): void => {
+      for (const n of nodes) {
+        if (n.type === 'dir') walk(n.children ?? []);
+        else if (dir && n.path.startsWith(dir + '/') && n.path.endsWith('.md') && !list.includes(n.path)) list.push(n.path);
+      }
+    };
+    walk(tree);
+    return list;
+  }, [module, tree]);
   return (
     <FileEditor
       bookId={bookId}
       filePath={filePath}
-      defaultCandidates={defaultCandidates}
+      defaultCandidates={candidates}
       onSaved={onSaved}
     />
   );
@@ -308,6 +347,7 @@ function FileEditor({
   const [gateResult, setGateResult] = useState<any>(null);
   const [gating, setGating] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [attemptIdx, setAttemptIdx] = useState(0);
 
   useEffect(() => {
     if (filePath) setActivePath(filePath);
@@ -327,13 +367,22 @@ function FileEditor({
         setMtime(r.mtime);
       })
       .catch((e) => {
-        if (!cancelled) setConflict(e?.message ?? String(e));
+        if (cancelled) return;
+        // M4：默认候选不存在（如新建书无「军宣新星」章）→ 自动切到树里下一个可用文件，避免空白
+        const notFound = e?.status === 404;
+        if (notFound && attemptIdx < defaultCandidates.length - 1) {
+          const next = defaultCandidates[attemptIdx + 1];
+          if (next) setActivePath(next);
+          setAttemptIdx(attemptIdx + 1);
+          return;
+        }
+        setConflict(e?.message ?? String(e));
       })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [bookId, activePath]);
+  }, [bookId, activePath, attemptIdx, defaultCandidates]);
 
   const save = useCallback(async () => {
     if (!activePath || saving) return;
@@ -463,12 +512,17 @@ function ToolRail({
   bookId,
   module,
   navigate,
+  tree,
+  onRequestAiEdit,
 }: {
   bookId: string;
   module: Module;
   navigate: ReturnType<typeof useNavigate>;
+  tree: FileNode[];
+  onRequestAiEdit: (path: string, mtime: number | null) => void;
 }) {
   const [audit, setAudit] = useState<any[]>([]);
+  const [aiBusy, setAiBusy] = useState(false);
 
   useEffect(() => {
     api
@@ -477,6 +531,33 @@ function ToolRail({
       .catch(() => {});
   }, []);
 
+  // 当前模块的首篇可编辑文件（AI 编辑目标）
+  const moduleDir = module === 'chapters' ? '正文' : module === 'outline' ? '大纲' : module === 'settings' ? '设定' : null;
+  const firstFile = useMemo(() => {
+    if (!moduleDir || !tree.length) return null;
+    const walk = (nodes: FileNode[]): string | null => {
+      for (const n of nodes) {
+        if (n.type === 'dir') { const r = walk(n.children ?? []); if (r) return r; }
+        else if (n.path.startsWith(moduleDir + '/') && n.path.endsWith('.md')) return n.path;
+      }
+      return null;
+    };
+    return walk(tree);
+  }, [tree, moduleDir]);
+
+  const openAiEdit = async () => {
+    if (!firstFile) { alert('当前模块还没有可编辑文件，先运行对应阶段产出。'); return; }
+    setAiBusy(true);
+    try {
+      const f = await api.readFile(bookId, firstFile);
+      onRequestAiEdit(firstFile, f.mtime);
+    } catch (e: any) {
+      onRequestAiEdit(firstFile, null);
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
   return (
     <>
       <h5>工具廊 · {module === 'chapters' ? '正文' : module === 'outline' ? '大纲' : module === 'settings' ? '设定' : '状态'}</h5>
@@ -484,10 +565,11 @@ function ToolRail({
       <div className="rail-block">
         <div className="rb-title">✒ AI 编辑</div>
         <div style={{ color: 'var(--ink-2)', fontSize: 13, lineHeight: 1.8 }}>
-          选中正文/设定中的段落，按 <span className="mono">Ctrl+E</span> 唤醒需求式编辑（M1 实装）。
+          对当前模块「{moduleDir ?? '正文/设定/大纲'}」内文件做需求式编辑（钩子/改开篇/压缩/去AI味…）。
+          {'；目标：' + (firstFile ?? '（暂无）')}
         </div>
-        <button className="ink-btn" style={{ width: '100%', marginTop: 8 }} disabled>
-          （M1 开放）由我改
+        <button className="ink-btn primary" style={{ width: '100%', marginTop: 8 }} onClick={openAiEdit} disabled={aiBusy}>
+          {aiBusy ? '准备中…' : '✒ 由我改（打开 AI 编辑）'}
         </button>
       </div>
 

@@ -9,7 +9,7 @@ import { assembleBundle, CONTEXT_GLUES } from '../agents/contexts/index.ts';
 import { runFakeAgent } from '../agents/execute.ts';
 import { AiRuntime } from '../ai/runtime.ts';
 import { initConfig } from '../config/index.ts';
-import { runStageJob } from '../engine/stageRunner.ts';
+import { runStageJob, splitFileBlocks } from '../engine/stageRunner.ts';
 import { getStageRow } from '../engine/state.ts';
 
 let dir: string;
@@ -173,4 +173,47 @@ describe('stageRunner fake 全链路（M1.7）', () => {
     expect(row.revision).toBe(1);
   });
 
+});
+
+describe('splitFileBlocks（file-set 分块，M4 修复）', () => {
+  it('识别 《设定/角色/X.md》 分块并各自切 body', () => {
+    const text = [
+      '开场说明文字（不在任何块内）。',
+      '',
+      '### 《设定/角色/陆沉舟.md》',
+      '',
+      '# 角色卡：陆沉舟',
+      '- 身份：前声呐兵',
+      '',
+      '### 《设定/角色线/陆沉舟.md》',
+      '',
+      '# 角色弧线：从逃兵到守夜人',
+      '- 阶段A：海底的醉语',
+    ].join('\n');
+    const blocks = splitFileBlocks(text);
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]!.rel).toBe('设定/角色/陆沉舟.md');
+    expect(blocks[0]!.body).toContain('角色卡');
+    expect(blocks[0]!.body).toContain('前声呐兵');
+    expect(blocks[1]!.rel).toBe('设定/角色线/陆沉舟.md');
+    expect(blocks[1]!.body).toContain('角色弧线');
+  });
+  it('兼容无书名号/带反引号 的路径头，且拒绝 .. 逃逸', () => {
+    const text = [
+      '## `大纲/卷纲/卷一.md`',
+      '第一页内容 A',
+      '',
+      '## 大纲/细纲/第12章.md',
+      '第二页内容 B',
+      '## ..\\..\\evil.md',
+      '恶意正文（.. 路径被拒，不作块头）',
+    ].join('\n');
+    const blocks = splitFileBlocks(text);
+    const rels = blocks.map((b) => b.rel);
+    expect(rels).toContain('大纲/卷纲/卷一.md');
+    expect(rels).toContain('大纲/细纲/第12章.md');
+    expect(rels.some((r) => r.includes('..'))).toBe(false);
+    expect(blocks[0]!.body).toContain('第一页内容 A');
+    expect(blocks[0]!.body).not.toContain('第二页内容 B');
+  });
 });

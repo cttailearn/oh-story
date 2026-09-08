@@ -31,7 +31,8 @@ export function AIEditDrawer({ open, onClose, bookId, targetPath, mtime, onAppli
   const [kind, setKind] = useState('hook');
   const [custom, setCustom] = useState('');
   const [role, setRole] = useState('writer');
-  const [fake, setFake] = useState(true);
+  const [fake, setFake] = useState(false);
+  const [hasChannel, setHasChannel] = useState(false);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [result, setResult] = useState<AiEditResp | null>(null);
@@ -40,6 +41,19 @@ export function AIEditDrawer({ open, onClose, bookId, targetPath, mtime, onAppli
 
   useEffect(() => {
     if (open) { setResult(null); setError(null); setOkMsg(null); setCustom(''); }
+  }, [open]);
+
+  // M4：有已配置渠道时默认真实生成（demo 开关仍可切假渠道）
+  useEffect(() => {
+    if (!open) return;
+    api
+      .config()
+      .then((cfg: any) => {
+        const has = (cfg?.channels ?? []).some((c: any) => c.enabled !== false && !!c.api_key);
+        setHasChannel(has);
+        setFake(!has);
+      })
+      .catch(() => {});
   }, [open]);
 
   const generate = useCallback(async () => {
@@ -62,6 +76,10 @@ export function AIEditDrawer({ open, onClose, bookId, targetPath, mtime, onAppli
 
   const apply = async () => {
     if (!result) return;
+    if (!result.resultText || !result.resultText.trim()) {
+      setError('模型未产出有效修改，未应用（避免覆盖原文）');
+      return;
+    }
     setApplying(true); setError(null); setOkMsg(null);
     try {
       const r = await api.writeFile(bookId, targetPath, result.resultText, mtime);
@@ -106,8 +124,8 @@ export function AIEditDrawer({ open, onClose, bookId, targetPath, mtime, onAppli
             value={role}
             onChange={(v) => setRole(String(v))}
           />
-          <Tooltip title="demo 用假渠道（不耗上游额度）">
-            <Tag.CheckableTag checked={fake} onChange={setFake}>demo 模式</Tag.CheckableTag>
+          <Tooltip title={hasChannel ? '当前已配置渠道：默认真实生成（真消费额度）' : '未配置渠道：demo 假渠道'}>
+            <Tag.CheckableTag checked={fake} onChange={setFake}>demo 模式{!hasChannel ? '（未配置渠道）' : ''}</Tag.CheckableTag>
           </Tooltip>
         </div>
 
