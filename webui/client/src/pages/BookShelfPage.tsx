@@ -50,6 +50,9 @@ export function BookShelfPage({ inside }: { inside?: boolean }) {
         <Link to="/projects/new" className="tt-card shelf-card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120, borderStyle: 'dashed', color: 'var(--ink-2)' }}>
           ＋ 新建项目
         </Link>
+        <Link to="/novels/new" className="tt-card shelf-card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120, borderStyle: 'dashed', color: 'var(--ink-2)' }}>
+          ＋ 新建小说
+        </Link>
       </div>
 
       <div className="recent">

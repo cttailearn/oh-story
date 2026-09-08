@@ -6,6 +6,7 @@ import * as fileio from '../fs/index.ts';
 import * as cfgmgr from '../config/index.ts';
 import { runAiEdit, type AiEditRequest } from '../agents/aiEdit.ts';
 import { publish } from '../engine/sse.ts';
+import { seedNovelRequirements, type NovelRequirements } from '../fs/seed.ts';
 
 export interface RouteCtx {
   db: DbHandle;
@@ -107,12 +108,15 @@ export async function registerRoutes(
       type?: string;
       theme_color?: string;
       dir?: string;
+      pipeline?: string;
+      requirements?: NovelRequirements;
     };
     const name = (body.name ?? '').trim();
     if (!name) {
       return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: '缺少 name', detail: { field: 'name' } } });
     }
-    const kind = body.type === 'teardown' ? 'teardown' : 'novel-project';
+    const kind = body.type === 'teardown' ? 'teardown' : body.type === 'novel' ? 'novel' : 'novel-project';
+    const pipeline = kind === 'novel' && (body.pipeline === 'long' || body.pipeline === 'short') ? body.pipeline : null;
     const theme_color = body.theme_color ?? '#B8860B';
     const id = ulid('bk');
     // 目录：默认 <workspace>/<name>；允许显式 dir（用于注册 demo）
@@ -124,7 +128,7 @@ export async function registerRoutes(
           `INSERT INTO books (id, name, dir, kind, pipeline_id, pipeline_version, theme_color, active_stage, meta_json, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(id, name, bookDir, kind, null, null, theme_color, null, '{}', ts, ts);
+        .run(id, name, bookDir, kind, pipeline, kind === 'novel' ? 1 : null, theme_color, null, '{}', ts, ts);
     } catch (e: any) {
       if (String(e?.code ?? '').includes('UNIQUE')) {
         return reply.code(409).send({ error: { code: 'CONFLICT', message: '同名项目/目录已存在', detail: { dir: bookDir } } });
@@ -132,6 +136,18 @@ export async function registerRoutes(
       throw e;
     }
     const row = db.db.prepare(`SELECT * FROM books WHERE id = ?`).get(id) as BookRow;
+    // 新建小说：需求表单种子落盘（设定/题材定位.md + 文风.md）
+    if (kind === 'novel' && body.requirements) {
+      try {
+        seedNovelRequirements(bookDir, body.requirements, name);
+        db.db
+          .prepare(`INSERT INTO audit (ts, who, action, target, detail_json) VALUES (?,?,?,?,?)`)
+          .run(nowIso(), 'user', 'novel:seed', `book:${id}`, JSON.stringify({ pipeline }));
+      } catch (e: any) {
+        // 种子落盘失败不阻断建书（可后补）
+        app.log.warn({ err: e, id }, 'seed requirements failed');
+      }
+    }
     return reply.code(201).send({ ...rowToBook(row), stages: [] });
   });
 

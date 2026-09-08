@@ -75,7 +75,7 @@ export const api = {
 
   listBooks: () => http<{ items: Book[]; total: number }>('/books'),
   getBook: (id: string) => http<BookDetail>(`/books/${id}`),
-  createBook: (body: { name: string; type?: string; theme_color?: string; dir?: string }) =>
+  createBook: (body: { name: string; type?: string; theme_color?: string; dir?: string; pipeline?: string; requirements?: Record<string, unknown> }) =>
     http<Book>('/books', { method: 'POST', body: JSON.stringify(body) }),
 
   tree: (bookId: string, path = '') => http<{ tree: FileNode[] }>(`/books/${bookId}/tree?path=${encodeURIComponent(path)}`),

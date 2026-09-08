@@ -12,6 +12,7 @@ import { SettingsPage } from './pages/SettingsPage.tsx';
 import { ModulesPage } from './pages/ModulesPage.tsx';
 import { TeardownPage } from './pages/TeardownPage.tsx';
 import { ExportPage } from './pages/ExportPage.tsx';
+import { NewNovelPage } from './pages/NewNovelPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
       { index: true, element: <BookShelfPage /> },
       { path: 'projects/new', element: <NewProjectPage /> },
       { path: 'projects/:projectId', element: <BookShelfPage inside /> },
+      { path: 'novels/new', element: <NewNovelPage /> },
       { path: 'novels/:bookId', element: <NovelWorkspacePage /> },
       { path: 'novels/:bookId/pipeline', element: <PipelinePage /> },
       { path: 'modules', element: <ModulesPage /> },
