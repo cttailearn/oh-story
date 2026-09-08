@@ -38,6 +38,25 @@ function glob(root, sub) {
 }
 
 // --- setup: 角色索引 vs 文件 + 角色线阶段编号 ---
+// 角色线阶段来源双路径：独立线文件 `大纲/角色线/{名}.md`（## 阶段规划）优先，角色卡
+// 「## 角色线」标题兜底（功能型配角的轻量线）。两处的阶段小节格式统一：
+// `### 阶段 N：{阶段名}（{卷/章范围}）`，N 从 1 连续编号。
+function stageNumbersOf(lines) {
+  const nums = [];
+  let active = false;
+  for (const l of lines) {
+    if (/^##\s*(角色线|阶段规划)\s*$/.test(l)) {
+      active = true;
+      continue;
+    }
+    if (active && /^##\s/.test(l)) break;
+    if (active) {
+      const m = l.match(/^###\s*阶段\s*(\d+)\s*[：:]/);
+      if (m) nums.push(parseInt(m[1], 10));
+    }
+  }
+  return nums;
+}
 function checkSetup(root) {
   const fails = [];
   // 1. 关系.md 角色索引（**粗体** 或 列表项冒号前）→ 设定/角色/{名}.md
@@ -102,34 +121,34 @@ function checkSetup(root) {
     }
   }
   // 2. 角色线阶段编号连续性（### 阶段 N：从 1 连续、无跳号重复）
+  const stageSources = [];
+  for (const f of glob(root, "大纲/角色线")) {
+    stageSources.push({
+      label: `大纲/角色线/${f}`,
+      lines: readLines(path.join(root, "大纲", "角色线", f)),
+    });
+  }
   for (const f of glob(root, "设定/角色")) {
-    const lines = readLines(path.join(root, "设定", "角色", f));
+    stageSources.push({
+      label: `设定/角色/${f}`,
+      lines: readLines(path.join(root, "设定", "角色", f)),
+    });
+  }
+  for (const { label, lines } of stageSources) {
     if (!lines) continue;
-    const inSection = [];
-    let active = false;
-    for (const l of lines) {
-      if (/^##\s*角色线/.test(l)) {
-        active = true;
-        continue;
-      }
-      if (active && /^##\s/.test(l)) break;
-      if (active) {
-        const m = l.match(/^###\s*阶段\s*(\d+)\s*[：:]/);
-        if (m) inSection.push(parseInt(m[1], 10));
-      }
-    }
+    const inSection = stageNumbersOf(lines);
     if (inSection.length > 0) {
       const sorted = [...inSection].sort((a, b) => a - b);
       for (let i = 0; i < sorted.length; i++) {
         if (sorted[i] !== i + 1) {
           fails.push(
-            `[S1][stage] ${f} 角色线阶段编号不连续（实际 ${sorted.join(",")}，应 1..${Math.max(...sorted)}）`,
+            `[S1][stage] ${label} 角色线阶段编号不连续（实际 ${sorted.join(",")}，应 1..${Math.max(...sorted)}）`,
           );
           break;
         }
       }
       if (new Set(sorted).size !== sorted.length)
-        fails.push(`[S1][stage] ${f} 角色线阶段编号重复`);
+        fails.push(`[S1][stage] ${label} 角色线阶段编号重复`);
     }
   }
   return fails;
@@ -169,7 +188,8 @@ function checkOutline(root) {
 //   - 按 ；/;，/, 拆 token（并剥掉 `——说明` 尾注）
 //   - 角色卡:A/B（一 token 多角色）→ 逐个查 设定/角色/{名}.md
 //   - 世界观:X§小节 / 势力:X → § 后是卡内小节定位，只取文件部分 X 查存在性
-//   - 角色线:{角色名}·阶段N → 查 设定/角色/{角色名}.md 存在 + 「角色线」内「### 阶段 N：」标题存在；
+//   - 角色线:{角色名}·阶段N → 优先查 `大纲/角色线/{角色名}.md`「## 阶段规划」内「### 阶段 N：」，
+//     无独立线文件时回退 `设定/角色/{角色名}.md`「## 角色线」标题内阶段；
 //     多段如 ·阶段2·备注 时 stagePart 非纯阶段号 → want=null，跳过阶段核对（放宽行）
 //   - 物品:X 无独立归档目录，不查文件（语义一致性归写入审查）
 function checkDetail(root) {
@@ -214,10 +234,14 @@ function checkDetail(root) {
           const [namePart, stagePart] = raw.split("·");
           const n = (namePart || "").trim();
           if (!n || n === "无") continue;
+          const linePath = path.join(root, "大纲", "角色线", n + ".md");
           const cardPath = path.join(root, "设定", "角色", n + ".md");
-          if (!fs.existsSync(cardPath)) {
+          const lineLines = fs.existsSync(linePath) ? readLines(linePath) : null;
+          const cardLines =
+            lineLines == null && fs.existsSync(cardPath) ? readLines(cardPath) : null;
+          if (!lineLines && !cardLines) {
             fails.push(
-              `[S2][ref] ${f} 引用角色线:${n} 但 设定/角色/${n}.md 不存在`,
+              `[S2][ref] ${f} 引用角色线:${n} 但 大纲/角色线/${n}.md 与 设定/角色/${n}.md 都不存在`,
             );
             continue;
           }
@@ -229,23 +253,10 @@ function checkDetail(root) {
               want = parseInt(/^阶段\s*(\d+)$/.exec(st)[1], 10);
             else if (/^\d+$/.test(st)) want = parseInt(st, 10);
             if (want !== null) {
-              const cardLines = readLines(cardPath);
-              const stageNums = new Set();
-              let inRoleLine = false;
-              for (const cl of cardLines || []) {
-                if (/^##\s*角色线/.test(cl)) {
-                  inRoleLine = true;
-                  continue;
-                }
-                if (inRoleLine && /^##\s/.test(cl)) break;
-                if (inRoleLine) {
-                  const sm = cl.match(/^###\s*阶段\s*(\d+)\s*[：:]/);
-                  if (sm) stageNums.add(parseInt(sm[1], 10));
-                }
-              }
+              const stageNums = new Set(stageNumbersOf(lineLines || cardLines));
               if (!stageNums.has(want)) {
                 fails.push(
-                  `[S2][ref] ${f} ${n}.md「角色线」无「### 阶段 ${want}：」标题（引用 角色线:${n}·阶段${want}）`,
+                  `[S2][ref] ${f} ${n} 角色线无「### 阶段 ${want}：」标题（引用 角色线:${n}·阶段${want}，查 大纲/角色线/ 或卡内角色线）`,
                 );
               }
             }

@@ -30,6 +30,10 @@ CONTEXT_TARGET_BYTES = 8192
 CONTEXT_MAX_BYTES = 12288
 SNAPSHOT_TARGET_BYTES = 4096
 SNAPSHOT_MAX_BYTES = 8192
+ARC_VIEW_TARGET_BYTES = 2048
+ARC_VIEW_MAX_BYTES = 4096
+ARC_STAGE_LIMIT = 40
+CHAPTER_RANGE_RE = re.compile(r"第(\d+)\s*(?:[-—~至]\s*(\d+))?\s*章")
 
 CONTEXT_HEADINGS = (
     "## 当前位置",
@@ -274,6 +278,98 @@ def normalize_snapshots(value: object, label: str = "character_snapshots") -> di
     return normalized
 
 
+def normalize_arc_design(value: object, label: str) -> dict[str, Any]:
+    """Validate the three author-supplied design fields of a role line."""
+    arc = as_mapping(value, label)
+    stages = as_list(arc.get("stages"), f"{label}.stages")
+    require(stages, f"{label}.stages must contain at least one stage")
+    require(len(stages) <= ARC_STAGE_LIMIT, f"{label}.stages may contain at most {ARC_STAGE_LIMIT} stages")
+    normalized_stages: list[dict[str, str]] = []
+    for index, raw_stage in enumerate(stages):
+        stage = as_mapping(raw_stage, f"{label}.stages[{index}]")
+        require_known_keys(stage, {"name", "planned_chapters"}, f"{label}.stages[{index}]")
+        normalized_stages.append(
+            {
+                "name": clean_text(stage.get("name"), f"{label}.stages[{index}].name", max_bytes=96),
+                "planned_chapters": clean_text(
+                    stage.get("planned_chapters", ""),
+                    f"{label}.stages[{index}].planned_chapters",
+                    allow_empty=True,
+                    max_bytes=128,
+                ),
+            }
+        )
+    return {
+        "line_kind": clean_text(arc.get("line_kind", "角色"), f"{label}.line_kind", max_bytes=24),
+        "summary": clean_text(arc.get("summary", ""), f"{label}.summary", allow_empty=True, max_bytes=480),
+        "stages": normalized_stages,
+    }
+
+
+def normalize_arc_skeleton(value: object, label: str) -> dict[str, Any]:
+    """Validate one role-line registration: immutable design copied into the state machine.
+
+    ``current_stage``/``evidence``/``registered_chapter`` are derived by the tool; the
+    author only supplies line_kind, a one-line summary, and the ordered stage plan.
+    """
+    require_known_keys(value, {"line_kind", "summary", "stages"}, label)
+    return normalize_arc_design(value, label)
+
+
+def normalize_arcs_state(value: object, last_chapter: int, label: str = "tracking state.arcs") -> dict[str, dict[str, Any]]:
+    arcs = as_mapping(value, label)
+    normalized: dict[str, dict[str, Any]] = {}
+    portable_names: set[str] = set()
+    for raw_name, raw_arc in arcs.items():
+        name = safe_file_component(raw_name, f"{label} line name")
+        key = portable_name_key(name)
+        require(key not in portable_names, f"{label} contains a cross-platform duplicate line {name}")
+        portable_names.add(key)
+        arc = as_mapping(raw_arc, f"{label}.{name}")
+        require_known_keys(
+            arc,
+            {"line_kind", "summary", "stages", "current_stage", "evidence", "registered_chapter"},
+            f"{label}.{name}",
+        )
+        design = normalize_arc_design(arc, f"{label}.{name}")
+        stage_count = len(design["stages"])
+        current_raw = arc.get("current_stage")
+        current = None if current_raw is None else as_int(current_raw, f"{label}.{name}.current_stage", minimum=1)
+        require(current is None or current <= stage_count, f"{label}.{name}.current_stage exceeds the last stage")
+        registered = as_int(arc.get("registered_chapter"), f"{label}.{name}.registered_chapter")
+        require(registered <= last_chapter, f"{label}.{name}.registered_chapter is after the current chapter")
+        evidence: dict[str, dict[str, Any]] = {}
+        for raw_index, raw_record in as_mapping(arc.get("evidence", {}), f"{label}.{name}.evidence").items():
+            index = clean_text(raw_index, f"{label}.{name}.evidence key", max_bytes=12)
+            require(index.isdigit() and int(index) > 0, f"{label}.{name}.evidence keys must be 1-based stage numbers")
+            require(int(index) <= stage_count, f"{label}.{name}.evidence references a missing stage")
+            record = as_mapping(raw_record, f"{label}.{name}.evidence.{index}")
+            require_known_keys(record, {"chapter", "anchor"}, f"{label}.{name}.evidence.{index}")
+            require(as_int(record.get("chapter"), f"{label}.{name}.evidence.{index}.chapter", minimum=1) <= last_chapter, f"{label}.{name}.evidence is after the current chapter")
+            evidence[index] = {
+                "chapter": as_int(record.get("chapter"), f"{label}.{name}.evidence.{index}.chapter", minimum=1),
+                "anchor": clean_text(record.get("anchor"), f"{label}.{name}.evidence.{index}.anchor", max_bytes=240),
+            }
+        done_indexes = {int(index) for index in evidence}
+        if current is None:
+            require(
+                done_indexes == set(range(1, stage_count + 1)),
+                f"{label}.{name} is complete but lacks evidence for every stage",
+            )
+        else:
+            require(
+                done_indexes == set(range(1, current)),
+                f"{label}.{name} evidence must cover exactly the completed stages (before the active stage {current})",
+            )
+        normalized[name] = {
+            **design,
+            "current_stage": current,
+            "evidence": evidence,
+            "registered_chapter": registered,
+        }
+    return normalized
+
+
 def render_snapshot(name: str, snapshot: dict[str, Any], through_chapter: int, revision: int) -> str:
     def section(title: str, values: list[str]) -> list[str]:
         return [f"## {title}", *(f"- {item}" for item in values or ["无"]), ""]
@@ -297,6 +393,54 @@ def render_snapshot(name: str, snapshot: dict[str, Any], through_chapter: int, r
     require(
         byte_size(payload) <= SNAPSHOT_MAX_BYTES,
         f"character snapshot {name} exceeds hard cap of {SNAPSHOT_MAX_BYTES} bytes",
+    )
+    return payload
+
+
+def render_arc(name: str, arc: dict[str, Any], revision: int) -> str:
+    """Render the deterministic role-line progress view (plan stays in 大纲/角色线/)."""
+    stage_count = len(arc["stages"])
+    current = arc["current_stage"]
+    if current is None:
+        headline = f"已完结（阶段 {stage_count}/{stage_count}）"
+        status_text = "全部阶段已完成"
+    else:
+        headline = f"阶段 {current}/{stage_count} · 进行中"
+        status_text = "未完"
+
+    def status_of(index: int) -> str:
+        if current is None or index < current:
+            return "已完成"
+        if index == current:
+            return "进行中"
+        return "计划"
+
+    lines = [
+        f"# {name}｜角色线进度",
+        "",
+        f"- 线型：{arc['line_kind']}",
+        f"- 当前：{headline}（{status_text}）",
+        f"- 状态修订：{revision}",
+    ]
+    if arc.get("summary"):
+        lines.append(f"- 弧线：{arc['summary']}")
+    lines.extend(
+        [
+            "",
+            "| 阶段 | 名称 | 计划章节 | 状态 | 证据锚点 |",
+            "|---:|---|---|---|---|",
+        ]
+    )
+    for index, stage in enumerate(arc["stages"], start=1):
+        evidence = arc["evidence"].get(str(index))
+        evidence_cell = f"第{evidence['chapter']}章｜{evidence['anchor']}" if evidence else "—"
+        lines.append(
+            f"| {index} | {stage['name']} | {stage['planned_chapters'] or '—'} | {status_of(index)} | {evidence_cell} |"
+        )
+    payload = "\n".join(lines).rstrip() + "\n"
+    require(
+        byte_size(payload) <= ARC_VIEW_MAX_BYTES,
+        f"arc view {name} exceeds hard cap of {ARC_VIEW_MAX_BYTES} bytes",
     )
     return payload
 
@@ -604,6 +748,28 @@ def render_context(state: dict[str, Any]) -> str:
     return payload
 
 
+def normalize_arc_advances(value: object, label: str) -> list[dict[str, Any]]:
+    items = as_list(value, label)
+    advanced: list[dict[str, Any]] = []
+    for index, raw in enumerate(items):
+        item = as_mapping(raw, f"{label}[{index}]")
+        require_known_keys(item, {"line", "stage", "evidence_anchor"}, f"{label}[{index}]")
+        advanced.append(
+            {
+                "line": safe_file_component(item.get("line"), f"{label}[{index}].line"),
+                "stage": as_int(item.get("stage"), f"{label}[{index}].stage", minimum=1),
+                "evidence_anchor": clean_text(
+                    item.get("evidence_anchor"), f"{label}[{index}].evidence_anchor", max_bytes=240
+                ),
+            }
+        )
+    require(
+        len({item["line"] for item in advanced}) == len(advanced),
+        f"{label} contains duplicate lines",
+    )
+    return advanced
+
+
 def normalize_delta(
     value: object,
     *,
@@ -616,7 +782,7 @@ def normalize_delta(
         delta,
         {
             "result", "character_changes", "foreshadow_changes", "timeline_events", "constraints",
-            "next_chapter_commitments", "retired_context_items", "retired_characters",
+            "next_chapter_commitments", "retired_context_items", "retired_characters", "arc_advances",
         },
         "delta",
     )
@@ -668,6 +834,7 @@ def normalize_delta(
         set(snapshots).issubset({item["name"] for item in character_changes}),
         "character_snapshots must contain exactly the core characters changed by this transaction",
     )
+    arc_advances = normalize_arc_advances(delta.get("arc_advances", []), "delta.arc_advances")
     return {
         "result": clean_text(delta.get("result"), "delta.result", max_bytes=480),
         "character_changes": character_changes,
@@ -681,6 +848,7 @@ def normalize_delta(
             delta.get("retired_context_items", []), "delta.retired_context_items", maximum=11
         ),
         "retired_characters": retired_characters,
+        "arc_advances": arc_advances,
     }
 
 
@@ -741,7 +909,7 @@ def normalize_state(document: object) -> dict[str, Any]:
         root,
         {
             "schema_version", "book_title", "last_committed_chapter", "imported_through_chapter",
-            "state_revision", "context", "characters", "foreshadow", "timeline",
+            "state_revision", "context", "characters", "foreshadow", "timeline", "arcs",
         },
         "tracking state",
     )
@@ -763,9 +931,14 @@ def normalize_state(document: object) -> dict[str, Any]:
         require(name in characters, f"active core character {name} has no current snapshot")
     foreshadow = normalize_foreshadow_state(root.get("foreshadow", {}), last_chapter)
     timeline = normalize_timeline_state(root.get("timeline", {}), last_chapter)
+    arcs = normalize_arcs_state(root.get("arcs", {}), last_chapter)
     if last_chapter == 0:
         require(not foreshadow, "a chapter-0 project cannot have planted foreshadow facts")
         require(not timeline, "a chapter-0 project cannot have established timeline facts")
+        require(
+            all(not arc["evidence"] for arc in arcs.values()),
+            "a chapter-0 project cannot have advanced any role line",
+        )
     return {
         "schema_version": TRACKING_SCHEMA_VERSION,
         "book_title": clean_text(root.get("book_title"), "tracking state.book_title", max_bytes=240),
@@ -776,6 +949,7 @@ def normalize_state(document: object) -> dict[str, Any]:
         "characters": characters,
         "foreshadow": foreshadow,
         "timeline": timeline,
+        "arcs": arcs,
     }
 
 
@@ -789,7 +963,10 @@ def normalize_initial_document(document: object) -> dict[str, Any]:
     root = as_mapping(document, "init input")
     require_known_keys(
         root,
-        {"schema_version", "book_title", "last_chapter", "context", "character_snapshots", "foreshadow", "timeline_events"},
+        {
+            "schema_version", "book_title", "last_chapter", "context", "character_snapshots",
+            "foreshadow", "timeline_events", "arcs",
+        },
         "init input",
     )
     require(root.get("schema_version") == INPUT_SCHEMA_VERSION, "init input schema_version is unsupported")
@@ -815,6 +992,18 @@ def normalize_initial_document(document: object) -> dict[str, Any]:
         event["first_recorded_chapter"] = max(1, last_chapter)
         event["updated_chapter"] = max(1, last_chapter)
         timeline[event["id"]] = event
+    arcs: dict[str, dict[str, Any]] = {}
+    for raw_name, raw_arc in as_mapping(root.get("arcs", {}), "init input.arcs").items():
+        name = safe_file_component(raw_name, "init input.arcs line name")
+        key = portable_name_key(name)
+        require(key not in {portable_name_key(other) for other in arcs}, f"init input.arcs contains a duplicate line {name}")
+        skeleton = normalize_arc_skeleton(raw_arc, f"init input.arcs.{name}")
+        arcs[name] = {
+            **skeleton,
+            "current_stage": 1,
+            "evidence": {},
+            "registered_chapter": max(0, last_chapter),
+        }
     return normalize_state(
         {
             "schema_version": TRACKING_SCHEMA_VERSION,
@@ -826,6 +1015,7 @@ def normalize_initial_document(document: object) -> dict[str, Any]:
             "characters": snapshots,
             "foreshadow": foreshadow,
             "timeline": timeline,
+            "arcs": arcs,
         }
     )
 
@@ -836,7 +1026,7 @@ def normalize_transaction(state: dict[str, Any], document: object) -> dict[str, 
         root,
         {
             "schema_version", "mode", "chapter", "chapter_title", "expected_state_revision",
-            "delta", "context", "character_snapshots",
+            "delta", "context", "character_snapshots", "arcs",
         },
         "transaction",
     )
@@ -864,6 +1054,20 @@ def normalize_transaction(state: dict[str, Any], document: object) -> dict[str, 
         snapshots=snapshots,
         existing_core_names=existing_names,
     )
+    registrations: dict[str, dict[str, Any]] = {}
+    existing_arc_keys = {portable_name_key(name) for name in state["arcs"]}
+    for raw_name, raw_arc in as_mapping(root.get("arcs", {}), "transaction.arcs").items():
+        name = safe_file_component(raw_name, "transaction.arcs line name")
+        key = portable_name_key(name)
+        require(key not in existing_arc_keys, f"arc line {name} is already registered")
+        require(key not in {portable_name_key(other) for other in registrations}, f"transaction.arcs contains a duplicate line {name}")
+        skeleton = normalize_arc_skeleton(raw_arc, f"transaction.arcs.{name}")
+        registrations[name] = {
+            **skeleton,
+            "current_stage": 1,
+            "evidence": {},
+            "registered_chapter": chapter,
+        }
     return {
         "mode": mode,
         "chapter": chapter,
@@ -871,6 +1075,7 @@ def normalize_transaction(state: dict[str, Any], document: object) -> dict[str, 
         "delta": delta,
         "context": context,
         "snapshots": snapshots,
+        "registrations": registrations,
     }
 
 
@@ -943,6 +1148,27 @@ def merge_transaction(state: dict[str, Any], transaction: dict[str, Any]) -> dic
                 change, chapter, next_state["timeline"].get(change["id"]), keep_first_chapter=True
             )
 
+    # 角色线：先注册新线，再按序推进（同一事务可注册并立即推进一条新线）。
+    # 推进意味着「宣告当前阶段达成并进入下一阶段」，只能按序打开下一个阶段，
+    # 且每条推进都要带证据锚点；progression 只有 append 才代表「此刻」，修订事务不准动弧线。
+    require(
+        not (is_revision and transaction["delta"]["arc_advances"]),
+        "arc advances must be committed in an append transaction, not a revision",
+    )
+    for name, arc in transaction["registrations"].items():
+        next_state["arcs"][name] = arc
+    for advance in transaction["delta"]["arc_advances"]:
+        arc = next_state["arcs"].get(advance["line"])
+        require(arc is not None, f"arc line {advance['line']} is not registered")
+        current = arc["current_stage"]
+        require(current is not None, f"arc line {advance['line']} is already complete")
+        require(
+            advance["stage"] == current,
+            f"arc line {advance['line']} can only advance its active stage {current}, got {advance['stage']}",
+        )
+        arc["evidence"][str(advance["stage"])] = {"chapter": chapter, "anchor": advance["evidence_anchor"]}
+        arc["current_stage"] = None if advance["stage"] == len(arc["stages"]) else advance["stage"] + 1
+
     recent_by_chapter = {item["chapter"]: item for item in state["context"]["recent_chapters"]}
     if chapter in recent_by_chapter or transaction["mode"] == "append":
         recent_by_chapter[chapter] = {"chapter": chapter, "summary": transaction["delta"]["result"]}
@@ -974,6 +1200,8 @@ def render_views(state: dict[str, Any]) -> dict[str, str]:
         views[f"角色状态/{name}.md"] = render_snapshot(
             name, snapshot, state["last_committed_chapter"], revision
         )
+    for name, arc in state["arcs"].items():
+        views[f"角色线/{name}.md"] = render_arc(name, arc, revision)
     return views
 
 
@@ -990,6 +1218,12 @@ def write_views(tracking: Path, views: dict[str, str]) -> None:
     character_dir.mkdir(parents=True, exist_ok=True)
     for path in character_dir.glob("*.md"):
         if path.name not in expected_character_files:
+            path.unlink()
+    expected_arc_files = {Path(relative).name for relative in views if relative.startswith("角色线/")}
+    arc_dir = tracking / "角色线"
+    arc_dir.mkdir(parents=True, exist_ok=True)
+    for path in arc_dir.glob("*.md"):
+        if path.name not in expected_arc_files:
             path.unlink()
 
 
@@ -1009,6 +1243,15 @@ def warn_sizes(views: dict[str, str], delta_payload: str | None = None) -> None:
         if size > SNAPSHOT_TARGET_BYTES:
             emit(
                 f"WARNING: character snapshot {Path(relative).stem} is {size} bytes; target is <= {SNAPSHOT_TARGET_BYTES}",
+                error=True,
+            )
+    for relative, payload in views.items():
+        if not relative.startswith("角色线/"):
+            continue
+        size = byte_size(payload)
+        if size > ARC_VIEW_TARGET_BYTES:
+            emit(
+                f"WARNING: arc view {Path(relative).stem} is {size} bytes; target is <= {ARC_VIEW_TARGET_BYTES}",
                 error=True,
             )
 
@@ -1096,7 +1339,63 @@ def check_project(project: Path) -> dict[str, Any]:
     }
     actual_character_files = {path.name for path in (tracking / "角色状态").glob("*.md")}
     require(actual_character_files == expected_character_files, "character snapshot files differ from tracking state")
+    expected_arc_files = {Path(relative).name for relative in expected_views if relative.startswith("角色线/")}
+    arc_dir = tracking / "角色线"
+    actual_arc_files = {path.name for path in arc_dir.glob("*.md")} if arc_dir.exists() else set()
+    require(actual_arc_files == expected_arc_files, "arc view files differ from tracking state")
     return state
+
+
+def audit_arcs(project: Path) -> dict[str, Any]:
+    """Read-only role-line audit: plan-vs-actual progress, purely from the state authority.
+
+    计划 vs 实际的核对是全线的：计划章节范围在注册时已拷贝进状态机骨架，这里只从
+    ``_tracking-state.json`` 读；详尽的设计（变化信号/进入条件）留在 ``大纲/角色线/``，
+    由 consistency-checker 对照追踪视图人工比对。本命令不做任何写入。
+    """
+    require_no_retired_tracking_paths(tracking_root(project))
+    state = load_state(project)
+    last = state["last_committed_chapter"]
+    report: dict[str, dict[str, Any]] = {}
+    notes: list[str] = []
+    for name, arc in sorted(state["arcs"].items()):
+        stage_count = len(arc["stages"])
+        current = arc["current_stage"]
+        completed = current is None
+        # 已达成（含证据）的阶段数：已完成时全部；否则 = 当前进行阶段的前一阶段。
+        achieved = stage_count if completed else current - 1
+        last_evidence = arc["evidence"].get(str(achieved)) if achieved >= 1 else None
+        planned = arc["stages"][achieved - 1]["planned_chapters"] if achieved >= 1 else ""
+        overdue = False
+        if not completed and planned:
+            match = CHAPTER_RANGE_RE.search(planned)
+            if match:
+                end = int(match.group(2)) if match.group(2) else int(match.group(1))
+                if last > end:
+                    overdue = True
+        report[name] = {
+            "status": "completed" if completed else f"active:{current}",
+            "total_stages": stage_count,
+            "achieved_stages": achieved,
+            "last_advance_chapter": last_evidence["chapter"] if last_evidence else None,
+            "planned_for_current": planned,
+            "registered_chapter": arc["registered_chapter"],
+            "overdue": overdue,
+        }
+        if completed:
+            notes.append(f"NOTE: 角色线「{name}」已完结（{stage_count} 个阶段全部达成并有证据锚点）。")
+        elif overdue:
+            notes.append(
+                f"NOTE: 角色线「{name}」可能滞后——当前阶段计划「{planned}」的区间终点已过（截至第{last}章仍未推进）。"
+            )
+    for note in notes:
+        emit(note, error=True)
+    return {
+        "book_title": state["book_title"],
+        "last_committed_chapter": last,
+        "state_revision": state["state_revision"],
+        "arc_lines": report,
+    }
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1106,8 +1405,9 @@ def build_parser() -> argparse.ArgumentParser:
         subparser = subparsers.add_parser(command)
         subparser.add_argument("--project", type=Path, required=True, help="book project root containing 追踪/")
         subparser.add_argument("--input", type=Path, required=True, help="UTF-8 JSON input document")
-    check_parser = subparsers.add_parser("check")
-    check_parser.add_argument("--project", type=Path, required=True, help="book project root containing 追踪/")
+    for command in ("check", "arc-audit"):
+        subparser = subparsers.add_parser(command)
+        subparser.add_argument("--project", type=Path, required=True, help="book project root containing 追踪/")
     return parser
 
 
@@ -1118,20 +1418,25 @@ def main() -> int:
             result = initialize(args.project, read_json(args.input))
         elif args.command == "commit":
             result = apply_transaction(args.project, read_json(args.input))
+        elif args.command == "arc-audit":
+            result = audit_arcs(args.project)
         else:
             result = check_project(args.project)
     except (TrackingError, OSError, UnicodeError) as exc:
         emit(f"ERROR: {exc}", error=True)
         return 2
-    emit(
-        json.dumps(
-            {
-                "last_committed_chapter": result["last_committed_chapter"],
-                "state_revision": result["state_revision"],
-            },
-            ensure_ascii=False,
+    if args.command == "arc-audit":
+        emit(json.dumps(result, ensure_ascii=False))
+    else:
+        emit(
+            json.dumps(
+                {
+                    "last_committed_chapter": result["last_committed_chapter"],
+                    "state_revision": result["state_revision"],
+                },
+                ensure_ascii=False,
+            )
         )
-    )
     return 0
 
 

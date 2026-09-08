@@ -35,7 +35,16 @@
     "    查3 fail-closed 说明 + O1 场景演化学引用增量；同时改写原「固定模板手工填写」说明，净增约 285 字）",
     "判断依据：O6 把三查的机械部分（查1 追踪状态、查3 禁用词 Gate）改为脚本自动填充，模型只填查2 差异",
     "列表与 S 级发现、结论——是写作流程减负的核心接线，属真实必需功能而非冗余文本；O1 补账场景演化学",
-    "子项规则。调高后仍低于实质量级警戒，未来增删需回到实质量级。"
+    "子项规则。调高后仍低于实质量级警戒，未来增删需回到实质量级。",
+    "",
+    "v2.5 预算调整（角色线独立文件方案 A：角色线从角色卡拆到 大纲/角色线/，阶段状态机进 追踪/的角色线进度视图，",
+    "弧线登记/推进/arc-audit，写前状态筛选与写后事务都带弧线信息）：",
+    "  - workflow-setup.md: 18300->18600（+300，角色线文件小节替换原「角色卡角色线标题」+ 登记说明）",
+    "  - workflow-chapter.md: 13270->13440（+170，设定引用加载角色线文件 + 状态筛选带变化信号）",
+    "  - workflow-daily.md: 11300->11420（+120，事务字段补 arc_advances 与推进时机）",
+    "  - paths.长篇日更主会话: 39100->39600、paths.长篇开书: 33100->33350（同步文件上调后的合计）",
+    "判断依据：角色线状态机是真实新增功能（工具侧已实现并带单测），上述增量只在开书/日更热路径补挂",
+    "角色线这一层的读取与提交说明，非冗余文本；显式调高并留余量。"
   ],
   "files": [
     {
@@ -45,18 +54,18 @@
     },
     {
       "path": "skills/story-long-write/references/workflow-daily.md",
-      "budget": 11300,
-      "why": "日更每次会话加载，且与 SKILL.md 叠加"
+      "budget": 11420,
+      "why": "日更每次会话加载，且与 SKILL.md 叠加；v2.5 事务字段补角色线 arc_advances 与推进时机（超预算，显式调高）"
     },
     {
       "path": "skills/story-long-write/references/workflow-chapter.md",
-      "budget": 13270,
-      "why": "单章正文与质量检查，日更/单章路径都加载；细纲照搬复扫（check-outline-copy.js）调用点；v2.2.0 修订联动 + 三查落盘 + 时间线一致性 S2 语义；v2.3 三查落盘接线改 write-review-record.js + O1 密点场景演化学引用（超预算，显式调高）"
+      "budget": 13440,
+      "why": "单章正文与质量检查，日更/单章路径都加载；细纲照搬复扫（check-outline-copy.js）调用点；v2.2.0 修订联动 + 三查落盘 + 时间线一致性 S2 语义；v2.3 三查落盘接线改 write-review-record.js + O1 密点场景演化学引用；v2.5 设定引用加载角色线文件 + 状态筛选带变化信号（超预算，显式调高）"
     },
     {
       "path": "skills/story-long-write/references/workflow-setup.md",
-      "budget": 18300,
-      "why": "开书必读（含细纲模板）；v2.1.0 Gate A/B/C 接入写入审查 + LEAN 充实度层 + 审查记录完成定义 + 长章情节点示例增量（超预算，显式调高）"
+      "budget": 18600,
+      "why": "开书必读（含细纲模板）；v2.1.0 Gate A/B/C 接入写入审查 + LEAN 充实度层 + 审查记录完成定义 + 长章情节点示例增量；v2.5 角色线文件小节/登记/对齐说明替换原「角色卡角色线标题」（超预算，显式调高）"
     },
     {
       "path": "skills/story-short-write/SKILL.md",
@@ -97,8 +106,8 @@
   "paths": [
     {
       "label": "长篇日更主会话",
-      "budget": 39100,
-      "why": "日更每章加载：SKILL.md + workflow-daily + workflow-chapter；v1.8 workflow-chapter 步骤 1 接线 check-outline-detail.js（写正文前细纲硬字段机械校验，THIN 即补建，防薄细纲）",
+      "budget": 39600,
+      "why": "日更每章加载：SKILL.md + workflow-daily + workflow-chapter；v1.8 workflow-chapter 步骤 1 接线 check-outline-detail.js（写正文前细纲硬字段机械校验，THIN 即补建，防薄细纲）；v2.5 角色线弧线进度/arc_advances 接入（超预算，显式调高）",
       "files": [
         "skills/story-long-write/SKILL.md",
         "skills/story-long-write/references/workflow-daily.md",
@@ -107,8 +116,8 @@
     },
     {
       "label": "长篇开书",
-      "budget": 33100,
-      "why": "开书路径：SKILL.md + workflow-setup.md；v1.8 Gate C 升两步落盘校验（check-outline-detail.js 字段完整性 + 设定引用 grep）",
+      "budget": 33350,
+      "why": "开书路径：SKILL.md + workflow-setup.md；v1.8 Gate C 升两步落盘校验（check-outline-detail.js 字段完整性 + 设定引用 grep）；v2.5 角色线文件小节/登记说明（超预算，显式调高）",
       "files": [
         "skills/story-long-write/SKILL.md",
         "skills/story-long-write/references/workflow-setup.md"

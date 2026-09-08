@@ -8,7 +8,7 @@
 |---|---|---|
 | 唯一权威 | `_tracking-state.json` | schema、最后提交章、导入截止章、状态修订号、上下文结构、全部当前角色/伏笔/时间线状态 |
 | 章节记录 | `逐章记录/第NNN章.md` | 本章对未来连续性有用的紧凑变化；目标 ≤1536 字节，硬上限 3072 字节；导入范围内修订写成覆盖记录 |
-| 派生视图 | `上下文.md`、`角色状态/{角色名}.md`、`伏笔.md`、`时间线/作者真相.md`、`时间线/读者已知.md` | 完全从 `_tracking-state.json` 生成；禁止手改，不作为程序输入 |
+| 派生视图 | `上下文.md`、`角色状态/{角色名}.md`、`角色线/{线名}.md`、`伏笔.md`、`时间线/作者真相.md`、`时间线/读者已知.md` | 完全从 `_tracking-state.json` 生成；禁止手改，不作为程序输入 |
 
 Markdown 只负责给作者和 Agent 阅读，工具不再反向解析 Markdown。`check` 直接从 `_tracking-state.json` 重渲染并逐文件比较。未来“第几章揭示”的计划写在卷纲/细纲，不写成时间线既成事实。
 逐章记录只是便于人阅读的紧凑变化记录，不承诺单独无损重建全部当前状态；完整当前语义以 `_tracking-state.json` 为准。
@@ -21,6 +21,7 @@ Markdown 只负责给作者和 Agent 阅读，工具不再反向解析 Markdown�
 {PYTHON} {当前 skill 根}/scripts/tracking_commit.py init   --project {书项目根} --input {初始化事务.json}
 {PYTHON} {当前 skill 根}/scripts/tracking_commit.py commit --project {书项目根} --input {逐章事务.json}
 {PYTHON} {当前 skill 根}/scripts/tracking_commit.py check  --project {书项目根}
+{PYTHON} {当前 skill 根}/scripts/tracking_commit.py arc-audit --project {书项目根}
 ```
 
 - `init`：只在 `_tracking-state.json` 不存在时执行，绝不覆盖已初始化项目。
@@ -145,6 +146,52 @@ Markdown 只负责给作者和 Agent 阅读，工具不再反向解析 Markdown�
 - `timeline_events.action` 可为 `upsert/delete`。`未揭示` 的 `reveal_chapter` 必须为 `null`；部分/完全揭示只能填写已经发生的实际章节。
 - `mode=revision` 时，逐章记录必须重算为修订后该章仍然成立的完整连续性记录；当前角色、伏笔、时间线和上下文则提交受影响对象截至最新已写章的当前值。
 - 修订导入截止章内的正文时，会新增或覆盖该章的逐章记录；`imported_through_chapter` 不变。
+
+## 角色线（弧线状态机）
+
+角色线 = 「人物如何变化」的计划 + 进度。**设计**（弧线类型/阶段规划/变化信号/进入条件/交织点）写在 `大纲/角色线/{线名}.md`（由 character-designer 维护，模板见 character-basics.md 第 8 节「角色线文件」）；**状态机**（推进到哪个阶段、证据在哪章）由本工具维护在 `_tracking-state.json.arcs`，并派生 `追踪/角色线/{线名}.md` 进度视图。角色卡只放静态人设与线指针，不再重复阶段状态。
+
+### 注册（登记弧线骨架）
+
+新线在 `init` 的 `arcs` 字段登记；已有项目用**事务根字段** `arcs` 登记（只登记新线 `line_kind/summary/stages`，不得覆盖已注册线）：
+
+```json
+"arcs": {
+  "沈栀": {
+    "line_kind": "角色",
+    "summary": "自我价值觉醒：LIE=我只会拖累别人 → TRUTH=允许被需要也是力量",
+    "stages": [
+      {"name": "戒备→微暖", "planned_chapters": "第1-8章"},
+      {"name": "微暖→依赖", "planned_chapters": "第9-30章"},
+      {"name": "依赖→信任", "planned_chapters": "第31-60章"}
+    ]
+  }
+}
+```
+
+注册后 `current_stage=1`（阶段 1 激活，其余计划中）、`evidence` 为空、`registered_chapter` = 当前章。这里只拷贝阶段骨架（名称 + 计划章节范围）供状态机与审计；变化信号等设计细节留在 `大纲/角色线/`。
+
+### 推进（arc_advances）
+
+每章写完后，若某线**当前活跃阶段的验收信号**已达成，在 `delta.arc_advances` 声明推进（只能推进当前活跃阶段，顺序推进；同一线一个事务只推一次）：
+
+```json
+"delta": {
+  "arc_advances": [
+    {"line": "沈栀", "stage": 1, "evidence_anchor": "第2章『……也行吧（小声）谢了。』"}
+  ]
+}
+```
+
+- `stage` = 正在**完成**的阶段，必须等于当前活跃阶段；跳阶段、对已完结线推进、未注册线推进都会被拒。
+- `evidence_anchor` 必填且 ≤240 字节：指向已完成正文的简短引用（章节号 + 台词/动作），让「变化可验证」。
+- 工具把该阶段标记为已完成并把证据写入 `evidence`，下一阶段自动激活；最后一个阶段完成则该线「已完结」（`current_stage=null`，全部阶段须有证据）。
+- 推进只允许 `mode=append`；修订事务不准动弧线（同退役规则，避免谎报推进发生的章节）。
+
+### 派生视图与审计
+
+- `追踪/角色线/{线名}.md` 由 state 确定性渲染：线型/弧线摘要/当前阶段/状态修订 + 各阶段表（阶段号/名称/计划章节/状态 已完成|进行中|计划/证据锚点）。目标 ≤2048 字节、硬上限 4096 字节；`check` 逐字比对并在 `check` 时校验文件集合。
+- `arc-audit --project {书项目根}` 只读输出每条线的 JSON 报告：`status`（`completed` / `active:N`）、`total_stages`、`achieved_stages`、`last_advance_chapter`、`planned_for_current`、`overdue`（当前阶段计划区间终点已过却未推进的软提示，stderr NOTE）。计划 vs 实际全部从状态权威读取，**不解析 `大纲/角色线/` Markdown**；详尽的设计对照由 consistency-checker 读计划文件 + 进度视图完成。
 
 ## 续写状态卡固定格式
 

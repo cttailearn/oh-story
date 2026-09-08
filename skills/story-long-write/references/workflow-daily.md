@@ -86,7 +86,7 @@
      - **无 story-explorer 时直接执行**：主会话按 workflow-chapter.md 写前准备 (a)-(f) 手动依次召回情绪模块、节奏、题材卡、文风与匹配章 K；模块或节奏文件缺失时设置 `missing_primary_contract` 并停止修复
    - **写后清零不拖到批末**：写后 hook 推回的毒句式命中当轮清零，不得攒到 Step 3。
    - 每章写完后**立即提交一次追踪事务**：
-     1. 从刚落盘的正文、细纲和上一版续写状态卡提取 `result / character_changes / foreshadow_changes / timeline_events / constraints / next_chapter_commitments`。只记录会影响未来章节的变化；过程日志、质检计数、参照章和去 AI 味统计全部排除。
+     1. 从刚落盘的正文、细纲和上一版续写状态卡提取 `result / character_changes / foreshadow_changes / timeline_events / constraints / next_chapter_commitments / arc_advances`。只记录会影响未来章节的变化；过程日志、质检计数、参照章和去 AI 味统计全部排除。`arc_advances` 仅当建有独立线文件（`大纲/角色线/`）的角色「当前阶段变化信号」本章达成时才提交（`line/stage/evidence_anchor`，stage=当前活跃阶段，见 tracking-transaction.md「角色线」），未达成不推进。
      2. 需要长期复用的核心角色，把完整动态快照放进 `character_snapshots`，并在 `character_changes` 写对应变化；一次性路人只写变化、不交快照。已有动态快照的核心角色再次变化时必须提交新快照。静态人设继续以 `设定/角色/{名}.md` 为准。
      3. `context.long_term_constraints`、当前卷/故事时间/场景、活跃核心角色名、连贯性风险提交当前完整值；活跃伏笔、近三章速记和下一章承诺由工具从当前视图/本章增量派生，不重复手填。
      4. 把最近一次 `tracking_commit.py check` 返回的 `state_revision` 写入事务 `expected_state_revision`，再把 JSON 写到临时文件并执行 `tracking_commit.py commit`。**临时事务 JSON 固定写到 `{书项目根}/.story-txn/pending.json`**（不入 `追踪/`），成功并复检后删除 JSON；脚本返回新的 `state_revision` 才能进入下一章。

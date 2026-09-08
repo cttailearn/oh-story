@@ -131,6 +131,38 @@ def transaction(
     }
 
 
+def arc_line_spec(*, name: str = "沈栀", summary: str = "自我价值觉醒，LIE=我不配 → TRUTH=允许被需要") -> dict[str, object]:
+    return {
+        "line_kind": "角色",
+        "summary": summary,
+        "stages": [
+            {"name": "戒备①微暖", "planned_chapters": "第1-8章"},
+            {"name": "微暖①依赖", "planned_chapters": "第9-30章"},
+            {"name": "依赖①信任", "planned_chapters": "第31-60章"},
+        ],
+    }
+
+
+def transaction_with_arc(
+    chapter: int,
+    *,
+    mode: str = "append",
+    advances: list[dict[str, object]] | None = None,
+    registrations: dict[str, dict[str, object]] | None = None,
+) -> dict[str, object]:
+    document = transaction(chapter, mode=mode)
+    document["delta"]["arc_advances"] = advances or []
+    if registrations:
+        document["arcs"] = registrations
+    return document
+
+
+def initial_with_arc(*, last_chapter: int = 0) -> dict[str, object]:
+    document = initial_document(last_chapter=last_chapter)
+    document["arcs"] = {"沈栀": arc_line_spec()}
+    return document
+
+
 def load_tool_module():
     spec = importlib.util.spec_from_file_location("tracking_commit_under_test", TOOL)
     assert spec and spec.loader
@@ -520,6 +552,114 @@ class TrackingCommitTests(unittest.TestCase):
         invalid["character_snapshots"] = {"CON": invalid["character_snapshots"]["江晨"]}
         self.run_tool("commit", invalid, expect=2)
         self.assertEqual(self.read_state()["state_revision"], 0)
+
+    def test_init_registers_arcs_and_renders_role_line_progress_view(self) -> None:
+        self.run_tool("init", initial_with_arc())
+        tracking = self.project / "追踪"
+        state = self.read_state()
+
+        self.assertEqual(state["arcs"]["沈栀"]["current_stage"], 1)
+        self.assertEqual(state["arcs"]["沈栀"]["evidence"], {})
+        self.assertEqual(state["arcs"]["沈栀"]["stages"], arc_line_spec()["stages"])
+        view = (tracking / "角色线/沈栀.md").read_text(encoding="utf-8")
+        self.assertIn("阶段 1/3", view)
+        self.assertIn("进行中", view)
+        self.assertNotIn("已完结", view)
+        self.run_tool("check")
+
+    def test_arc_advances_in_order_and_complete_the_line(self) -> None:
+        self.run_tool("init", initial_with_arc())
+        self.run_tool("commit", transaction_with_arc(1))
+        self.run_tool("commit", transaction_with_arc(2, advances=[{"line": "沈栀", "stage": 1, "evidence_anchor": "第2章『……也行吧』"}]))
+        state = self.read_state()
+        self.assertEqual(state["arcs"]["沈栀"]["current_stage"], 2)
+        self.assertEqual(state["arcs"]["沈栀"]["evidence"]["1"]["chapter"], 2)
+        self.assertEqual(state["arcs"]["沈栀"]["evidence"]["1"]["anchor"], "第2章『……也行吧』")
+
+        self.run_tool("commit", transaction_with_arc(3))
+        self.run_tool("commit", transaction_with_arc(4, advances=[{"line": "沈栀", "stage": 2, "evidence_anchor": "第4章第一次主动求助"}]))
+        self.run_tool("commit", transaction_with_arc(5))
+        self.run_tool("commit", transaction_with_arc(6, advances=[{"line": "沈栀", "stage": 3, "evidence_anchor": "第6章主动说出秘密"}]))
+        state = self.read_state()
+        self.assertIsNone(state["arcs"]["沈栀"]["current_stage"])
+        view = (self.project / "追踪/角色线/沈栀.md").read_text(encoding="utf-8")
+        self.assertIn("已完结", view)
+        self.assertIn("第6章｜第6章主动说出秘密", view)
+        self.run_tool("check")
+
+    def test_arc_advance_rejection_matrix(self) -> None:
+        self.run_tool("init", initial_with_arc())
+        self.run_tool("commit", transaction_with_arc(1))
+        self.run_tool("commit", transaction_with_arc(2, advances=[{"line": "沈栀", "stage": 1, "evidence_anchor": "第2章『……也行吧』"}]))
+        self.assertEqual(self.read_state()["state_revision"], 2)
+
+        # 只能推进到当前活跃阶段，跳阶段被拒。
+        skip = transaction_with_arc(3, advances=[{"line": "沈栀", "stage": 3, "evidence_anchor": "想跳过"}])
+        result = self.run_tool("commit", skip, expect=2)
+        self.assertIn("can only advance its active stage", result.stderr)
+        self.assertEqual(self.read_state()["state_revision"], 2)
+        self.assertFalse((self.project / "追踪/逐章记录/第003章.md").exists())
+
+        # 未注册线被拒。
+        unregistered = transaction_with_arc(3, advances=[{"line": "不存在", "stage": 1, "evidence_anchor": "x"}])
+        result = self.run_tool("commit", unregistered, expect=2)
+        self.assertIn("is not registered", result.stderr)
+        self.assertEqual(self.read_state()["state_revision"], 2)
+
+        # 缺证据锚点被拒。
+        anchorless = transaction_with_arc(3, advances=[{"line": "沈栀", "stage": 2, "evidence_anchor": ""}])
+        result = self.run_tool("commit", anchorless, expect=2)
+        self.assertIn("must not be empty", result.stderr)
+        self.assertEqual(self.read_state()["state_revision"], 2)
+
+        # 已完结线无法再推进（先把线写完，再试对第 3 阶段推进）。
+        self.run_tool("commit", transaction_with_arc(3))
+        self.run_tool("commit", transaction_with_arc(4, advances=[{"line": "沈栀", "stage": 2, "evidence_anchor": "依赖"}]))
+        self.run_tool("commit", transaction_with_arc(5))
+        self.run_tool("commit", transaction_with_arc(6, advances=[{"line": "沈栀", "stage": 3, "evidence_anchor": "信任"}]))
+        completed = transaction_with_arc(7, advances=[{"line": "沈栀", "stage": 3, "evidence_anchor": "又推"}])
+        result = self.run_tool("commit", completed, expect=2)
+        self.assertIn("already complete", result.stderr)
+        self.run_tool("check")
+
+    def test_arc_advance_is_rejected_in_a_revision(self) -> None:
+        self.run_tool("init", initial_with_arc(last_chapter=20))
+        revision = transaction(10, mode="revision")
+        revision["delta"]["arc_advances"] = [{"line": "沈栀", "stage": 1, "evidence_anchor": "x"}]
+        result = self.run_tool("commit", revision, expect=2)
+        self.assertIn("append transaction", result.stderr)
+        self.assertEqual(self.read_state()["state_revision"], 0)
+
+    def test_arc_can_be_registered_mid_book_and_only_once(self) -> None:
+        self.run_tool("init", initial_with_arc())
+        registered = transaction_with_arc(
+            1,
+            registrations={"感情线": {"line_kind": "感情线", "summary": "戒备到深恋", "stages": [{"name": "认识", "planned_chapters": "第1-10章"}, {"name": "暧昧", "planned_chapters": "第11-40章"}]}},
+        )
+        self.run_tool("commit", registered)
+        state = self.read_state()
+        self.assertIn("沈栀", state["arcs"])
+        self.assertEqual(state["arcs"]["感情线"]["current_stage"], 1)
+        self.assertTrue((self.project / "追踪/角色线/感情线.md").exists())
+
+        duplicate = transaction_with_arc(2, registrations={"感情线": {"line_kind": "感情线", "stages": [{"name": "a", "planned_chapters": "第1章"}]}})
+        result = self.run_tool("commit", duplicate, expect=2)
+        self.assertIn("already registered", result.stderr)
+        self.assertEqual(self.read_state()["state_revision"], 1)
+        self.run_tool("check")
+
+    def test_arc_audit_reports_line_progress(self) -> None:
+        self.run_tool("init", initial_with_arc())
+        self.run_tool("commit", transaction_with_arc(1))
+        self.run_tool("commit", transaction_with_arc(2, advances=[{"line": "沈栀", "stage": 1, "evidence_anchor": "第2章『……也行吧』"}]))
+        result = self.run_tool("arc-audit")
+        report = json.loads(result.stdout)["arc_lines"]["沈栀"]
+        self.assertEqual(report["status"], "active:2")
+        self.assertEqual(report["total_stages"], 3)
+        self.assertEqual(report["achieved_stages"], 1)
+        self.assertEqual(report["last_advance_chapter"], 2)
+        self.assertIs(report["overdue"], False)
+        self.run_tool("check")
 
 
 if __name__ == "__main__":
