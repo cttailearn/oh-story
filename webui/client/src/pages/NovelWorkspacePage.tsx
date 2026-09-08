@@ -6,6 +6,8 @@ import { GateReportCard } from '../components/GateReportCard.tsx';
 import { TrackingBoard } from '../components/TrackingBoard.tsx';
 import { CharactersDualView } from '../components/CharactersDualView.tsx';
 import { AIEditDrawer } from '../components/AIEditDrawer.tsx';
+import { SearchPanel } from '../components/SearchPanel.tsx';
+import { EmotionLine, RhythmStrip } from '../components/ChartCard.tsx';
 
 type Module = 'settings' | 'outline' | 'chapters' | 'state' | 'pipeline';
 
@@ -16,6 +18,9 @@ export function NovelWorkspacePage() {
   const [book, setBook] = useState<BookDetail | null>(null);
   const [tree, setTree] = useState<FileNode[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [emotion, setEmotion] = useState<any>(null);
+  const [rhythm, setRhythm] = useState<any>(null);
   const navigate = useNavigate();
 
   const module = (params.get('module') ?? 'chapters') as Module;
@@ -50,6 +55,25 @@ export function NovelWorkspacePage() {
     },
     [params, setParams],
   );
+
+  // 全局搜索快捷键（webui-frontend §9.1 Ctrl/Cmd+P）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') { e.preventDefault(); setSearchOpen((v) => !v); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    if (!bookId) return;
+    api.emotionCurve(bookId).then(setEmotion).catch(() => {});
+    api.rhythmCurve(bookId).then(setRhythm).catch(() => {});
+  }, [bookId, module]);
+
+  const openSearchPath = (bid: string, path: string) => {
+    navigate(`/novels/${bid}?module=chapters&path=${encodeURIComponent(path)}`);
+  };
 
   return (
     <div className="workspace">
@@ -105,7 +129,22 @@ export function NovelWorkspacePage() {
       <section className="manuscript">
         {error && <div style={{ color: 'var(--red-vermillion)', marginBottom: 10 }}>⚠️ {error}</div>}
         {module === 'state' ? (
-          <TrackingBoard bookId={bookId!} />
+          <div>
+            <TrackingBoard bookId={bookId!} />
+            {(emotion || rhythm) && (
+              <div style={{ marginTop: 14 }}>
+                <h4 className="serif" style={{ fontSize: 15 }}>节奏 / 情绪</h4>
+                <div className="rail-block">
+                  <div className="rb-title">节奏条带（eq across 章）</div>
+                  {rhythm && <RhythmStrip curve={rhythm} />}
+                </div>
+                <div className="rail-block" style={{ marginTop: 10 }}>
+                  <div className="rb-title">情绪曲线</div>
+                  {emotion && <EmotionLine curve={emotion} />}
+                </div>
+              </div>
+            )}
+          </div>
         ) : module === 'pipeline' ? (
           <div style={{ padding: 8 }}>
             <Link to={`/novels/${bookId}/pipeline`} className="ink-btn primary">
@@ -141,6 +180,8 @@ export function NovelWorkspacePage() {
       <aside className="tool-rail">
         <ToolRail bookId={bookId!} module={module} navigate={navigate} />
       </aside>
+
+      <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} onOpenPath={openSearchPath} />
     </div>
   );
 }
