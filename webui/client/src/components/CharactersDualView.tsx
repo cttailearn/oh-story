@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.ts';
+import { CharacterLineBoard } from './CharacterLineBoard.tsx';
 
 interface CharFile {
   path: string;
@@ -135,34 +136,10 @@ export function CharactersDualView({
       {memo.lines.length === 0 && (
         <div style={{ color: 'var(--ink-2)', fontSize: 13 }}>暂无角色线。运行 characters 阶段产出线骨架。</div>
       )}
-      <div style={{ display: 'grid', gap: 10 }}>
-        {memo.lines.map((l) => {
-          const stages = (l.content.match(/^-\s*阶段\d+[（(].*?[）)]/gm) ?? []).map((s) => s.replace(/^-\s*/, ''));
-          return (
-            <div key={l.path} className="rail-block" style={{ background: 'var(--paper)', cursor: 'pointer' }} onClick={() => onOpenCard(l.path)}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong className="serif">《{l.name}》</strong>
-                <span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{l.path}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                {stages.length === 0 && <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{l.excerpt}</span>}
-                {stages.map((s, i) => {
-                  const active = /active/.test(s);
-                  const done = /done/.test(s);
-                  return (
-                    <span
-                      key={i}
-                      className={`seal ${done ? 'seal-pass' : active ? 'seal-pending' : ''}`}
-                      style={{ padding: '4px 10px', fontSize: 12 }}
-                    >
-                      {s}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+      <div style={{ display: 'grid', gap: 6 }}>
+        {memo.lines.map((l) => (
+          <CharacterLineBoard key={l.path} bookId={bookId} name={l.name} />
+        ))}
       </div>
     </div>
   );

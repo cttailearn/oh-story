@@ -123,6 +123,24 @@ export const api = {
   search: (q: string) => http<any>(`/search?q=${encodeURIComponent(q)}`),
   emotionCurve: (bookId: string) => http<any>(`/books/${bookId}/curves/emotion`),
   rhythmCurve: (bookId: string) => http<any>(`/books/${bookId}/curves/rhythm`),
+  characters: (bookId: string) => http<{ items: any[] }>(`/books/${bookId}/characters`),
+  characterArc: (bookId: string, name: string) => http<any>(`/books/${bookId}/characters/${encodeURIComponent(name)}/arc`),
+  setCharacterArc: (bookId: string, name: string, body: any) =>
+    http<any>(`/books/${bookId}/characters/${encodeURIComponent(name)}/arc`, { method: 'PUT', body: JSON.stringify(body) }),
+  proposeArc: (bookId: string, name: string, body: any) =>
+    http<any>(`/books/${bookId}/characters/${encodeURIComponent(name)}/arc/propose`, { method: 'POST', body: JSON.stringify(body) }),
+  importNovel: (body: any) => http<any>('/import', { method: 'POST', body: JSON.stringify(body) }),
+  exportBook: (bookId: string, body: any) =>
+    http<any>(`/books/${bookId}/export`, { method: 'POST', body: JSON.stringify(body) }),
+  listModules: (q: string = '') => http<any>(`/modules?${q}`),
+  archiveModules: (bookId: string, body: any) =>
+    http<any>(`/books/${bookId}/modules/archive`, { method: 'POST', body: JSON.stringify(body) }),
+  attachModules: (bookId: string, body: any) =>
+    http<any>(`/books/${bookId}/modules/attach`, { method: 'POST', body: JSON.stringify(body) }),
+  teardownImport: (bookId: string, body: any) =>
+    http<any>(`/teardowns/${bookId}/import-text`, { method: 'POST', body: JSON.stringify(body) }),
+  teardownAnalyze: (bookId: string) =>
+    http<any>(`/teardowns/${bookId}/analyze`, { method: 'POST', body: JSON.stringify({}) }),
   jobs: () => http<{ items: any[] }>('/jobs'),
   audit: () => http<{ items: any[] }>('/audit'),
 };
