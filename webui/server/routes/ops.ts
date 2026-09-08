@@ -5,7 +5,6 @@ import { getConfig } from '../config/index.ts';
 import {
   collectHealthDeep,
   collectStats,
-  queryAudit,
   auditCsv,
   runBackup,
   listBackups,
@@ -45,11 +44,7 @@ export async function registerOpsRoutes(app: FastifyInstance, ctx: OpsRouteCtx):
       .send(csv);
   });
 
-  // GET /api/audit —— 通用审计查询（带筛选）
-  app.get('/api/audit', async (req) => {
-    const q = req.query as AuditFilter;
-    return { items: queryAudit(db.db, q), total: 0 };
-  });
+  // 通用审计查询由 routes/index.ts 的 /api/audit 提供（本路由只出 CSV）
 
   // POST /api/ops/backup —— 手动备份/升级前快照
   app.post('/api/ops/backup', async (req) => {

@@ -305,6 +305,10 @@ export async function registerRoutes(
       }
       return cfg;
     });
+    // M4：保存后热同步渠道到 AI 运行时（无需重启即对模型生效）
+    if (ctx.ai) {
+      try { ctx.ai.syncChannels(); } catch (e: any) { app.log.warn({ err: e }, 'channel sync failed'); }
+    }
     const safe = { ...updated, channels: updated.channels.map((c) => ({ ...c, api_key: c.api_key ? maskSecret(c.api_key) : undefined })) };
     return safe;
   });
@@ -416,11 +420,10 @@ export async function registerRoutes(
 
   // ---------- Audit ----------
   app.get('/api/audit', async (req) => {
-    const qp = req.query as { limit?: string; target?: string };
-    const limit = Math.min(Number(qp.limit ?? 100) || 100, 500);
-    const rows = (qp.target
-      ? db.db.prepare(`SELECT * FROM audit WHERE target LIKE ? ORDER BY id DESC LIMIT ?`).all(`%${qp.target}%`, limit)
-      : db.db.prepare(`SELECT * FROM audit ORDER BY id DESC LIMIT ?`).all(limit)) as any[];
+    // M4（ops）：复用 queryAudit 支持 action/target/from/to 筛选
+    const q = req.query as import('../ops/service.ts').AuditFilter;
+    const { queryAudit } = await import('../ops/service.ts');
+    const rows = queryAudit(db.db, q);
     return { items: rows, total: rows.length };
   });
 }
