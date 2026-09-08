@@ -15,6 +15,12 @@ export interface RunAgentParams {
   bundle: ContextBundle;
   model: { channelId: string; modelId: string };
   role?: RoleSpec;
+  /**
+   * 阶段 id —— fake 产物模板选择的**第一依据**。
+   * 修复：仅靠上下文块标题启发式会在「设定/角色/*.md 已落盘」后把 outline 误判为 characters，
+   * 导致 outline 阶段把角色卡写进 大纲/大纲.md，project-consistency 门禁必阻塞。
+   */
+  stageId?: string;
   /** e2e/demo 时强制用假渠道 */
   fake?: boolean;
   onText?: (delta: string) => void;
@@ -29,21 +35,27 @@ const EMPTY_USAGE = { input: 0, output: 0, cost_cents: 0 };
  */
 export async function runFakeAgent(params: RunAgentParams): Promise<AgentResult> {
   const glue = params.bundle.blocks.find((b) => b.kind === 'task')?.title ?? 'task';
-  const text = fakeArtifact(params.bundle, glue);
+  const text = fakeArtifact(params.bundle, glue, params.stageId);
   for (const line of text.split('\n')) {
     params.onText?.(line + '\n');
   }
   return { text, usage: EMPTY_USAGE, fake: true };
 }
 
-function fakeArtifact(bundle: ContextBundle, taskTitle: string): string {
-  // 依据 task 块标题选择骨架
+function fakeArtifact(bundle: ContextBundle, taskTitle: string, stageId?: string): string {
+  // 依据 task 块标题选择骨架；已知阶段 id 时以阶段为准（见 RunAgentParams.stageId 注释）
   const all = bundle.blocks.map((b) => b.title).join(' | ');
-  const isChapter =
-    /正文|章节|章节写作|追踪状态/.test(all) || taskTitle.includes('交付格式');
-  const isCharacters = /角色/.test(all);
-  const isOutline = /大纲/.test(all);
-  const isConcept = /世界观|金手指|题材/.test(all);
+  const known = stageId
+    ? ({ chapter: 'chapter', characters: 'characters', outline: 'outline', concept: 'concept' } as Record<string, string>)[
+        stageId
+      ]
+    : undefined;
+  const isChapter = known
+    ? known === 'chapter'
+    : /正文|章节|章节写作|追踪状态/.test(all) || taskTitle.includes('交付格式');
+  const isCharacters = known ? known === 'characters' : /角色/.test(all);
+  const isOutline = known ? known === 'outline' : /大纲/.test(all);
+  const isConcept = known ? known === 'concept' : /世界观|金手指|题材/.test(all);
 
   if (isChapter) {
     let body = `# 第一章 开篇（fake 示例产物）\n\n`;
@@ -64,7 +76,11 @@ function fakeArtifact(bundle: ContextBundle, taskTitle: string): string {
     return body;
   }
   if (isCharacters) {
+    // 按 artifact file-set 契约分块输出（设定/角色/*.md + 设定/角色线/*.md），
+    // 使假渠道 e2e 与真实产物落位一致（原先整篇落到 设定/产物.md，绕过了分块与门禁口径）
     return [
+      '### 《设定/角色/江晨.md》',
+      '',
       '# 江晨',
       '',
       '- 身份：主角（军宣文工团新人）',
@@ -74,11 +90,27 @@ function fakeArtifact(bundle: ContextBundle, taskTitle: string): string {
       '- 语言风格：口语化、果断',
       '- 成长弧线起点：被低估的小透明',
       '',
-      '<!-- 角色线骨架（角色线/江晨.md） -->',
+      '## 角色线',
+      '',
+      '### 阶段 1：从零起步（1-8章）',
+      '',
+      '- 目标：完成首支视频并拿到第一波数据反馈',
+      '- 验收：视频发布且数据可核对',
+      '',
+      '### 《设定/角色线/江晨.md》',
+      '',
       '# 江晨·弧线「军宣顶流传奇」',
       '',
-      '- 阶段1（planned）：从零起步（1-8章）',
-      '- 阶段2（planned）：爆款确立→责任的重量（9-30章）',
+      '## 阶段规划',
+      '',
+      '### 阶段 1：从零起步（1-8章）',
+      '',
+      '- 状态：planned',
+      '- 目标：完成首支视频，建立可核对的数据反馈链',
+      '',
+      '### 阶段 2：爆款确立→责任的重量（9-30章）',
+      '',
+      '- 状态：planned',
       '- 验收：每阶段有可核对的剧情兑现点',
     ].join('\n');
   }
@@ -117,18 +149,37 @@ function fakeArtifact(bundle: ContextBundle, taskTitle: string): string {
     return out.join('\n');
   }
   if (isConcept) {
+    // 同样按 file-set 契约分块（设定/题材定位.md、文风.md、世界观/*.md）；
+    // 刻意不写 设定/关系.md —— 它一旦存在就会触发「角色索引 vs 设定/角色/*.md」门禁，
+    // 而 concept 阶段本来就在 characters 之前，索引型文件应由 characters 阶段产出。
     return [
-      '# 世界观 / 金手指（草案）',
+      '### 《设定/题材定位.md》',
       '',
-      '## 世界观',
-      '- 背景：现代都市 + 文工团/军宣体系',
-      '- 规则：作品真实效果驱动传播，不搞魔法值',
+      '# 题材定位',
       '',
-      '## 金手指',
-      '- 短视频爆款预知：能隐隐感知哪种表达会爆，需靠实际数据验证，有冷却与代价',
+      '- 题材：现代都市 + 军宣文工团',
+      '- 类型：长篇',
+      '- 目标字数：200000',
+      '- 平台风格：番茄',
+      '- 金手指：短视频爆款预知',
+      '- 核心卖点：作品效果兑现的爽点链',
+      '- 一句话Idea：被低估的小透明用预知把废号做成顶流。',
       '',
-      '## 文风要求',
-      '- 口语化、爽点靠作品效果/数据/围观反应链兑现',
+      '### 《设定/文风.md》',
+      '',
+      '# 文风',
+      '',
+      '- 平台风格：番茄',
+      '- 去AI味档位：medium',
+      '- 要求：口语化、爽点靠作品效果/数据/围观反应链兑现',
+      '',
+      '### 《设定/世界观/金手指.md》',
+      '',
+      '# 金手指：短视频爆款预知',
+      '',
+      '## 规则',
+      '- 能隐隐感知哪种表达会爆，需靠实际数据验证',
+      '- 有冷却与代价，不搞魔法值',
     ].join('\n');
   }
 

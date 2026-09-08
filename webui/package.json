@@ -18,12 +18,19 @@
     "test:watch": "vitest",
     "test:gates-migration": "vitest run server/gates/__migration_spec__",
     "check:no-python": "node scripts/check-no-python.mjs",
+    "e2e:fake": "node scripts/e2e-fake.mjs",
+    "e2e:real": "tsx scripts/e2e-real.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "verify:api": "node scripts/verify-api.mjs",
+    "verify:page": "node scripts/verify-page.mjs",
+    "verify:ui": "node scripts/verify-ui.mjs",
     "diag": "tsx scripts/diag.mjs",
     "pack:standalone": "node scripts/build-standalone.mjs",
     "trace": "tsx scripts/trace.mjs",
     "backup": "tsx scripts/backup.mjs",
     "snapshot": "tsx scripts/backup.mjs -- --snapshot",
-    "guards": "npm run typecheck && npm run test && npm run check:no-python"
+    "guards": "npm run typecheck && npm run test && npm run check:no-python",
+    "guards:full": "npm run guards && npm run smoke"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",
@@ -52,5 +59,11 @@
     "typescript": "^5.7.3",
     "vite": "^6.3.5",
     "vitest": "^3.0.9"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.28.1": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
   }
 }

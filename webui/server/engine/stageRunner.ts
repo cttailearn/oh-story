@@ -9,6 +9,7 @@ import {
   startRun,
   markReview,
   markBlocked,
+  markJobStatus,
   updateJobUsage,
 } from './state.ts';
 import { assembleBundle, type ContextBundle, type PromptBlock } from '../agents/contexts/index.ts';
@@ -36,7 +37,8 @@ export interface StageRunOptions {
 
 export interface StageRunResult {
   jobId: string;
-  status: 'review' | 'blocked' | 'error';
+  /** 真实 job 状态：复用既有在途 job 时如实回报 queued/running，不谎报 review */
+  status: 'queued' | 'running' | 'review' | 'blocked' | 'error';
   gateBlocking: boolean;
 }
 
@@ -50,7 +52,14 @@ export async function runStageJob(opts: StageRunOptions): Promise<StageRunResult
   const started = startRun({ db: db.db, def }, { bookId, stageId });
   const jobId = started.jobId;
   const revision = started.revision;
-  if (started.reused) return { jobId, status: 'review', gateBlocking: false };
+  if (started.reused) {
+    const cur = db.db.prepare(`SELECT status FROM jobs WHERE id=?`).get(jobId) as
+      | { status: StageRunResult['status'] }
+      | undefined;
+    return { jobId, status: cur?.status ?? 'running', gateBlocking: false };
+  }
+  // job 生命周期：queued → running →（review | error | killed）；缺失这一步会让 jobs 永远挂在 queued
+  markJobStatus(db.db, jobId, 'running');
 
   publishJob(bookId, jobId, 'job:start', { stage: stageId, revision });
   try {
@@ -103,9 +112,18 @@ async function runAndGate(
       bundle,
       onText: (t: string) => publishJob(bookId, jobId, 'job:progress', { phase: 'stream', text: t.slice(0, 200) }),
     };
+    const model = opts.fake
+      ? { channelId: 'fake', modelId: 'fake' }
+      : routeModel(stage.entry.model_role || 'architect');
+    if (attempts === 1) {
+      // 记录本次运行实际用的渠道/模型：成本面板的 by_model 靠它聚合（原先恒为空）
+      db.db
+        .prepare(`UPDATE jobs SET detail_json=? WHERE id=?`)
+        .run(JSON.stringify({ channel: model.channelId, model: model.modelId, fake: !!opts.fake }), jobId);
+    }
     const result = opts.fake
-      ? await runFakeAgent({ ...genOpts, model: { channelId: 'fake', modelId: 'fake' } })
-      : await runRealAgent(ai, { ...genOpts, model: routeModel(stage.entry.model_role || 'architect') });
+      ? await runFakeAgent({ ...genOpts, model, stageId: stage.id })
+      : await runRealAgent(ai, { ...genOpts, model, stageId: stage.id });
     updateJobUsage(db.db, jobId, {
       tokens_in: result.usage.input,
       tokens_out: result.usage.output,
@@ -139,6 +157,7 @@ async function runAndGate(
     // 5a) 全过 → review
     if (!blocked) {
       markReview({ db: db.db, def }, { bookId, stageId: stage.id, revision });
+      markJobStatus(db.db, jobId, 'review');
       const latestGates = summarize(reports);
       publishJob(bookId, jobId, 'job:review', {
         stage: stage.id,
@@ -157,6 +176,7 @@ async function runAndGate(
       .join('; ');
     if (attempts >= retryLimit) {
       markBlocked({ db: db.db, def }, { bookId, stageId: stage.id, revision, reason });
+      markJobStatus(db.db, jobId, 'error', { error: 'GATE_BLOCKING: ' + reason });
       return { jobId, status: 'blocked', gateBlocking: true };
     }
     bundle = withFixBlock(bundle, reports, attempts, retryLimit);

@@ -94,35 +94,85 @@ export function startRun(
   }
 
   const cur = getStageRow(db, params.bookId, params.stageId);
-  if (cur && cur.status === 'running') {
-    // 已有一个 running job（DB 唯一索引兜底），直接返回
-    const busy = db
-      .prepare(`SELECT id FROM jobs WHERE book_id=? AND stage_id=? AND status IN ('queued','running') LIMIT 1`)
-      .get(params.bookId, params.stageId) as { id: string } | undefined;
-    if (busy) {
-      return { jobId: busy.id, revision: cur.revision, reused: true, stage };
-    }
+  // 并发保护（idx_jobs_busy 是数据库层保证）：已有在途 job 一律复用。
+  // 修复：原先用 INSERT OR REPLACE，而 job 从不进入终态 → 旧行长期停留在 queued/running，
+  // 重跑同一阶段会命中部分唯一索引把「上一次 job 行」整行替换掉，任务历史被静默抹除。
+  const inFlight = findInFlightJob(db, params.bookId, params.stageId);
+  if (inFlight) {
+    return { jobId: inFlight, revision: cur?.revision ?? 0, reused: true, stage };
   }
 
   const revision = (cur?.revision ?? 0) + 1;
   const ts = new Date().toISOString();
   const jobId = `job_${ts.replace(/\D/g, '').slice(0, 13)}_${Math.random().toString(36).slice(2, 8)}`;
 
-  db.prepare(
-    `INSERT OR REPLACE INTO jobs (id, book_id, stage_id, kind, revision, status, progress, created_at)
-     VALUES (?,?,?,?,?,?,?,?)`,
-  ).run(
-    jobId,
-    params.bookId,
-    params.stageId,
-    'stage',
-    revision,
-    'queued',
-    0,
-    ts,
-  );
+  try {
+    db.prepare(
+      `INSERT INTO jobs (id, book_id, stage_id, kind, revision, status, progress, created_at)
+       VALUES (?,?,?,?,?,?,?,?)`,
+    ).run(
+      jobId,
+      params.bookId,
+      params.stageId,
+      'stage',
+      revision,
+      'queued',
+      0,
+      ts,
+    );
+  } catch (e: any) {
+    // 竞态：另一个 run 刚插入 queued 行 → 复用它的 job（仍不覆盖历史）
+    const raced = findInFlightJob(db, params.bookId, params.stageId);
+    if (raced) return { jobId: raced, revision: cur?.revision ?? 0, reused: true, stage };
+    throw e;
+  }
   setStageStatus(db, params.bookId, params.stageId, 'running', { revision });
   return { jobId, revision, reused: false, stage };
+}
+
+/** 在途 job（queued/running）——与 idx_jobs_busy 部分唯一索引同口径 */
+function findInFlightJob(db: Sqlite, bookId: string, stageId: string): string | undefined {
+  const row = db
+    .prepare(`SELECT id FROM jobs WHERE book_id=? AND stage_id=? AND status IN ('queued','running') LIMIT 1`)
+    .get(bookId, stageId) as { id: string } | undefined;
+  return row?.id;
+}
+
+/**
+ * job 状态落终态（jobs.status CHECK: queued|running|review|done|error|killed）。
+ * running 不写 finished_at；其余终态一律写 finished_at。
+ */
+export function markJobStatus(
+  db: Sqlite,
+  jobId: string,
+  status: JobStatus,
+  opts: { error?: string } = {},
+): void {
+  if (status === 'running') {
+    db.prepare(`UPDATE jobs SET status='running', error=COALESCE(?, error) WHERE id=?`).run(
+      opts.error ?? null,
+      jobId,
+    );
+    return;
+  }
+  db.prepare(
+    `UPDATE jobs SET status=?, error=COALESCE(?, error), finished_at=? WHERE id=?`,
+  ).run(status, opts.error ?? null, new Date().toISOString(), jobId);
+}
+
+/** 该阶段所有处于 from 状态的 job → to（阶段确认/跳过时收尾，避免 jobs 永远挂在 review） */
+export function finishStageJobs(
+  db: Sqlite,
+  bookId: string,
+  stageId: string,
+  from: JobStatus,
+  to: JobStatus,
+): number {
+  return db
+    .prepare(
+      `UPDATE jobs SET status=?, finished_at=? WHERE book_id=? AND stage_id=? AND status=?`,
+    )
+    .run(to, new Date().toISOString(), bookId, stageId, from).changes;
 }
 
 /** 产物 + 门禁全过 → running → review */
@@ -197,20 +247,18 @@ export function confirmStage(
   if (params.action === 'approve' || isForce) {
     if (!isForce && cur && cur.status === 'blocked') throw new Error('GATE_BLOCKING');
     setStageStatus(db, params.bookId, params.stageId, 'done', { revision, reviewed_at: ts });
-    const next = nextPendingStage(def, db, params.bookId);
-    if (next) {
-      setStageStatus(db, params.bookId, next.id, 'review', { started_at: ts });
-    }
+    // 该阶段在途 job 收尾（review → done）：jobs 必须有终态，否则成本统计/挂起任务/重启自愈全部失真
+    finishStageJobs(db, params.bookId, params.stageId, 'review', 'done');
+    // 注意：这里刻意不再把「下一个 pending 阶段」置为 review。
+    // review 的语义是「产物已产出、等待人工批阅」；从未运行过的阶段没有产物，
+    // 置为 review 会让批阅栏直接放行一个空阶段（假流程）。
   } else if (params.action === 'edit_rerun') {
     setStageStatus(db, params.bookId, params.stageId, 'running', { revision, started_at: ts });
   } else if (params.action === 'reject_regen') {
     setStageStatus(db, params.bookId, params.stageId, 'running', { revision, started_at: ts });
   } else if (params.action === 'skip') {
     setStageStatus(db, params.bookId, params.stageId, 'skipped', { revision, reviewed_at: ts });
-    const next = nextPendingStage(def, db, params.bookId);
-    if (next) {
-      setStageStatus(db, params.bookId, next.id, 'review', { started_at: ts });
-    }
+    finishStageJobs(db, params.bookId, params.stageId, 'review', 'done');
   }
 
   const auditId = db.prepare(
@@ -218,21 +266,6 @@ export function confirmStage(
   ).run(ts, 'user', params.action, `book:${params.bookId}/stage:${params.stageId}/rev:${revision}`, JSON.stringify({ note: params.note ?? '' })).lastInsertRowid as number;
 
   return { stage, status: getStageRow(db, params.bookId, params.stageId)!.status, auditId };
-}
-
-/** 推进：approve 后下一个未完成 stage（按定义顺序，跳过 skipped） */
-function nextPendingStage(def: ProcessDefinition, db: Sqlite, bookId: string): StageDefinition | undefined {
-  for (const s of def.stages) {
-    const row = getStageRow(db, bookId, s.id);
-    if (!row || row.status !== 'pending') continue;
-    // requires 全部 done/skipped 才可推进
-    const ready = s.requires.every((reqId) => {
-      const rr = getStageRow(db, bookId, reqId);
-      return !!rr && (rr.status === 'done' || rr.status === 'skipped');
-    });
-    if (ready) return s;
-  }
-  return undefined;
 }
 
 /** 回退到某阶段：任意状态 → review（新 revision，不破坏已提交产物） */

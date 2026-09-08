@@ -71,7 +71,12 @@ describe('模块库服务', () => {
     expect(up.tags).toContain('升级');
     expect(softDeleteModule(db, first.id)).toBe(true);
     expect(listModules(db, {}).total).toBe(1);
+    // 服务层原始访问仍可见软删行（审计用）
     expect(getModule(db, first.id)!.deleted_at).toBeTruthy();
+    // REST 口径（includeDeleted=false）：软删后不可读、不可改、不可重复删
+    expect(getModule(db, first.id, false)).toBeNull();
+    expect(updateModule(db, first.id, { title: '不该生效' })).toBeNull();
+    expect(softDeleteModule(db, first.id)).toBe(false);
   });
 
   it('recommend 按题材/kind 评分排序', () => {

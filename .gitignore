@@ -33,22 +33,25 @@ skills/story-image/tests/**/*.gif
 .pnpm-store/
 pnpm-lock.yaml
 
-# oh-story WebUI ���ع�������
+# oh-story WebUI 构建产物与本地库（不入库）
 webui/dist/
 webui/node_modules/
 webui/.webui/
 webui/*.db
 
-
-# oh-story WebUI �������ݣ�SQLite + ��������/��Կ��
+# oh-story WebUI 运行数据：SQLite + 备份/密钥（不入库）
 .webui/
-
 
 # 真渠道运行时验证书（本机运行产物，不入库）
 真渠道*/
 
 # npm 缓存残留
 .tmp-npm-cache/
+.npm-cache/
+
+# WebUI 本地验证残留（冒烟 workspace / UI 截图）
+.tmp-webui-*/
+webui/.tmp-*/
 
 # 提交信息临时文件
 _commitmsg.tmp

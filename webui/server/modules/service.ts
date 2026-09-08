@@ -51,13 +51,20 @@ export function listModules(db: Sqlite, f: any = {}): { items: any[]; total: num
   return { items: rows.map(parseRow), total };
 }
 
-export function getModule(db: Sqlite, id: string): any | null {
-  const r = db.prepare('SELECT * FROM modules WHERE id = ?').get(id);
+/**
+ * 读取模块。includeDeleted 默认 true（服务层原始访问，保留软删行供审计）；
+ * REST 层一律传 false —— 软删的模块不得再被读取/编辑（否则「软删」对外等于没删）。
+ */
+export function getModule(db: Sqlite, id: string, includeDeleted = true): any | null {
+  const sql = includeDeleted
+    ? 'SELECT * FROM modules WHERE id = ?'
+    : 'SELECT * FROM modules WHERE id = ? AND deleted_at IS NULL';
+  const r = db.prepare(sql).get(id);
   return r ? parseRow(r) : null;
 }
 
 export function updateModule(db: Sqlite, id: string, patch: any): any | null {
-  if (!getModule(db, id)) return null;
+  if (!getModule(db, id, false)) return null;
   const now = new Date().toISOString();
   if (patch.title !== undefined) db.prepare('UPDATE modules SET title = ? WHERE id = ?').run(patch.title, id);
   if (patch.summary !== undefined) db.prepare('UPDATE modules SET summary = ? WHERE id = ?').run(patch.summary, id);
@@ -69,7 +76,8 @@ export function updateModule(db: Sqlite, id: string, patch: any): any | null {
 }
 
 export function softDeleteModule(db: Sqlite, id: string): boolean {
-  if (!getModule(db, id)) return false;
+  // 已删除/不存在 → false（调用方按 404 处理，避免重复删除返回假成功）
+  if (!getModule(db, id, false)) return false;
   db.prepare('UPDATE modules SET deleted_at = ?, updated_at = ? WHERE id = ?').run(new Date().toISOString(), new Date().toISOString(), id);
   return true;
 }

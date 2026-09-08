@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, BookDetail, FileNode } from '../api/client.ts';
-import { PageEditor } from '../components/PageEditor.tsx';
+// CodeMirror 6 体积占首屏一半以上：按需加载（打开手稿时才拉取 chunk）
+const PageEditor = lazy(() => import('../components/PageEditor.tsx').then((m) => ({ default: m.PageEditor })));
 import { GateReportCard } from '../components/GateReportCard.tsx';
 import { TrackingBoard } from '../components/TrackingBoard.tsx';
 import { CharactersDualView } from '../components/CharactersDualView.tsx';
@@ -480,11 +481,13 @@ function FileEditor({
       )}
 
       <div className="editor-frame">
-        <PageEditor
-          value={content}
-          draftKey={`${bookId}:${activePath}`}
-          onChange={(v) => setContent(v)}
-        />
+        <Suspense fallback={<div style={{ padding: 16, color: 'var(--ink-2)', fontSize: 13 }}>编辑器载入中…</div>}>
+          <PageEditor
+            value={content}
+            draftKey={`${bookId}:${activePath}`}
+            onChange={(v) => setContent(v)}
+          />
+        </Suspense>
       </div>
 
       {gateResult && <GateReportCard result={gateResult} />}

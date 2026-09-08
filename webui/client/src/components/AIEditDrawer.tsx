@@ -5,7 +5,7 @@ import { api } from '../api/client.ts';
 interface DiffHunk { type: 'add' | 'del'; line: number; text: string }
 interface AiEditResp {
   edit_id: string; mode: string; target: string; diff: DiffHunk[];
-  applied: boolean; note: string; cost_cents: number; resultText: string;
+  applied: boolean; note: string; cost_cents: number; fake?: boolean; resultText: string;
 }
 
 const CHAPTER_DEMANDS = [
@@ -80,6 +80,7 @@ export function AIEditDrawer({ open, onClose, bookId, targetPath, mtime, onAppli
       setError('模型未产出有效修改，未应用（避免覆盖原文）');
       return;
     }
+    if (result.fake && !window.confirm('本次结果是 demo 假渠道产物（非真实模型输出），仍要覆盖原文吗？')) return;
     setApplying(true); setError(null); setOkMsg(null);
     try {
       const r = await api.writeFile(bookId, targetPath, result.resultText, mtime);
@@ -139,7 +140,14 @@ export function AIEditDrawer({ open, onClose, bookId, targetPath, mtime, onAppli
         {result && (
           <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--paper-2)', borderBottom: '1px solid var(--line)' }}>
-              <span className="mono" style={{ fontSize: 12, color: 'var(--ink-2)' }}>{result.edit_id} · {result.mode}</span>
+              <span className="mono" style={{ fontSize: 12, color: 'var(--ink-2)' }}>
+                {result.edit_id} · {result.mode}
+                {result.fake && (
+                  <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>
+                    demo 假渠道（非真实模型）
+                  </Tag>
+                )}
+              </span>
               <span style={{ fontSize: 12.5 }}>
                 <span style={{ color: 'var(--green-jade)' }}>+{result.diff.filter((d) => d.type === 'add').length}</span>
                 <span style={{ color: 'var(--red-vermillion)', marginLeft: 8 }}>-{result.diff.filter((d) => d.type === 'del').length}</span>

@@ -35,6 +35,8 @@ export interface AiEditResult {
   applied: false;
   note: string;
   cost_cents: number;
+  /** 是否为 demo 假渠道产物（非真实模型输出）——必须显式回传，避免假结果被当成真结果采纳 */
+  fake: boolean;
   /** 采纳后的完整文件内容（前端直接 PUT /files 落盘） */
   resultText: string;
   gates_hint?: { after_fix?: boolean };
@@ -152,10 +154,11 @@ export async function runAiEdit(
     budget: { system: estTokens(system), blocks: estTokens(taskText) },
   };
 
-  const fake = req.fake ?? false;
+  // demo 路径：显式 fake:true，或未配置任何渠道时的降级（保持可用，但结果必须标注为 demo）
+  const fake = (req.fake ?? false) || !ai.hasAnyChannel();
   let newText: string;
   let costCents = 0;
-  if (fake || !ai.hasAnyChannel()) {
+  if (fake) {
     const marker = '<!-- AI 编辑（demo）：' + userInstruction.replace(/[*/]/g, '') + ' -->';
     newText = range ? (contextText.trimEnd() + '\n\n' + marker + '\n') : (originalText.trimEnd() + '\n\n' + marker + '\n');
   } else {
@@ -171,7 +174,18 @@ export async function runAiEdit(
 
   const finalText = range ? applyRange(originalText, range, newText) : newText;
   const diff = makeLineDiff(originalText, finalText);
-  const note = 'AI 编辑（' + req.mode + '·' + req.demand.kind + '）已生成 diff（' + diff.filter((d) => d.type === 'add').length + ' + / ' + diff.filter((d) => d.type === 'del').length + ' -），尚未落盘。';
+  const note =
+    (fake ? '【demo 假渠道】' : '') +
+    'AI 编辑（' +
+    req.mode +
+    '·' +
+    req.demand.kind +
+    '）已生成 diff（' +
+    diff.filter((d) => d.type === 'add').length +
+    ' + / ' +
+    diff.filter((d) => d.type === 'del').length +
+    ' -），尚未落盘。' +
+    (fake ? ' 本次为假渠道产物，不代表真实模型输出。' : '');
 
   return {
     edit_id: editId,
@@ -181,6 +195,7 @@ export async function runAiEdit(
     applied: false,
     note,
     cost_cents: costCents,
+    fake,
     resultText: finalText.endsWith('\n') ? finalText : finalText + '\n',
     gates_hint: req.mode === 'fix-gates' ? { after_fix: true } : undefined,
   };

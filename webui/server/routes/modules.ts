@@ -37,7 +37,7 @@ export async function registerModuleRoutes(app: FastifyInstance, ctx: ModuleRout
 
   // GET /api/modules/:id —— 详情（含 used_in）
   app.get<{ Params: { id: string } }>('/api/modules/:id', async (req, reply) => {
-    const m = getModule(db.db, req.params.id);
+    const m = getModule(db.db, req.params.id, false);
     if (!m) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '模块不存在' } });
     return m;
   });
@@ -49,7 +49,7 @@ export async function registerModuleRoutes(app: FastifyInstance, ctx: ModuleRout
       title: body.title, summary: body.summary, body: body.body,
       tags: body.tags, usable_for: body.usable_for,
     });
-    if (!m) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '模块不存在' } });
+    if (!m) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '模块不存在或已删除' } });
     audit(null, 'module:edit', { id: m.id, title: m.title });
     return m;
   });

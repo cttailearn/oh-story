@@ -1,3 +1,30 @@
+## 未发布（webui 真实可靠性加固）
+
+> 以「可复现的真实验证」为准绳：新增一键冒烟与全量 REST/浏览器断言；修复 6 处会让产物、状态、成本与用户判断失真的缺陷。
+
+### 新增
+
+- **`npm run smoke`**：临时 workspace 起真后端 → 假渠道全链路 45 条断言（产物落位/job 生命周期/每步确认/成本与门禁留痕/前端托管），失败非零退出；`npm run guards:full` = guards + smoke
+- **`npm run verify:api`**：全量 REST 63 条断言（books/files/tree/gates/export×5/modules/characters/curves/search/stats/ops/config/ai-edit/import/teardown/软删）
+- **`npm run verify:ui`**：真实 Chromium 打开 9 个页面，16 条断言（关键文案 + 零 console/page 错误 + 截图）
+- **`server/engine/jobLifecycle.test.ts`**：job 终态 / 重跑保留历史 / 空阶段不得 review / 阻塞落 error 的回归锁定
+
+### 修复（webui）
+
+- **job 永不落终态**（engine/state.ts、stageRunner.ts）：跑完的 job 停在 `queued`，导致成本面板恒为 0、`health?depth=full` 永远报挂起任务、重启自愈把已完成任务误标 `killed(restart-recovery)`；且 `INSERT OR REPLACE` 命中 `idx_jobs_busy` 部分唯一索引后**整行替换**上一条 job，任务历史被静默抹除。现改为 `queued→running→review|done|error` 显式收尾 + 普通 INSERT + 在途 job 复用
+- **空阶段被批阅放行**（engine/state.ts）：确认通过后会把「下一个 pending 阶段」置为 `review`，从未运行过的阶段因此可直接被「通过」，流程可在无任何产物的情况下推进。现仅在真实产出后进入 review
+- **成本面板恒为 0 / by_model 恒为空**（routes/pipeline.ts）：统计口径改为已执行任务，并从 `jobs.detail_json` 聚合实际渠道/模型
+- **假渠道产物不按契约落位**（agents/execute.ts）：concept/characters 的 fake 产物整篇落到 `设定/产物.md`，绕过 file-set 分块与门禁口径；且模板选择依赖上下文块标题启发式，一旦 `设定/角色/*.md` 存在就会把 outline 误判为 characters（大纲被写成角色卡）。现按契约分块输出 + 以**阶段 id** 选模板
+- **软删模块仍可读写**（modules/service.ts、routes/modules.ts）：`GET/PUT /api/modules/:id` 对已软删模块返回 200，等于「软删对外没删」；现 REST 口径一律排除 `deleted_at`
+- **demo 结果不可辨识**（agents/aiEdit.ts、AIEditDrawer.tsx）：无渠道时 ai-edit 静默返回假渠道 diff，文案与真实模型输出无从区分；现回传 `fake: true`、note 明确标注，前端加橙色标记并要求二次确认
+
+### 变更（webui）
+
+- 首屏体积：CodeMirror 6 改按需加载 + 三方库拆 chunk，首屏 JS 由 384 kB(gz) 降至约 210 kB(gz)，编辑器 chunk 仅在打开手稿时加载
+- 脚本可配置：`e2e-fake` / `verify-api` / `verify-ui` 支持 `--base` 与 `WEBUI_BASE`，不再硬编码 3081 与本机路径；`e2e-fake` 由「只打印」改为断言式（可进 CI）
+- `package.json` 记录 `allowScripts`（npm 11 安装脚本白名单：better-sqlite3/esbuild），使 `npm install` 可复现
+- 仓库 `.gitignore` 修复乱码注释并补充本地验证残留（`.npm-cache/`、`.tmp-webui-*/`、`webui/.tmp-*/`）
+
 ## v2.4.0
 
 > 移植上游可移植功能：跨会话作者记忆 + 短篇交付契约；并用脚本化守卫把一次性审查修复固定下来（BOM 容错、细纲照搬播种上界、标点归一化原子写、test:guards 聚合入门、CI 补齐游离回归、git-bash 探测防 WSL 遮蔽、grsai 大负载改文件/stdin）。
