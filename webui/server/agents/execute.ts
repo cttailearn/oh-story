@@ -158,7 +158,8 @@ export async function runRealAgent(ai: AiRuntime, params: RunAgentParams): Promi
     );
   }
   const agent = new Agent({
-    streamFn: (m, ctx, opts) => ai.streamSimple(m as any, ctx, opts as any),
+    // 真渠道修复：Agent 不携带 model —— 一律用我们已解析的注册模型（忽略 Agent 传入的占位 model）
+    streamFn: (_m: any, ctx: any, opts: any) => ai.streamSimple(model as any, ctx, opts as any),
     sessionId: `webui-${Date.now()}`,
     onPayload: params.onText ? (p) => params.onText?.(String((p as any)?.text ?? p)) : undefined,
   });
