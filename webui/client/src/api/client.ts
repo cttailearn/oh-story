@@ -120,6 +120,9 @@ export const api = {
     }),
   gateRuns: (bookId: string) => http<{ items: any[] }>(`/books/${bookId}/gate-runs`),
 
+  search: (q: string) => http<any>(`/search?q=${encodeURIComponent(q)}`),
+  emotionCurve: (bookId: string) => http<any>(`/books/${bookId}/curves/emotion`),
+  rhythmCurve: (bookId: string) => http<any>(`/books/${bookId}/curves/rhythm`),
   jobs: () => http<{ items: any[] }>('/jobs'),
   audit: () => http<{ items: any[] }>('/audit'),
 };
