@@ -1,69 +1,85 @@
-# oh-story WebUI ——「书稿编辑部」
+# oh-story WebUI「书稿编辑部」
 
-独立的 WebUI 网文写作工具（前后端分离，仅绑定 `127.0.0.1`）。设计见 `docs/design/standalone-webui.md`（主案 v0.8）、`webui-frontend.md`（前端「书稿编辑部」）、`implementation-plan.md`（M0/M1 WBS）。
+独立的网文流程化写作工具（webui/，随 oh-story 同版发布）。目标：把「能看的书」变成「能写下去的书」—— 流程引擎 + 智能体流水线 + 门禁确定层，全部 Node/TS 实现、**零 Python/bash 运行时依赖**。
 
-## 状态
+- 规格：docs/design/（standalone-webui / process-definition / agents-runtime / gates-runner / api-contract / data-model / importing-existing / export-publish / ops-observability / scale-performance / webui-frontend 等十七篇）
+- 技术栈：Node ≥ 22.19 · Fastify + better-sqlite3(WAL) · React 18 + Vite + antd + CodeMirror 6 · pi-ai / pi-agent-core @0.85.x
 
-**当前：M0 骨架已落地** —— 可浏览/编辑 `demo/长篇`，替代 Story Dashboard。
-
-| 里程碑 | 内容 | 状态 |
-|---|---|---|
-| M0 | TS/ESM + Fastify + SQLite + 文件树/读写(mtime 锁) + 前端线框(书房/工作台/编辑器/追踪看板/流程看板) + gates runner(spawn 兜底) | ✅ 本分支 |
-| M1 | 流程引擎/状态机/SSE/pi-ai 接线/Node 化移植/tracking-commit | ⏳ 待开发 |
-
-## 快速开始
-
+## 快速开始（开发）
 ```bash
 cd webui
-npm install            # 需可运行 postinstall（esbuild/better-sqlite3 原生绑定）
-npm run dev            # 同时起后端(3081) + Vite 前端(5173, /api 代理)
-# 或生产模式：
-npm run build          # vite build → dist/client
-npm start              # node server/index.mts --port 3081 --root <workspace>，直接提供页面
+npm install
+npm run dev        # 前端 :5173 + 后端 :3081（dev 需 Vite 代理 /api → 3081）
 ```
 
-- 首次启动自动注册 `demo/长篇` 为书（书库为空时）。
-- 数据目录 `<workspace>/.webui/`：`webui.db`（SQLite）+ `webui-config.json`（渠道/密钥，已 gitignore）。
-- 运行环境：Node ≥ 22.19（本机检验 v24）。
+生产式运行（构建后单进程托管前后端）：
 
-## 命令
+```bash
+npm run build      # 产出 dist/client
+npm start -- --port 3081 --root <workspace>
+# 默认 workspace = 启动目录；.webui/（webui-config.json + webui.db + backups/ + archive/ + logs/）位于 workspace 下
+```
+
+> 首次启动会自动注册 demo 长篇书；渠道未配置时流程可用「假渠道」开发（POST run 传 fake:true）。
+
+## 检查（guards）
+```bash
+npm run guards     # typecheck(server+client) + vitest + check:no-python
+```
+
+## 诊断 / 运维（ops）
 
 | 命令 | 说明 |
 |---|---|
-| `npm run dev` | 后端 3081 + Vite 5173 并行（HMR） |
-| `npm run start` | 生产：一个进程服务 API + 构建后前端 |
-| `npm run build` | 构建前端到 `dist/client` |
-| `npm run typecheck` | tsc 双端 noEmit |
-| `npm test` | vitest（db/fs/gates harness） |
-| `npm run test:gates-migration` | 门禁 Node 移植对拍（M1 起逐项启用） |
-| `npm run check:no-python` | 扫 server 源码零 Python/bash 运行时引用 |
-| `npm run guards` | typecheck + test + check:no-python 聚合门禁 |
+| `npm run diag [-- --book <id>]` | 健康深检（db 字节/门禁量/挂起任务/渠道/24h 成本），可选对书跑 ai-patterns 冒烟 |
+| `npm run trace -- --job <job_id>` | 追踪单次任务的事件序列（门禁/审计/耗时/成本） |
+| `npm run backup` / `npm run snapshot` | 每日备份（保留 7 份）/ 升级前快照，VACUUM INTO 落 `.webui/backups/` |
+| 设置页 → 运维 | 诊断卡片 / 门禁统计 / 审计筛选+CSV 导出 / 一键备份维护 / relink 恢复 / 任务 kill |
 
-## 目录结构
+数据自愈：启动时 running/queued 任务置 `killed(restart-recovery)`；删除书 = 软删（目录移入 `workspace/_archive/`，可 relink 找回）；`gate_runs` 冷数据（>3 个月）按季度归档；每日自动维护（PRAGMA optimize + wal_checkpoint）。
+
+## 升级三步（备份 → 替换 → 启动）
+
+1. **备份**：`npm run snapshot`（或设置页「升级前快照」），确认 `.webui/backups/snapshot_*.db`。
+2. **替换**：用新版本覆盖/替换 `webui/`（保留 workspace 下 `.webui/` 与他人书目录；`webui/dist/` 重新 build）。
+3. **启动**：`npm start`；schema 迁移按 `PRAGMA user_version` 自动执行（`server/db/migrations/*.sql`），升级日志写 `.webui/upgrade.log`。
+
+若 `books.dir` 对不上（如目录被移动/恢复）：设置页 → 运维 → relink，填相对目录（校验 `_tracking-state.json`）。
+
+## 发布 / 单文件打包
+
+`webui/` 已纳入仓库（`git add webui`）。可选把后端打成单文件可执行（Node SEA / pkg）：
+
+```bash
+npm run pack:standalone     # 生成 dist/standalone/* + sea-config.json + 说明
+```
+
+SEA 完整产物需本机 Node 二进制注入工具（postject）；`scripts/build-standalone.mjs` 产出 bundle 与配置并给出后续步骤（pkg 打包同理）。
+
+## 目录速览
 
 ```
 webui/
 ├── server/
-│   ├── index.mts          # Fastify 入口（静态托管 + 路由 + demo 注册）
-│   ├── db/                # better-sqlite3 + migrations/0001_init.sql
-│   ├── config/            # webui-config.json（渠道/预算/偏好，密钥 0600）
-│   ├── fs/                # 路径安全 + mtime 乐观锁 + 文件树
-│   ├── routes/            # books/files/tree/tracking/config/stages/jobs/audit/gates
-│   └── gates/             # 门禁框架（types/runner/spawn 兜底/registry）+ 迁移对拍
-└── client/                # React 18 + Vite + CodeMirror 6（书稿编辑部设计令牌）
-    ├── src/pages/         # 书房 P0 / 新建向导 P1 / 工作台 P3 / 流程 P4 / 设置 P6
-    ├── src/components/    # PageEditor / GateReportCard / TrackingBoard
-    └── src/styles/        # tokens.css（晴窗纸/灯下稿） + layout.css
+│   ├── index.mts          # Fastify 入口（127.0.0.1）
+│   ├── db/                # better-sqlite3 + migrations (user_version)
+│   ├── config/            # webui-config.json（密钥唯一明文）
+│   ├── engine/            # 流程定义解释器 + 状态机 + stageRunner（内循环重试）
+│   ├── agents/            # pi-agent-core 装配 + Context + ai-edit
+│   ├── gates/             # 门禁适配器（Node 移植内联 + 原 .js spawn 兜底）
+│   ├── import/            # 已有小说导入 + 导入校对（fail-closed 解锁）
+│   ├── export/            # md/txt/zip/excel/epub 导出
+│   ├── ops/               # 诊断/统计/审计CSV/备份/归档/relink/kill
+│   ├── util/              # 零依赖 zip/xlsx/epub 写入器
+│   └── routes/            # REST + SSE
+├── client/src/            # React SPA（书房/工作台/流程看板/导入校对/模块库/拆文/导出/设置）
+└── scripts/               # check-no-python / diag / trace / backup
 ```
 
-## 测试
+## 主要功能（对齐 M0–M4 里程碑）
 
-- 单测：`npm test`（db 建库/唯一索引、fs 路径穿越/mtime 冲突、gates harness 对 demo 跑 ai-patterns）
-- 集成手验：`node scripts/verify-api.mjs`（mtime 409 / 写 / 门禁）
-- 页面手验：`node scripts/verify-ui.mjs`（Playwright 截图 + 0 控制台错误）
-
-## 说明（设计约束实现状态）
-
-- **零 Python 依赖**：`check:no-python` 绿。`tracking_commit`/`author_memory_commit` 的 Node 版属 M1 ⭐ 移植项。
-- **门禁**：M0 用原 `.js` 脚本 spawn 兜底（`check-ai-patterns.js` 等，产出结构化报告）；M1 逐项内联 TS + 对拍。
-- **每步确认**：前端批阅栏（通过/改后重跑/驳回/跳过）已就位，引擎状态机（真调用模型）在 M1。
+- M0 骨架：书房 / 文件树 / CodeMirror 编辑（mtime 乐观锁）/ 门禁骨架
+- M1 流程引擎闭环：intake→concept→characters→outline 全挂门禁、每步确认（approve/edit_rerun/reject/skip）、成本与门禁可见
+- M2 章节主链路：chapter 批处理 + 三查记录 + tracking-commit、角色线（卡+线看板+AI 提议）、关键词 RAG
+- M3 兜底与交付：review/deslop/image 阶段、导出（md/txt 平台/分卷 zip）、AI 编辑抽屉
+- M4 打磨：story-import 完整移植 + 导入校对页（置信度模型/fail-closed 解锁）、门禁历史/成本/审计 CSV、health?depth=full、每日备份/归档/relink/软删/kill、epub/Excel 导出、诊断脚本
