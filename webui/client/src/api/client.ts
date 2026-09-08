@@ -110,6 +110,9 @@ export const api = {
   rollbackStage: (bookId: string, stage: string) =>
     http<any>(`/books/${bookId}/stages/${stage}/rollback`, { method: 'POST' }),
 
+  aiEdit: (bookId: string, body: any) =>
+    http<any>(`/books/${bookId}/ai-edit`, { method: 'POST', body: JSON.stringify(body) }),
+
   runGates: (bookId: string, gates?: string[]) =>
     http<any>(`/books/${bookId}/gates/run`, {
       method: 'POST',

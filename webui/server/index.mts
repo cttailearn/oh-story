@@ -75,13 +75,13 @@ async function main() {
     });
   }
 
-  const ctx = { db, workspace };
-  await registerRoutes(app, ctx);
-  await registerGateRoutes(app, ctx);
-
   // AI 运行时（渠道同步）
   const ai = new AiRuntime();
   ai.syncChannels();
+
+  const ctx = { db, workspace, ai };
+  await registerRoutes(app, ctx);
+  await registerGateRoutes(app, ctx);
   if (!ai.hasAnyChannel()) {
     console.log('⚠️ 未配置渠道 —— 流程可用 demo/假渠道运行（POST run 传 fake:true），真实生成需在设置页配置渠道与模型路由');
   }

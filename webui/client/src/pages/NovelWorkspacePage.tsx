@@ -5,6 +5,7 @@ import { PageEditor } from '../components/PageEditor.tsx';
 import { GateReportCard } from '../components/GateReportCard.tsx';
 import { TrackingBoard } from '../components/TrackingBoard.tsx';
 import { CharactersDualView } from '../components/CharactersDualView.tsx';
+import { AIEditDrawer } from '../components/AIEditDrawer.tsx';
 
 type Module = 'settings' | 'outline' | 'chapters' | 'state' | 'pipeline';
 
@@ -251,6 +252,7 @@ function FileEditor({
   const [lastSaveAt, setLastSaveAt] = useState<string | null>(null);
   const [gateResult, setGateResult] = useState<any>(null);
   const [gating, setGating] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
     if (filePath) setActivePath(filePath);
@@ -336,6 +338,9 @@ function FileEditor({
         <button className="ink-btn" onClick={runGates} disabled={gating}>
           {gating ? '门禁运行中…' : '⚖ 保存并跑门禁'}
         </button>
+        <button className="ink-btn" onClick={() => setAiOpen(true)} disabled={loading} title="AI 需求式编辑">
+          ✨ AI 改稿
+        </button>
         {lastSaveAt && (
           <span className="mono" style={{ color: 'var(--green-jade)', fontSize: 12 }}>
             已存 {lastSaveAt}
@@ -379,6 +384,21 @@ function FileEditor({
       </div>
 
       {gateResult && <GateReportCard result={gateResult} />}
+
+      <AIEditDrawer
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        bookId={bookId}
+        targetPath={activePath}
+        mtime={mtime}
+        onApplied={(nm) => {
+          setMtime(nm);
+          api
+            .readFile(bookId, activePath)
+            .then((r) => { setContent(r.content); setMtime(r.mtime); onSaved(); })
+            .catch(() => {});
+        }}
+      />
     </div>
   );
 }

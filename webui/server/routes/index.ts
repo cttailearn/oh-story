@@ -4,10 +4,13 @@ import type { DbHandle } from '../db/index.ts';
 import { ulid } from '../db/index.ts';
 import * as fileio from '../fs/index.ts';
 import * as cfgmgr from '../config/index.ts';
+import { runAiEdit, type AiEditRequest } from '../agents/aiEdit.ts';
+import { publish } from '../engine/sse.ts';
 
 export interface RouteCtx {
   db: DbHandle;
   workspace: string;
+  ai?: import('../ai/runtime.ts').AiRuntime;
 }
 
 interface BookRow {
@@ -334,6 +337,48 @@ export async function registerRoutes(
       ? db.db.prepare(`SELECT * FROM jobs WHERE book_id = ? ORDER BY created_at DESC LIMIT ?`).all(qp.book_id, limit)
       : db.db.prepare(`SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?`).all(limit)) as any[];
     return { items: rows, total: rows.length };
+  });
+
+  // ---------- AI 需求式编辑（agents-runtime §4 / ai-edit-spec） ----------
+  app.post<{ Params: Params1 }>('/api/books/:id/ai-edit', async (req, reply) => {
+    const row = db.db.prepare(`SELECT * FROM books WHERE id = ?`).get(req.params.id) as BookRow | undefined;
+    if (!row) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '书不存在' } });
+    if (!ctx.ai) return reply.code(503).send({ error: { code: 'CHANNEL_UNCONFIGURED', message: 'AI 运行时未装配' } });
+    const body = (req.body ?? {}) as Partial<AiEditRequest>;
+    const mode = body.mode ?? 'rewrite';
+    if (!['rewrite', 'insert', 'fix-gates'].includes(mode)) {
+      return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: '未知 mode', detail: { mode } } });
+    }
+    const demand = body.demand ?? { kind: 'custom' };
+    if (!demand || typeof demand !== 'object' || !demand.kind) {
+      return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: '缺少 demand.kind' } });
+    }
+    const fake = (body as AiEditRequest).fake ?? process.env.WEBUI_FAKE_MODE === '1';
+    try {
+      const result = await runAiEdit(ctx.ai, { bookId: row.id, bookDir: row.dir, bookName: row.name }, {
+        mode: mode as AiEditRequest['mode'],
+        target: (body.target === 'new' ? 'new' : body.target) as AiEditRequest['target'],
+        demand,
+        refs: body.refs,
+        model_role: body.model_role,
+        tone: body.tone,
+        intensity: body.intensity,
+        fake,
+      });
+      db.db
+        .prepare(`INSERT INTO audit (ts, who, action, target, detail_json) VALUES (?,?,?,?,?)`)
+        .run(nowIso(), 'user', 'ai-edit:request', `book:${row.id}`, JSON.stringify({ edit_id: result.edit_id, mode: result.mode, target: result.target, diff: result.diff.length }));
+      // SSE：diff 流式回执（api-contract §4 edit:diff）
+      publish(row.id, { event: 'edit:diff', data: { editId: result.edit_id, diff: result.diff } });
+      return reply.send(result);
+    } catch (e: any) {
+      const code = e?.code ?? 'INTERNAL';
+      if (code === 'NOT_FOUND') return reply.code(404).send({ error: { code, message: e.message } });
+      if (code === 'CHANNEL_UNCONFIGURED' || code === 'MODEL_ROUTING_MISSING') {
+        return reply.code(503).send({ error: { code: 'CHANNEL_UNCONFIGURED', message: e.message } });
+      }
+      return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: e?.message ?? String(e) } });
+    }
   });
 
   // ---------- Audit ----------
