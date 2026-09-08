@@ -90,6 +90,7 @@ export const api = {
     }),
 
   tracking: (bookId: string) => http<any>(`/books/${bookId}/tracking`),
+  cost: (bookId: string) => http<any>(`/books/${bookId}/cost`),
   config: () => http<any>('/config'),
   putConfig: (cfg: any) => http<any>('/config', { method: 'PUT', body: JSON.stringify(cfg) }),
   testChannel: (id: string) =>

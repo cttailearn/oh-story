@@ -35,6 +35,15 @@ export function PipelinePage() {
   const [latestGates, setLatestGates] = useState<any>(null);
   const [currentCost, setCurrentCost] = useState<any>(null);
   const closeSseRef = useRef<(() => void) | null>(null);
+  const [cost, setCost] = useState<any>(null);
+
+  const loadCost = useCallback(() => {
+    if (!bookId) return;
+    api
+      .cost(bookId)
+      .then(setCost)
+      .catch(() => {});
+  }, [bookId]);
 
   const load = useCallback(() => {
     if (!bookId) return;
@@ -50,6 +59,10 @@ export function PipelinePage() {
   }, [bookId]);
 
   useEffect(load, [load]);
+
+  useEffect(() => {
+    loadCost();
+  }, [loadCost, latestGates, acting]);
 
   // SSE 订阅
   useEffect(() => {
@@ -256,6 +269,54 @@ export function PipelinePage() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* 成本小仪表（前端 §10.3） */}
+          {cost && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: '10px 12px',
+                border: '1px solid var(--line)',
+                borderRadius: 6,
+                background: 'var(--paper-2)',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: 10,
+                fontSize: 12.5,
+              }}
+            >
+              <div>
+                <div style={{ color: 'var(--ink-2)' }}>本日成本</div>
+                <div className="mono" style={{ fontSize: 16 }}>¥{(cost.day_cents / 100).toFixed(2)}</div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--ink-2)' }}>本月成本</div>
+                <div className="mono" style={{ fontSize: 16 }}>¥{(cost.month_cents / 100).toFixed(2)}</div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--ink-2)' }}>日预算</div>
+                <div className="mono" style={{ fontSize: 16, color: cost.month_ratio >= 1 ? 'var(--red-vermillion)' : cost.month_ratio > 0.8 ? 'var(--gold-saffron)' : 'inherit' }}>
+                  ¥{(cost.budget_day_cents / 100).toFixed(2)}{cost.month_ratio >= 1 ? '（熔断）' : ''}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--ink-2)' }}>Tokens（入/出）</div>
+                <div className="mono" style={{ fontSize: 13 }}>
+                  {cost.total_tokens_in.toLocaleString()} / {cost.total_tokens_out.toLocaleString()}
+                </div>
+              </div>
+              {cost.by_stage && Object.keys(cost.by_stage).length > 0 && (
+                <div>
+                  <div style={{ color: 'var(--ink-2)' }}>按阶段</div>
+                  <div className="mono" style={{ fontSize: 12 }}>
+                    {Object.entries(cost.by_stage as Record<string, number>)
+                      .map(([k, v]) => `${k}:¥${(v / 100).toFixed(2)}`)
+                      .join(' · ')}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

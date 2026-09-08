@@ -2,6 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { DbHandle } from '../db/index.ts';
 import type { AiRuntime } from '../ai/runtime.ts';
+import { getConfig } from '../config/index.ts';
 import { getProcessDefinition, loadAllDefinitions } from '../engine/definitions.ts';
 import {
   ensureStageRows,
@@ -147,5 +148,50 @@ export async function registerPipelineRoutes(app: FastifyInstance, ctx: EngineRo
     reply.raw.on('close', () => clearInterval(hb));
     publish(req.params.id, { event: 'heartbeat', data: { ts: Date.now(), hello: true } });
     return reply;
+  });
+
+  // GET /api/books/:id/cost —— 成本仪表（api-contract §3.12）
+  app.get<{ Params: { id: string } }>('/api/books/:id/cost', async (req, reply) => {
+    const book = db.db.prepare(`SELECT * FROM books WHERE id=?`).get(req.params.id) as any;
+    if (!book) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '书不存在' } });
+    const rows = db.db
+      .prepare(`SELECT stage_id, cost_cents, tokens_in, tokens_out, created_at FROM jobs WHERE book_id=? AND status IN ('done','error')`)
+      .all(book.id) as Array<{ stage_id: string; cost_cents: number; tokens_in: number; tokens_out: number; created_at: string }>;
+    const now = new Date();
+    const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const monthKey = (d: Date) => dayKey(d).slice(0, 7);
+    const isToday = (iso: string) => dayKey(new Date(iso)) === dayKey(now);
+    const isThisMonth = (iso: string) => monthKey(new Date(iso)) === monthKey(now);
+    let dayCents = 0;
+    let monthCents = 0;
+    const byStage: Record<string, number> = {};
+    const byModel: Record<string, number> = {};
+    const curve: Array<{ date: string; cents: number }> = [];
+    const curveMap = new Map<string, number>();
+    for (const r of rows) {
+      if (isToday(r.created_at)) dayCents += r.cost_cents;
+      if (isThisMonth(r.created_at)) monthCents += r.cost_cents;
+      byStage[r.stage_id] = (byStage[r.stage_id] ?? 0) + r.cost_cents;
+      const dk = dayKey(new Date(r.created_at));
+      curveMap.set(dk, (curveMap.get(dk) ?? 0) + r.cost_cents);
+    }
+    for (const [date, cents] of curveMap) curve.push({ date, cents: Math.round(cents * 100) / 100 });
+    curve.sort((a, b) => a.date.localeCompare(b.date));
+    // byModel：detail_json 通常不带 model；以 book meta 或留空
+    const budget = getConfig().budget;
+    return {
+      book_id: book.id,
+      day_cents: dayCents,
+      month_cents: monthCents,
+      budget_day_cents: budget.daily_max_cents,
+      budget_month_cents: budget.stage_max_cents * 5,
+      month_ratio: budget.daily_max_cents > 0 ? Math.min(1, monthCents / budget.daily_max_cents) : 0,
+      by_stage: byStage,
+      by_model: byModel,
+      curve,
+      total_cents: rows.reduce((s, r) => s + r.cost_cents, 0),
+      total_tokens_in: rows.reduce((s, r) => s + r.tokens_in, 0),
+      total_tokens_out: rows.reduce((s, r) => s + r.tokens_out, 0),
+    };
   });
 }

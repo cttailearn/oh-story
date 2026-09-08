@@ -8,6 +8,7 @@ import { getProcessDefinition } from '../engine/definitions.ts';
 import { assembleBundle, CONTEXT_GLUES } from '../agents/contexts/index.ts';
 import { runFakeAgent } from '../agents/execute.ts';
 import { AiRuntime } from '../ai/runtime.ts';
+import { initConfig } from '../config/index.ts';
 import { runStageJob } from '../engine/stageRunner.ts';
 import { getStageRow } from '../engine/state.ts';
 
@@ -18,6 +19,7 @@ let def: import('../engine/types.ts').ProcessDefinition;
 
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), 'ohwebui-m1-'));
+  initConfig(join(dir, 'cfg')); /* stageRunner 预算预检需要 config 就绪 */
   db = new Database(join(dir, 'm1.db'));
   db.exec(`
     CREATE TABLE IF NOT EXISTS stages (
@@ -116,7 +118,7 @@ describe('FakeAgent（M1.4 demo 路径）', () => {
     });
     const r = await runFakeAgent({ bundle: b, model: { channelId: 'fake', modelId: 'fake' } });
     expect(r.fake).toBe(true);
-    expect(r.text.length).toBeGreaterThan(500);
+    expect(r.text.replace(/\s/g, '').length).toBeGreaterThan(1800);
   });
 });
 
@@ -145,4 +147,30 @@ describe('stageRunner fake 全链路（M1.7）', () => {
     const row = getStageRow(db, 'nb_test', 'outline');
     expect(row!.status).toBe('review');
   });
+
+  it('chapter 阶段（无追踪状态）→ 内循环按 retry_limit 耗尽 → blocked（不崩溃/不死循环）', async () => {
+    def = getProcessDefinition('long');
+    const ai2 = new AiRuntime();
+    const res = await runStageJob({
+      db: { db, path: join(dir, 'm1.db'), user_version: 1 },
+      ai: ai2,
+      def,
+      bookId: 'nb_chapter_blocked',
+      bookDir,
+      bookName: '测试书',
+      stageId: 'chapter',
+      fake: true,
+    });
+    expect(res.status).toBe('blocked');
+    expect(res.gateBlocking).toBe(true);
+    // long.json chapter 的 gates=7，retry_limit=2 → 引擎内循环共跑 2 轮 = 14 行 gate_runs
+    const runs = db
+      .prepare(`SELECT COUNT(*) AS n FROM gate_runs WHERE book_id=?`)
+      .get('nb_chapter_blocked') as { n: number };
+    expect(runs.n).toBe(14);
+    const row = getStageRow(db, 'nb_chapter_blocked', 'chapter')!;
+    expect(row.status).toBe('blocked');
+    expect(row.revision).toBe(1);
+  });
+
 });

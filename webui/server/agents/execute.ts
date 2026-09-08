@@ -57,7 +57,7 @@ function fakeArtifact(bundle: ContextBundle, taskTitle: string): string {
       '他愣了几秒，随即笑了一下，把手机揣回兜里，脚步轻快了许多。',
       '这只是一个开始，他心里清楚。后面还有更长的路要走。',
     ];
-    for (let i = 0; i < 46; i++) {
+    for (let i = 0; i < 96; i++) {
       body += `　　${sentences[i % sentences.length]}\n\n`;
     }
     body += `　　（此处为 demo 假产物，用于 e2e 验证门禁与确认链路；真实写作由 M1 真渠道产出。）\n`;
@@ -83,7 +83,7 @@ function fakeArtifact(bundle: ContextBundle, taskTitle: string): string {
     ].join('\n');
   }
   if (isOutline) {
-    let out = ['# 大纲（卷纲+细纲骨架）', ''];
+    let out = ['# 大纲（卷纲+细纲骨架）', '', '## 阶段总览（全书体量）', '- 全书体量：约 20 万字；阶段 0-5，每卷 4-8 章。', ''];
     const beats = ['开篇定调与首次任务', '意外爆红引来关注', '遭遇质疑与舆论反转', '关键抉择推动主线', '阶段性收束埋新钩子'];
     for (let i = 1; i <= 5; i++) {
       const n = String(i).padStart(3, '0');
@@ -106,9 +106,11 @@ function fakeArtifact(bundle: ContextBundle, taskTitle: string): string {
         '- 起：冲突露头；承：角色围拢；转：作品效果兑现；合：结尾钩子。',
         `- 情节点：${['找切入点', '完成首支视频', '数据反馈', '交锋', '新任务'][i - 1]}。`,
         '',
-        '- **人物关系和出场顺序**：主角先出场，配角依推进入场。',
+        '- **人物关系变化**：配角依情节推进陆续入场，关系由任务协作驱动。',
+        '- **出场顺序**：主角先出场，配角依推进入场。',
         '- **情节细化**：情节节点≥5，逐步升级冲突。',
-        '- **结尾设定和钩子**：留下下一章待解悬念。',
+        '- **结尾设定**：留下下一章待解悬念（具体落点：新任务线索出现）。',
+        '- **章尾钩子**：借任务升级引出下一章冲突。',
         '',
       );
     }

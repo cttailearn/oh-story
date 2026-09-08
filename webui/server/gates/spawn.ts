@@ -10,6 +10,8 @@ export interface SpawnGateSpec {
   script: string;
   /** 默认 CLI 参数 */
   args?: string[];
+  /** 动态 CLI 参数：按 opts（bookDir/stage args）生成，优先于静态 args */
+  dynamicArgs?: (opts: GateOptions) => string[];
   /** 是否为 .js 脚本（node 运行） */
   kind?: 'node' | 'python';
   /** 解析 stdout JSON 为 GateReport 的钩子 */
@@ -19,7 +21,7 @@ export interface SpawnGateSpec {
   collectInputs?: (opts: GateOptions) => string[];
 }
 
-function runProcess(cmd: string, args: string[], opts: { cwd: string; timeoutMs: number }): Promise<{ code: number | null; stdout: string; stderr: string }> {
+export function runProcess(cmd: string, args: string[], opts: { cwd: string; timeoutMs: number }): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
@@ -45,7 +47,7 @@ function runProcess(cmd: string, args: string[], opts: { cwd: string; timeoutMs:
   });
 }
 
-const EXIT_CODES = {
+export const EXIT_CODES = {
   clean: 0,
   findings: 1,
   error: 2,
@@ -58,7 +60,7 @@ export function makeSpawnGate(spec: SpawnGateSpec): GateAdapter {
       const started = Date.now();
       const inputs = spec.collectInputs ? spec.collectInputs(opts) : [];
       const cmd = spec.kind === 'python' ? 'python' : process.execPath;
-      const args = [spec.script, ...(spec.args ?? []), ...inputs];
+      const args = [spec.script, ...(spec.dynamicArgs ? spec.dynamicArgs(opts) : spec.args ?? []), ...inputs];
       const res = await runProcess(cmd, args, {
         cwd: opts.cwd,
         timeoutMs: 60000,

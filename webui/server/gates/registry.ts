@@ -1,7 +1,7 @@
 // 门禁登记表：gate name → adapter。有 TS 内联实现优先内联；否则原 .js spawn 兜底。
 import type { GateAdapter, GateOptions, GateReport } from './types.ts';
-import { makeSpawnGate } from './spawn.ts';
-import { existsSync, readdirSync, mkdirSync, writeFileSync, unlinkSync } from 'node:fs';
+import { makeSpawnGate, runProcess } from './spawn.ts';
+import { existsSync, readdirSync, mkdirSync, writeFileSync, unlinkSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as tc from './impl/tracking-commit.ts';
 import { normalizeBookFile } from './impl/normalize-punctuation.ts';
@@ -56,6 +56,25 @@ function register(name: string, spec: Omit<import('./spawn.ts').SpawnGateSpec, '
   return makeSpawnGate({ name, ...spec });
 }
 
+interface GateSpecExt {
+  args?: string[];
+  min?: number;
+  max?: number;
+}
+
+/** 从 stage.gates 里取某命名的 GateSpec（含 args/min/max），未知类型安全 */
+function gateSpecOf(stage: unknown, name: string): GateSpecExt {
+  const gates = (stage as { gates?: Array<Record<string, unknown>> } | undefined)?.gates;
+  if (!Array.isArray(gates)) return {};
+  const spec = gates.find((g) => g?.name === name);
+  if (!spec) return {};
+  return {
+    args: Array.isArray(spec.args) ? (spec.args as string[]) : undefined,
+    min: typeof spec.min === 'number' ? spec.min : undefined,
+    max: typeof spec.max === 'number' ? spec.max : undefined,
+  };
+}
+
 export function buildGateAdapters(): GateAdapter[] {
   const scriptsDir = SKILL_SCRIPTS_DIR;
   const adapters: GateAdapter[] = [];
@@ -71,16 +90,120 @@ export function buildGateAdapters(): GateAdapter[] {
         script: join(scriptsDir, 'check-degeneration.js'),
         args: ['--check', '--json', '--fail-on=blocking'],
         collectInputs: (opts) => collectChapters(opts.bookDir),
+        parse: aiPatternsParse,
       }),
       register('outline-detail', {
         script: join(scriptsDir, 'check-outline-detail.js'),
-        args: ['--check', '--json', '--fail-on=blocking'],
+        args: ['--check', '--json'],
         collectInputs: (opts) => collectOutlineChapterFiles(opts.bookDir),
+        parse: (json: any) => {
+          const rows = Array.isArray(json) ? json : [];
+          const blocking = [];
+          const warnings = [];
+          for (const r of rows) {
+            if (r?.error) { warnings.push({ rule: 'read-error', level: 'warning' as const, evidence: String(r.file) + ': ' + String(r.error) }); continue; }
+            if (r?.thin && Array.isArray(r.missingHard)) {
+              for (const fld of r.missingHard) blocking.push({ rule: 'missing-hard-field', level: 'blocking' as const, evidence: String(r.file) + ': 缺硬字段「' + String(fld) + '」', file: String(r.file ?? '') });
+            }
+            if (Array.isArray(r?.missingSoft)) for (const fld of r.missingSoft) warnings.push({ rule: 'missing-soft-field', level: 'warning' as const, evidence: String(r.file) + ': 按需字段「' + String(fld) + '」', file: String(r.file ?? '') });
+            if (Array.isArray(r?.qualityWarnings)) for (const w of r.qualityWarnings) warnings.push({ rule: 'outline-lean', level: 'warning' as const, evidence: String(w), file: String(r.file ?? '') });
+            if (Array.isArray(r?.detailWarnings)) for (const w of r.detailWarnings) warnings.push({ rule: 'outline-detail-hint', level: 'warning' as const, evidence: String(w), file: String(r.file ?? '') });
+          }
+          return {
+            passed: blocking.length === 0,
+            blocking,
+            warnings,
+            value: { checked: rows.length },
+          };
+        },
+      }),
+      register('chapter-consistency', {
+        script: join(scriptsDir, 'check-chapter-consistency.js'),
+        dynamicArgs: (opts) => ['--check', '--json', '--project', opts.bookDir],
+        collectInputs: (opts) => [],
+        parse: (json: any) => {
+          const fails = Array.isArray(json?.issues) ? (json.issues as string[]) : [];
+          const hints = Array.isArray(json?.hints) ? (json.hints as string[]) : [];
+          return {
+            passed: fails.length === 0,
+            blocking: fails.map((f) => ({ rule: 'chapter-consistency', level: 'blocking' as const, evidence: f })),
+            warnings: hints.map((h) => ({ rule: 'timeline-hint', level: 'warning' as const, evidence: h })),
+            value: { checked: json?.checked ?? 0, fails: fails.length },
+          };
+        },
+      }),
+      register('project-consistency', {
+        script: join(scriptsDir, 'check-project-consistency.js'),
+        dynamicArgs: (opts) => {
+          const spec = gateSpecOf(opts.args?.stage, 'project-consistency');
+          const scopeArgs = Array.isArray(spec.args) ? spec.args : [];
+          const scopeIdx = scopeArgs.indexOf('--scope');
+          const scope = scopeIdx >= 0 && scopeArgs[scopeIdx + 1] ? String(scopeArgs[scopeIdx + 1]) : 'all';
+          return ['--check', '--json', '--project', opts.bookDir, '--scope', scope];
+        },
+        collectInputs: (opts) => [],
+        parse: (json: any) => {
+          const all: string[] = [];
+          if (json && typeof json === 'object') {
+            for (const k of Object.keys(json)) {
+              if (Array.isArray(json[k])) all.push(...(json[k] as string[]).map(String));
+            }
+          }
+          return {
+            passed: all.length === 0,
+            blocking: all.map((x) => ({ rule: 'project-consistency', level: 'blocking' as const, evidence: x })),
+            warnings: [],
+            value: { scopes: json && typeof json === 'object' ? Object.keys(json) : [], fails: all.length },
+          };
+        },
       }),
       register('normalize-punctuation', {
         script: join(scriptsDir, 'normalize-punctuation.js'),
         args: ['--check'],
         collectInputs: (opts) => collectChapters(opts.bookDir),
+      }),
+      register('outline-copy', {
+        script: join(scriptsDir, 'check-outline-copy.js'),
+        args: ['--check', '--json'],
+        collectInputs: (opts) => collectChapters(opts.bookDir),
+        parse: (json: any) => {
+          const rows = Array.isArray(json) ? json : [];
+          const findings: Array<{ file: string; text: string }> = [];
+          for (const r of rows) {
+            if (Array.isArray(r.findings)) {
+              for (const f of r.findings) {
+                findings.push({ file: String(r.file ?? ''), text: 'L' + String(f.line) + ' 连续 ' + String(f.runLength) + ' 字「' + String(f.fragment) + '」' });
+              }
+            }
+          }
+          return {
+            passed: findings.length === 0,
+            blocking: findings.map((f) => ({ rule: 'outline-copy', level: 'blocking', evidence: f.text, file: f.file })),
+            warnings: (rows.filter((r) => r.error)).map((r) => ({ rule: 'read-error', level: 'warning', evidence: String(r.file) + ': ' + String(r.error) })),
+            value: { checked: rows.length, blocking: findings.length },
+          };
+        },
+      }),
+      register('delivery-contract', {
+        script: join(scriptsDir, 'check-delivery-contract.js'),
+        dynamicArgs: (opts) => {
+          const spec = gateSpecOf(opts.args?.stage, 'delivery-contract');
+          const min = typeof spec.min === 'number' ? spec.min : 500;
+          const max = typeof spec.max === 'number' ? spec.max : 20000;
+          return ['--json', '--min-chars', String(min), '--max-chars', String(max), '--sections', '1', opts.bookDir];
+        },
+        collectInputs: (opts) => [],
+        parse: (json: any) => {
+          const checks = Array.isArray(json?.checks) ? json.checks : [];
+          const failed = checks.filter((ch: any) => ch.ok === false);
+          const warns = checks.filter((ch: any) => ch.ok === true && ch.hint);
+          return {
+            passed: !!json?.ok && failed.length === 0,
+            blocking: failed.map((ch: any) => ({ rule: String(ch.id ?? 'delivery-contract'), level: 'blocking' as const, evidence: String(ch.evidence ?? ch.repair ?? '') })),
+            warnings: warns.map((ch: any) => ({ rule: String(ch.id ?? 'delivery-hint'), level: 'warning' as const, evidence: String(ch.hint ?? ch.evidence ?? '') })),
+            value: { ok: json?.ok, char_count: json?.char_count ?? json?.chars ?? null },
+          };
+        },
       }),
       register('write-review-record', {
         script: join(scriptsDir, 'write-review-record.js'),
@@ -102,6 +225,99 @@ export function buildGateAdapters(): GateAdapter[] {
 /** M1.6 TS 内联实现（对拍绿后启用；无对应脚本时也可独立存在） */
 export function buildInlineAdapters(): GateAdapter[] {
   return [
+    {
+      name: 'revision-duplicate',
+      async run(opts: GateOptions): Promise<GateReport> {
+        const started = Date.now();
+        const spec = gateSpecOf(opts.args?.stage, 'revision-duplicate');
+        const sArgs = Array.isArray(spec.args) ? spec.args : [];
+        const modeIdx = sArgs.indexOf('--mode');
+        const mode = (modeIdx >= 0 && sArgs[modeIdx + 1]) ? String(sArgs[modeIdx + 1]) : 'patch';
+        const revBase = (opts.args?.revBase as string) || '';
+        const written = Array.isArray(opts.args?.written) ? (opts.args.written as string[]) : [];
+        if (!revBase || written.length === 0 || !SKILL_SCRIPTS_DIR) {
+          return {
+            gate: 'revision-duplicate',
+            ok: true,
+            passed: true,
+            blocking: [],
+            warnings: [{ rule: 'no-rev-base', level: 'warning', evidence: '缺少改写前基稿（revBase），无法机械校验改写残片；真实流程在改写前会保存基稿' }],
+            value: { mode, checked: 0 },
+            ran_ms: Date.now() - started,
+            job_id: opts.jobId ?? null,
+            stage_id: opts.stageId,
+            revision: opts.revision ?? null,
+          };
+        }
+        const script = join(SKILL_SCRIPTS_DIR, 'check-revision-duplicate.js');
+        const blocking: Array<{ rule: string; level: 'blocking'; evidence: string; file?: string }> = [];
+        const warnings: Array<{ rule: string; level: 'warning'; evidence: string; file?: string }> = [];
+        let checked = 0;
+        for (const w of written) {
+          const base = String(w).split(/[\\/]/).pop() ?? String(w);
+          const orig = join(revBase, base);
+          if (!existsSync(orig)) continue;
+          checked++;
+          try {
+            const res = await runProcess(process.execPath, [script, '--check', '--json', '--original', orig, '--revised', w, '--mode', mode], { cwd: opts.cwd, timeoutMs: 30000 });
+            let json: any = null;
+            try { json = JSON.parse(res.stdout); } catch { /* ignore */ }
+            if (json) {
+              if (Array.isArray(json.blocking)) {
+                for (const b of json.blocking) blocking.push({ rule: String(b?.rule ?? 'rev-copy'), level: 'blocking', evidence: String(b?.evidence ?? ''), file: base });
+              }
+              if (Array.isArray(json.warnings)) {
+                for (const ww of json.warnings) warnings.push({ rule: String(ww?.rule ?? 'rev-hint'), level: 'warning', evidence: String(ww?.evidence ?? ''), file: base });
+              }
+            } else if (res.code === 2) {
+              warnings.push({ rule: 'rev-check-error', level: 'warning', evidence: (res.stderr || res.stdout).slice(0, 200) });
+            }
+          } catch (e) {
+            warnings.push({ rule: 'rev-check-crash', level: 'warning', evidence: String((e as Error)?.message ?? e).slice(0, 200) });
+          }
+        }
+        if (checked === 0) {
+          warnings.push({ rule: 'no-pair-matched', level: 'warning', evidence: '未找到与基稿匹配的改写文件，跳过机械校验' });
+        }
+        return {
+          gate: 'revision-duplicate',
+          ok: blocking.length === 0,
+          passed: blocking.length === 0,
+          blocking,
+          warnings,
+          value: { mode, checked },
+          ran_ms: Date.now() - started,
+          job_id: opts.jobId ?? null,
+          stage_id: opts.stageId,
+          revision: opts.revision ?? null,
+        };
+      },
+    },
+    {
+      name: 'char-count',
+      async run(opts: GateOptions): Promise<GateReport> {
+        const started = Date.now();
+        const files = collectChapters(opts.bookDir);
+        const spec = gateSpecOf(opts.args?.stage, 'char-count');
+        const min = typeof spec.min === 'number' ? spec.min : 1800;
+        const counts = files.map((f) => ({ file: f, chars: countProseChars(f) }));
+        const under = counts.filter((cc) => cc.chars < min);
+        const total = counts.reduce((s, cc) => s + cc.chars, 0);
+        return {
+          gate: 'char-count',
+          ok: under.length === 0,
+          passed: under.length === 0,
+          blocking: under.map((cc) => ({ rule: 'char-count-too-short', level: 'blocking', evidence: cc.file.split(/[\\/]/).pop() + ': ' + cc.chars + ' 字 < ' + min + ' 字达标' })),
+          warnings: [],
+          value: { min, files: counts.length, under: under.length, total },
+          detail: { counts },
+          ran_ms: Date.now() - started,
+          job_id: opts.jobId ?? null,
+          stage_id: opts.stageId,
+          revision: opts.revision ?? null,
+        };
+      },
+    },
     {
       name: 'normalize-punctuation',
       async run(opts: GateOptions): Promise<GateReport> {
@@ -138,8 +354,8 @@ export function buildInlineAdapters(): GateAdapter[] {
       async run(opts: GateOptions): Promise<GateReport> {
         const started = Date.now();
         // data 来自阶段产物（三查 JSON），M1.7 由 stageRunner 提供 args.data
-        const args = (opts.args ?? {}) as { data?: string };
-        const dataRel = args.data;
+        const args = (opts.args ?? {}) as { data?: string; reviewData?: string };
+        const dataRel = args.reviewData ?? args.data;
         if (!dataRel) {
           return {
             gate: 'write-review-record',
@@ -254,6 +470,21 @@ function safeParseJson(s: string): any {
   } catch {
     return null;
   }
+}
+
+function countProseChars(file: string): number {
+  let text = '';
+  try {
+    text = readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
+  } catch {
+    return 0;
+  }
+  return text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+    .join('')
+    .replace(/\s/g, '').length;
 }
 
 function collectChapters(bookDir: string): string[] {
