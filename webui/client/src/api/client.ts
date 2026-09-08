@@ -92,6 +92,22 @@ export const api = {
   tracking: (bookId: string) => http<any>(`/books/${bookId}/tracking`),
   config: () => http<any>('/config'),
   putConfig: (cfg: any) => http<any>('/config', { method: 'PUT', body: JSON.stringify(cfg) }),
+  testChannel: (id: string) =>
+    http<any>(`/config/channels/${id}/test`, { method: 'POST', body: JSON.stringify({}) }),
+
+  stages: (bookId: string) => http<any>(`/books/${bookId}/stages`),
+  runStage: (bookId: string, stage: string, fake = false) =>
+    http<any>(`/books/${bookId}/stages/${stage}/run`, {
+      method: 'POST',
+      body: JSON.stringify({ fake }),
+    }),
+  reviewStage: (bookId: string, stage: string, action: string, note?: string) =>
+    http<any>(`/books/${bookId}/stages/${stage}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action, note }),
+    }),
+  rollbackStage: (bookId: string, stage: string) =>
+    http<any>(`/books/${bookId}/stages/${stage}/rollback`, { method: 'POST' }),
 
   runGates: (bookId: string, gates?: string[]) =>
     http<any>(`/books/${bookId}/gates/run`, {
@@ -103,3 +119,19 @@ export const api = {
   jobs: () => http<{ items: any[] }>('/jobs'),
   audit: () => http<{ items: any[] }>('/audit'),
 };
+
+/** SSE 订阅：调用方自行关闭 */
+export function sseJobs(bookId: string, onEvent: (name: string, data: any) => void): () => void {
+  const es = new EventSource(`/api/books/${bookId}/jobs/events`);
+  const EVENTS = ['job:start', 'job:progress', 'gate:batch', 'job:review', 'job:error', 'heartbeat'];
+  for (const e of EVENTS) {
+    es.addEventListener(e, (ev: MessageEvent) => {
+      try {
+        onEvent(e, JSON.parse(ev.data));
+      } catch {
+        onEvent(e, ev.data);
+      }
+    });
+  }
+  return () => es.close();
+}

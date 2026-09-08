@@ -232,70 +232,6 @@ export async function registerRoutes(
     }
   });
 
-  // ---------- 阶段（管线视图 + 每步确认，M0 基础交互；引擎 M1 实装） ----------
-  app.get<{ Params: Params1 }>('/api/books/:id/stages', async (req, reply) => {
-    const row = db.db.prepare(`SELECT * FROM books WHERE id = ?`).get(req.params.id) as BookRow | undefined;
-    if (!row) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '书不存在' } });
-    const stages = db.db
-      .prepare(`SELECT stage_id, status, revision, started_at, reviewed_at, note FROM stages WHERE book_id = ? ORDER BY rowid`)
-      .all(row.id);
-    return { book_id: row.id, stages };
-  });
-
-  app.post<{ Params: Params2 }>('/api/books/:id/stages/:stage/review', async (req, reply) => {
-    const row = db.db.prepare(`SELECT * FROM books WHERE id = ?`).get(req.params.id) as BookRow | undefined;
-    if (!row) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '书不存在' } });
-    const stageId = String(req.params.stage);
-    const body = (req.body ?? {}) as { action?: string; note?: string; edits?: Record<string, string> };
-    const action = body.action;
-    if (!['approve', 'edit_rerun', 'reject_regen', 'skip'].includes(action ?? '')) {
-      return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: '无效 action' } });
-    }
-    const ts = nowIso();
-    // M0：仅记录 audit + 状态推进（approve→done 推进到下一个已存在 stage）
-    db.db
-      .prepare(`INSERT INTO audit (ts, who, action, target, detail_json) VALUES (?,?,?,?,?)`)
-      .run(ts, 'user', action, `book:${row.id}/stage:${stageId}`, JSON.stringify({ note: body.note ?? '', edits: body.edits ?? null }));
-    const existing = db.db
-      .prepare(`SELECT * FROM stages WHERE book_id = ? AND stage_id = ?`)
-      .get(row.id, stageId) as any;
-    if (action === 'approve' && existing) {
-      db.db
-        .prepare(`UPDATE stages SET status='done', reviewed_at=? WHERE book_id=? AND stage_id=?`)
-        .run(ts, row.id, stageId);
-      // 推进到下一 pending 阶段
-      const next = db.db
-        .prepare(`SELECT stage_id FROM stages WHERE book_id=? AND status IN ('pending') ORDER BY rowid LIMIT 1`)
-        .get(row.id) as any;
-      if (next) {
-        db.db.prepare(`UPDATE stages SET status='review', started_at=? WHERE book_id=? AND stage_id=?`).run(ts, row.id, next.stage_id);
-        db.db.prepare(`UPDATE books SET active_stage=?, updated_at=? WHERE id=?`).run(next.stage_id, ts, row.id);
-      } else {
-        db.db.prepare(`UPDATE books SET updated_at=? WHERE id=?`).run(ts, row.id);
-      }
-    } else if (action === 'edit_rerun' || action === 'reject_regen') {
-      // 回到 running（M0 演示：状态转移由 M1 引擎接管）
-      if (existing) {
-        db.db
-          .prepare(`UPDATE stages SET status='running', started_at=? WHERE book_id=? AND stage_id=?`)
-          .run(ts, row.id, stageId);
-      }
-    } else if (action === 'skip') {
-      if (existing) {
-        db.db
-          .prepare(`UPDATE stages SET status='skipped', reviewed_at=? WHERE book_id=? AND stage_id=?`)
-          .run(ts, row.id, stageId);
-      }
-    }
-    const auditId = (db.db.prepare(`SELECT MAX(id) AS m FROM audit`).get() as any).m;
-    return {
-      stage: stageId,
-      status: action === 'approve' ? 'done' : action === 'skip' ? 'skipped' : 'running',
-      next: null,
-      audit_id: `au_${auditId}`,
-    };
-  });
-
   // ---------- 配置 ----------
   app.get('/api/config', async () => {
     const cfg = cfgmgr.getConfig();
@@ -341,6 +277,53 @@ export async function registerRoutes(
     });
     const safe = { ...updated, channels: updated.channels.map((c) => ({ ...c, api_key: c.api_key ? maskSecret(c.api_key) : undefined })) };
     return safe;
+  });
+
+  // ---------- 渠道连通性自检（M1.8，api-contract §3.8） ----------
+  app.post<{ Params: { id: string } }>('/api/config/channels/:id/test', async (req, reply) => {
+    const cfg = cfgmgr.getConfig();
+    const ch = cfg.channels.find((c) => c.id === req.params.id);
+    if (!ch) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '渠道不存在' } });
+    if (!ch.base_url) {
+      return reply.send({ ok: false, msg: '缺少 base_url', llm: {}, images: {} });
+    }
+    const started = Date.now();
+    try {
+      // 探 /models 拉取模型目录
+      const url = ch.base_url.replace(/\/+$/, '') + '/models';
+      const headers: Record<string, string> = {};
+      if (ch.api_key) headers['Authorization'] = `Bearer ${ch.api_key}`;
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+      const pingMs = Date.now() - started;
+      if (!res.ok) {
+        return reply.send({
+          ok: false,
+          msg: `连通失败 HTTP ${res.status}`,
+          llm: { ping_ms: pingMs },
+          images: {},
+        });
+      }
+      const data = (await res.json()) as any;
+      const modelIds = Array.isArray(data?.data)
+        ? data.data.map((m: any) => m?.id).filter(Boolean)
+        : Array.isArray(data?.models)
+          ? data.models.map((m: any) => (typeof m === 'string' ? m : m?.id)).filter(Boolean)
+          : [];
+      return reply.send({
+        ok: true,
+        llm: { models: modelIds.length, ping_ms: pingMs },
+        images: { ok: false },
+        msg: `渠道可用（${modelIds.length} 模型）`,
+        models: modelIds,
+      });
+    } catch (e: any) {
+      return reply.send({
+        ok: false,
+        msg: `连通失败：${e?.message ?? String(e)}`,
+        llm: { ping_ms: Date.now() - started },
+        images: {},
+      });
+    }
   });
 
   // ---------- Jobs（M0 基础：历史列表） ----------

@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { openDatabase } from './db/index.ts';
 import { initConfig, getConfig } from './config/index.ts';
 import { registerRoutes } from './routes/index.ts';
+import { registerPipelineRoutes } from './routes/pipeline.ts';
+import { AiRuntime } from './ai/runtime.ts';
 import { registerDemoBook } from './demo.ts';
 import { registerGateRoutes } from './routes/gates.ts';
 
@@ -76,6 +78,16 @@ async function main() {
   const ctx = { db, workspace };
   await registerRoutes(app, ctx);
   await registerGateRoutes(app, ctx);
+
+  // AI 运行时（渠道同步）
+  const ai = new AiRuntime();
+  ai.syncChannels();
+  if (!ai.hasAnyChannel()) {
+    console.log('⚠️ 未配置渠道 —— 流程可用 demo/假渠道运行（POST run 传 fake:true），真实生成需在设置页配置渠道与模型路由');
+  }
+
+  // 流程引擎路由（stages/run/review/SSE）
+  await registerPipelineRoutes(app, { db, ai, workspace });
 
   // 载荷：demo 书注册（仅当 webui.db 为空且 demo 目录存在）
   registerDemoBook(db, workspace);

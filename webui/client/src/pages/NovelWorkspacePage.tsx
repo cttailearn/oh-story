@@ -4,6 +4,7 @@ import { api, BookDetail, FileNode } from '../api/client.ts';
 import { PageEditor } from '../components/PageEditor.tsx';
 import { GateReportCard } from '../components/GateReportCard.tsx';
 import { TrackingBoard } from '../components/TrackingBoard.tsx';
+import { CharactersDualView } from '../components/CharactersDualView.tsx';
 
 type Module = 'settings' | 'outline' | 'chapters' | 'state' | 'pipeline';
 
@@ -70,6 +71,20 @@ export function NovelWorkspacePage() {
               {label}
             </button>
           ))}
+          <button
+            className={`tree-item ${params.get('view') === 'characters' ? 'active' : ''}`}
+            style={{ border: 'none', background: 'transparent', width: '100%', justifyContent: 'flex-start' }}
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.set('module', 'settings');
+              next.set('view', 'characters');
+              next.delete('path');
+              setParams(next);
+            }}
+          >
+            <span className="tree-icon">◉</span>
+            角色双视图
+          </button>
         </div>
         <div style={{ marginTop: 14 }}>
           <h4>书稿结构</h4>
@@ -96,6 +111,17 @@ export function NovelWorkspacePage() {
               打开流程看板 →
             </Link>
           </div>
+        ) : params.get('view') === 'characters' ? (
+          <CharactersDualView
+            bookId={bookId!}
+            onOpenCard={(p) => {
+              const next = new URLSearchParams(params);
+              next.set('module', 'settings');
+              next.delete('view');
+              next.set('path', p);
+              setParams(next);
+            }}
+          />
         ) : (
           <FileModule
             module={module}

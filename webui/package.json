@@ -26,6 +26,8 @@
     "@codemirror/language": "^6.10.8",
     "@codemirror/state": "^6.5.2",
     "@codemirror/view": "^6.36.4",
+    "@earendil-works/pi-agent-core": "^0.85.1",
+    "@earendil-works/pi-ai": "^0.85.1",
     "@fastify/static": "^8.0.0",
     "antd": "^5.26.4",
     "better-sqlite3": "^12.11.1",

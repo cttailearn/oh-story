@@ -1,0 +1,70 @@
+{
+  "id": "short",
+  "version": 1,
+  "title": "短篇/盐言单篇",
+  "defaults": {
+    "retry_limit": 1,
+    "confirm_required": true,
+    "max_tokens_in": 16000,
+    "max_tokens_out": 4000
+  },
+  "stages": [
+    {
+      "id": "intake",
+      "title": "需求与选题",
+      "type": "single",
+      "requires": [],
+      "entry": { "assemble": "context-intake", "templates": [], "knowledge_refs": [], "model_role": "architect" },
+      "artifact": { "kind": "file", "path": "${book}/设定.md" },
+      "gates": [],
+      "confirm": { "required": true, "actions": ["approve", "edit_rerun"], "rerun_scope": "this_stage" }
+    },
+    {
+      "id": "concept",
+      "title": "故事核/反转设计",
+      "type": "single",
+      "requires": ["intake"],
+      "entry": { "assemble": "context-short-concept", "templates": ["agents/story-architect.md"], "knowledge_refs": [], "model_role": "architect" },
+      "artifact": { "kind": "file", "path": "${book}/小节大纲.md" },
+      "gates": [{ "name": "outline-detail", "blocking": false }],
+      "confirm": { "required": true, "actions": ["approve", "edit_rerun", "reject_regen"], "rerun_scope": "this_stage" }
+    },
+    {
+      "id": "write",
+      "title": "正文写作",
+      "type": "single",
+      "requires": ["concept"],
+      "entry": { "assemble": "context-short-write", "templates": ["agents/narrative-writer.md"], "knowledge_refs": [], "model_role": "writer" },
+      "artifact": { "kind": "file", "path": "${book}/正文.md" },
+      "gates": [
+        { "name": "ai-patterns", "blocking": true },
+        { "name": "delivery-contract", "blocking": true },
+        { "name": "normalize-punctuation", "blocking": true }
+      ],
+      "confirm": { "required": true, "actions": ["approve", "edit_rerun"], "rerun_scope": "subsequent" }
+    },
+    {
+      "id": "deslop",
+      "title": "去AI味",
+      "type": "single",
+      "requires": ["write"],
+      "entry": { "assemble": "context-deslop", "templates": ["agents/narrative-writer.md"], "knowledge_refs": [], "model_role": "writer" },
+      "artifact": { "kind": "file", "path": "${book}/正文.md" },
+      "gates": [
+        { "name": "ai-patterns", "blocking": true },
+        { "name": "revision-duplicate", "args": ["--mode", "patch"] }
+      ],
+      "confirm": { "required": true, "actions": ["approve", "edit_rerun"], "rerun_scope": "this_stage" }
+    },
+    {
+      "id": "export",
+      "title": "交付",
+      "type": "single",
+      "requires": ["deslop"],
+      "entry": { "assemble": "context-export", "templates": [], "knowledge_refs": [], "model_role": "" },
+      "artifact": { "kind": "file", "path": "${book}/交付/*.txt" },
+      "gates": [{ "name": "delivery-contract", "blocking": true }],
+      "confirm": { "required": true, "actions": ["approve"], "rerun_scope": "this_stage" }
+    }
+  ]
+}

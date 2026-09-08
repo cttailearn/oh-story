@@ -6,13 +6,13 @@ import { join, extname, relative } from 'node:path';
 const root = join(import.meta.dirname ?? process.cwd(), '..');
 const serverDir = join(root, 'server');
 
+// 仅拦截"运行时调用 python/bash"的引用；字符串内容/模板里的 .py 字面量不算。
 const BANNED_REFS = [
-  /\bspawn\s*\(\s*['"](python|py)['"]/i,
-  /child_process[^]*['"](python|py)['"]/i,
-  /\bexec(File)?\s*\(\s*['"](python|sh|bash)['"]/i,
-  /\.py\b/,
-  /\.sh\b/,
-  /python3? /,
+  /\bspawn\s*\(\s*['"`](?:python|py|python3|bash|sh)['"`]/i,
+  /child_process[^]*['"`](?:python|py|python3|bash|sh)['"`]/i,
+  /\bexec(?:File)?\s*\(\s*['"`](?:python|py|python3|bash|sh)['"`]/i,
+  /(?:spawn|exec|execFile|fork)\s*\(\s*[^,)]*\b(?:python3?|bash|sh)\b/i,
+  /require\s*\(\s*['"][^'"]+\.(?:py|sh)['"]\s*\)/i,
 ];
 
 function walk(dir) {
