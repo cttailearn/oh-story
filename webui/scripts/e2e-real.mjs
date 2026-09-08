@@ -57,6 +57,27 @@ if (!existsSync(bookDir)) mkdirSync(bookDir, { recursive: true });
 const ts = new Date().toISOString();
 db.db.prepare("INSERT OR REPLACE INTO books (id, name, dir, kind, pipeline_id, pipeline_version, theme_color, active_stage, meta_json, created_at, updated_at) VALUES (?,?,?,'novel','long',1,NULL,NULL,?,?,?)").run(bookId, nameArg, bookDir, JSON.stringify({ e2e: true }), ts, ts);
 
+// 真机预检：直连网关发一次最小请求，真实呈现状态码/错误（网关 401 等直接可见）
+async function preflight(baseUrl, apiKey, model) {
+  try {
+    const res = await fetch(baseUrl.replace(/\/+$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 2, stream: false }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const txt = await res.text();
+    console.log('🔌 直连预检 ' + baseUrl + ' → HTTP ' + res.status + (txt ? ' ' + txt.slice(0, 200) : ''));
+    if (res.status !== 200) {
+      console.error('❌ 网关未接受该 api_key/模型，端到端终止（请核对 new-api 后台「令牌」里的真实 sk-... key 与模型 id）。');
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error('❌ 直连网关失败: ' + ((e && e.message) || String(e)));
+    process.exit(1);
+  }
+}
+await preflight(ch.base_url, ch.api_key, model);
 const def = getProcessDefinition('long');
 const STAGES = ['intake', 'topic', 'concept', 'characters', 'outline'];
 console.log('');

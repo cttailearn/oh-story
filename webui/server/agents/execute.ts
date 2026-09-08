@@ -172,10 +172,22 @@ export async function runRealAgent(ai: AiRuntime, params: RunAgentParams): Promi
   };
   await agent.waitForIdle();
   const msg = final();
+
+  // M4 打磨（真渠道端到端）：真实调用失败必须「看得见」——
+  // pi-ai 会把网关 401/解析错误以 error 事件送达而非抛异常，这里显式检查并对空输出 fail-closed
+  if ((agent.state as any).errorMessage) {
+    throw new Error(`MODEL_CALL_FAILED: ${(agent.state as any).errorMessage}（channel=${params.model.channelId} model=${params.model.modelId}）`);
+  }
+  if (msg && msg.stopReason === 'error') {
+    throw new Error(`MODEL_CALL_FAILED: ${(msg as any).errorMessage ?? 'gateway returned error'}`);
+  }
   const text = (msg?.content ?? [])
     .filter((c: any) => c.type === 'text')
     .map((c: any) => c.text)
     .join('\n');
+  if (!text.trim()) {
+    throw new Error(`MODEL_EMPTY_OUTPUT: 模型未产出任何文本（channel=${params.model.channelId} model=${params.model.modelId}）——检查渠道连通/api_key 后重跑；本次不落任何产物`);
+  }
   const u = msg?.usage;
   return {
     text,
