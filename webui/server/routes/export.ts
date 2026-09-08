@@ -14,8 +14,8 @@ export async function registerExportRoute(app: FastifyInstance, ctx: ExportRoute
     if (!book) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '书不存在' } });
     const body = (req.body ?? {}) as ExportRequest;
     const format = body.format ?? 'markdown';
-    if (!['markdown', 'txt'].includes(format)) {
-      return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: 'format 仅支持 markdown/txt（epub/zip 为 M4）', detail: { format } } });
+    if (!['markdown', 'txt', 'zip', 'excel', 'epub'].includes(format)) {
+      return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: 'format 仅支持 markdown/txt/zip/excel/epub', detail: { format } } });
     }
     const r = exportBook(ctx.db.db, { id: book.id, name: book.name, dir: book.dir }, body);
     if (!r.ok) {

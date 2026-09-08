@@ -12,7 +12,7 @@ const PLATFORMS = [
 export function ExportPage() {
   const [books, setBooks] = useState<any[]>([]);
   const [bookId, setBookId] = useState('');
-  const [format, setFormat] = useState<'markdown' | 'txt'>('markdown');
+  const [format, setFormat] = useState<'markdown' | 'txt' | 'zip' | 'excel' | 'epub'>('markdown');
   const [platform, setPlatform] = useState('fanqie');
   const [includeOutline, setIncludeOutline] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -73,9 +73,17 @@ export function ExportPage() {
             </select>
           </label>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {(['markdown', 'txt'] as const).map((f) => (
-              <label key={f} style={{ fontSize: 13.5 }}>
-                <input type="radio" checked={format === f} onChange={() => setFormat(f)} /> {f === 'markdown' ? 'Markdown 单册（.md）' : '纯文本（.txt 平台裸稿）'}
+            {(
+              [
+                ['markdown', 'Markdown 单册（.md）'],
+                ['txt', '纯文本（.txt 平台裸稿）'],
+                ['zip', '分卷打包（zip + README 统计）'],
+                ['excel', '章节清单（xlsx 自检表）'],
+                ['epub', '阅读器成品（epub，内嵌封面/目录）'],
+              ] as const
+            ).map(([k, label]) => (
+              <label key={k} style={{ fontSize: 13.5 }}>
+                <input type="radio" checked={format === k} onChange={() => setFormat(k)} /> {label}
               </label>
             ))}
           </div>
