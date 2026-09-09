@@ -6,6 +6,12 @@ writing, review, de-AI polish, and cover/character-sheet image generation.
 13 skills + 7 professional subagents + a local writing dashboard,
 distributed as a pi package and a dsh skill root.
 
+> **Package scope**: a **pure dsh / pi plugin & extension package** — no standalone WebUI.
+> Deliverables = skills + extensions + a local Story Dashboard workbench. The standalone WebUI
+> (`webui/`) and the `docs/design/` specs have been removed from the repo and live on in git
+> history. Development focus: skill instructions, subagent templates, deterministic validation
+> scripts, extension registration, and dual-runtime (dsh / pi) compatibility.
+
 ## Core idea
 
 > **Formula = deterministic emotional payoff**

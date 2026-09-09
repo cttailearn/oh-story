@@ -1,35 +1,33 @@
-## 未发布（webui 真实可靠性加固）
+## 未发布（产品线收敛：去掉独立 WebUI，专注 dsh / pi 插件扩展包）
 
-> 以「可复现的真实验证」为准绳：新增一键冒烟与全量 REST/浏览器断言；修复 6 处会让产物、状态、成本与用户判断失真的缺陷。
+> 仓库重新定位为**纯 dsh / pi 插件与扩展包**：删除独立 WebUI「书稿编辑部」及其全部设计文档，
+> 保留并持续打磨 skills + extensions + 本地 Story Dashboard 工作台。被删代码与设计规格
+> 完整保留在本次删除前的 git 历史提交中，可按需回溯。
 
-### 新增
+### 移除
 
-- **`npm run smoke`**：临时 workspace 起真后端 → 假渠道全链路 45 条断言（产物落位/job 生命周期/每步确认/成本与门禁留痕/前端托管），失败非零退出；`npm run guards:full` = guards + smoke
-- **`npm run verify:api`**：全量 REST 63 条断言（books/files/tree/gates/export×5/modules/characters/curves/search/stats/ops/config/ai-edit/import/teardown/软删）
-- **`npm run verify:ui`**：真实 Chromium 打开 9 个页面，16 条断言（关键文案 + 零 console/page 错误 + 截图）
-- **`server/engine/jobLifecycle.test.ts`**：job 终态 / 重跑保留历史 / 空阶段不得 review / 阻塞落 error 的回归锁定
-- **设置页「获取模型」**：填 `base_url` + `API Key` 后一键拉取该渠道 `/models` 目录（保存前即可探测），自动分「对话 / 图像 / 其它（embedding·语音等）」，点选即写入模型目录；新增 `POST /api/config/channels/probe`（密钥只用于请求上游、绝不回显；不传 key 时回退该渠道已存密钥）
-- **`npm run verify:settings`**：真实 Chromium + 本地假网关（`scripts/mock-gateway.mjs`）跑完整设置流程 25 条断言，含「掩码密钥往返不得覆盖真实密钥」与「常驻密钥录入」回归；跑完自动还原配置
-- **设置页渠道区常驻密钥录入**：新增常驻「＋ 快速新增渠道」表单（渠道名 / `base_url` / `API Key`），**没有任何渠道时也能直接看到并录入密钥**（此前空态下整块区域没有密钥输入框）；渠道卡片的密钥框补「显示/隐藏」与「密钥已存 / 未设密钥」状态标识
+- **`webui/`（独立 WebUI「书稿编辑部」）**：流程引擎 + 智能体流水线 + 门禁确定层（GateSpec）的
+  Node/React 单机应用（Fastify + better-sqlite3 + Vite + React/antd + CodeMirror）整体删除
+- **`docs/design/`（17 篇 WebUI 设计规格）**：`standalone-webui` / `webui-frontend` /
+  `api-contract` / `process-definition` / `agents-runtime` / `gates-runner` / `ai-edit-spec` /
+  `data-model` / `importing-existing` / `export-publish` / `ops-observability` /
+  `scale-performance` / `teardown-module(-ui)` / `character-card-line` /
+  `character-line-management` / `implementation-plan`
+- **配套本地产物**：`.webui/` 运行数据（SQLite / 备份 / 日志）、`webui/` 的 node_modules 与 dist、
+  `.gitignore` 中相关条目
 
-### 修复（webui）
+### 保留（插件核心交付物）
 
-- **启动即崩（致命）**：Node v24.19.0 的 `node::ObjectWrap` 清理钩子回归（nodejs/node#65446）使 better-sqlite3 < 13 的 `Statement` 在 GC 时 abort 整个进程 —— 实测打开小说工作台页即复现，服务进程直接消失。升级 `better-sqlite3` 到 `^13.0.3`（N-API，自带跨版本预编译产物，无需 node-gyp），新增 `server/db/runtimeGuard.test.ts` 锁定版本下限；30 轮工作台/看板页面压测不再复现
-- **保存设置会抹掉真实密钥（严重）**（config/index.ts、routes/index.ts）：GET `/api/config` 回显掩码 `sk-a****z`，而前端「保存设置」把整份配置原样 PUT 回来，服务端照单全收 —— 真实密钥被掩码字符串覆盖，渠道当场失效且密钥不可恢复。现密钥语义收敛到 `mergeChannels`：缺省/掩码 = 保留既有、`''` = 清空、其它 = 覆盖，并加单测锁定
-- **设置页无法录入密钥**：此前只展示掩码文本、没有输入框，用户只能手改 `webui-config.json`；现每渠道提供密码输入框（留空即不改），与「获取模型」流程打通
-- **job 永不落终态**（engine/state.ts、stageRunner.ts）：跑完的 job 停在 `queued`，导致成本面板恒为 0、`health?depth=full` 永远报挂起任务、重启自愈把已完成任务误标 `killed(restart-recovery)`；且 `INSERT OR REPLACE` 命中 `idx_jobs_busy` 部分唯一索引后**整行替换**上一条 job，任务历史被静默抹除。现改为 `queued→running→review|done|error` 显式收尾 + 普通 INSERT + 在途 job 复用
-- **空阶段被批阅放行**（engine/state.ts）：确认通过后会把「下一个 pending 阶段」置为 `review`，从未运行过的阶段因此可直接被「通过」，流程可在无任何产物的情况下推进。现仅在真实产出后进入 review
-- **成本面板恒为 0 / by_model 恒为空**（routes/pipeline.ts）：统计口径改为已执行任务，并从 `jobs.detail_json` 聚合实际渠道/模型
-- **假渠道产物不按契约落位**（agents/execute.ts）：concept/characters 的 fake 产物整篇落到 `设定/产物.md`，绕过 file-set 分块与门禁口径；且模板选择依赖上下文块标题启发式，一旦 `设定/角色/*.md` 存在就会把 outline 误判为 characters（大纲被写成角色卡）。现按契约分块输出 + 以**阶段 id** 选模板
-- **软删模块仍可读写**（modules/service.ts、routes/modules.ts）：`GET/PUT /api/modules/:id` 对已软删模块返回 200，等于「软删对外没删」；现 REST 口径一律排除 `deleted_at`
-- **demo 结果不可辨识**（agents/aiEdit.ts、AIEditDrawer.tsx）：无渠道时 ai-edit 静默返回假渠道 diff，文案与真实模型输出无从区分；现回传 `fake: true`、note 明确标注，前端加橙色标记并要求二次确认
+- **skills（13 个）**：扫榜 / 拆文 / 写作 / 审查 / 去AI味 / 封面图 / 浏览器操控等
+- **extensions**：pi `/story` 命令别名注册
+- **scripts / tests / CI 守卫**：`npm run test:guards` + story-dashboard e2e + guards.yml / dashboard.yml
+- **本地 Story Dashboard 工作台**：`/story dashboard`（skills/story/scripts/dashboard-server.mjs，
+  无后端依赖的轻量浏览 / 搜索 / 编辑服务，仅监听 127.0.0.1）
 
-### 变更（webui）
+### 说明
 
-- 首屏体积：CodeMirror 6 改按需加载 + 三方库拆 chunk，首屏 JS 由 384 kB(gz) 降至约 210 kB(gz)，编辑器 chunk 仅在打开手稿时加载
-- 脚本可配置：`e2e-fake` / `verify-api` / `verify-ui` 支持 `--base` 与 `WEBUI_BASE`，不再硬编码 3081 与本机路径；`e2e-fake` 由「只打印」改为断言式（可进 CI）
-- `package.json` 记录 `allowScripts`（npm 11 安装脚本白名单：esbuild；better-sqlite3 13 起自带预编译产物、无需安装脚本），使 `npm install` 可复现
-- 仓库 `.gitignore` 修复乱码注释并补充本地验证残留（`.npm-cache/`、`.tmp-webui-*/`、`webui/.tmp-*/`）
+- 触发、安装、更新与卸载方式不变（pi：`pi install git:...@v2.4.0`；dsh：`dsh plugin --profile web add github:...@v2.4.0`）
+- 本包不再承载 WebUI；需要独立工作台的用户可回看仓库历史
 
 ## v2.4.0
 
