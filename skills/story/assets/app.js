@@ -1,3 +1,9 @@
+import {
+  detectStructuredKind,
+  parseStructured,
+  serializeStructured,
+} from "./structured.mjs";
+
 const state = {
   workspace: null,
   activeView: "libraries",
@@ -5,6 +11,8 @@ const state = {
   originalContent: "",
   dirty: false,
   mode: "edit",
+  structuredKind: null,
+  structuredView: null,
   filter: "",
   loadingFile: false,
   saving: false,
@@ -44,6 +52,8 @@ const elements = {
   editorInput: document.querySelector("#editorInput"),
   previewPane: document.querySelector("#previewPane"),
   modeButtons: [...document.querySelectorAll(".mode-switch button")],
+  structuredModeButton: document.querySelector("#structuredModeButton"),
+  structuredPane: document.querySelector("#structuredPane"),
   deleteButton: document.querySelector("#deleteButton"),
   saveButton: document.querySelector("#saveButton"),
   cursorPosition: document.querySelector("#cursorPosition"),
@@ -566,6 +576,9 @@ async function openFile(path, { force = false } = {}) {
     elements.editorInput.value = normalized;
     elements.editorTitle.textContent = file.name;
     renderBreadcrumbs(file.path);
+    state.structuredKind = detectStructuredKind(file.path);
+    state.structuredView = null;
+    elements.structuredModeButton.hidden = !state.structuredKind;
     setDirty(false);
     setMode("edit");
     updateDocumentMeta();
@@ -607,15 +620,44 @@ function markdownToSafeHtml(markdown) {
   let inCode = false;
   let codeLines = [];
   let listType = null;
+  let tableRows = [];
 
   const closeList = () => {
     if (listType) output.push(`</${listType}>`);
     listType = null;
   };
 
+  const flushTable = () => {
+    if (!tableRows.length) return;
+    const parsed = tableRows.map((line) => {
+      const cells = line.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map((c) => c.trim());
+      return cells;
+    });
+    let header = null;
+    const rows = [];
+    for (const cells of parsed) {
+      if (!header) header = cells;
+      else if (cells.every((c) => /^[-:]+$/.test(c) || c === "")) continue;
+      else rows.push(cells);
+    }
+    if (header) {
+      output.push(`<div class="md-table"><table><thead><tr>`);
+      for (const cell of header) output.push(`<th>${inlineMarkdown(cell)}</th>`);
+      output.push("</tr></thead><tbody>");
+      for (const cells of rows) {
+        output.push("<tr>");
+        header.forEach((_, i) => output.push(`<td>${inlineMarkdown(cells[i] ?? "")}</td>`));
+        output.push("</tr>");
+      }
+      output.push("</tbody></table></div>");
+    }
+    tableRows = [];
+  };
+
   for (const line of lines) {
     if (line.trim().startsWith("```")) {
       closeList();
+      flushTable();
       if (inCode) {
         output.push(`<pre><code>${codeLines.join("\n")}</code></pre>`);
         codeLines = [];
@@ -627,6 +669,13 @@ function markdownToSafeHtml(markdown) {
       codeLines.push(line);
       continue;
     }
+
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      closeList();
+      tableRows.push(line);
+      continue;
+    }
+    if (tableRows.length) flushTable();
 
     const heading = line.match(/^(#{1,4})\s+(.+)$/);
     const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
@@ -657,6 +706,7 @@ function markdownToSafeHtml(markdown) {
     }
   }
   if (inCode) output.push(`<pre><code>${codeLines.join("\n")}</code></pre>`);
+  flushTable();
   closeList();
   return output.join("");
 }
@@ -667,10 +717,17 @@ function setMode(mode) {
     button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
   });
   const previewing = mode === "preview";
-  elements.editorInput.hidden = previewing;
+  const structuring = mode === "structured";
+  elements.editorInput.hidden = previewing || structuring;
   elements.previewPane.hidden = !previewing;
+  elements.structuredPane.hidden = !structuring;
   if (previewing) {
     elements.previewPane.innerHTML = markdownToSafeHtml(elements.editorInput.value);
+  } else if (structuring) {
+    if (state.structuredKind) {
+      state.structuredView = parseStructured(elements.editorInput.value, state.structuredKind);
+      renderStructured();
+    }
   } else {
     window.requestAnimationFrame(() => elements.editorInput.focus());
   }
@@ -890,6 +947,214 @@ document.addEventListener("keydown", (event) => {
     elements.treeSearch.focus();
     elements.treeSearch.select();
   }
+});
+
+
+// ================= 结构化视图（设定 / 角色卡 / 角色线 / 角色状态） ==================
+function createStructuredElement(tag, cls) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  return node;
+}
+
+function structuredRows(value) {
+  const count = String(value ?? "").split("\n").length + 1;
+  return Math.max(3, Math.min(count, 16)); // 身高按内容自适应，封顶 16 行
+}
+
+function renderFieldRow(label, value, bind) {
+  const row = createStructuredElement("div", "s-field");
+  const dt = createStructuredElement("dt");
+  dt.textContent = label;
+  const dd = createStructuredElement("dd");
+  const ta = createStructuredElement("textarea", "s-field-input");
+  ta.value = String(value ?? "");
+  ta.rows = structuredRows(value);
+  ta.dataset.bind = JSON.stringify(bind);
+  dd.append(ta);
+  row.append(dt, dd);
+  return row;
+}
+
+function renderStructuredGroup(title, count) {
+  const group = createStructuredElement("section", "s-group");
+  const heading = createStructuredElement("h3", "s-group-title");
+  heading.textContent = title;
+  if (count) { const badge = createStructuredElement("span", "s-count"); badge.textContent = count; heading.append(badge); }
+  const body = createStructuredElement("div", "s-fields");
+  group.append(heading, body);
+  return { group, body };
+}
+
+function renderStructuredMaster(view) {
+  const master = createStructuredElement("div", "s-master");
+  const title = String(view.title || "").trim();
+  const avatar = createStructuredElement("div", "s-avatar");
+  avatar.textContent = title.replace(/^角色线：/, "").trim().charAt(0) || "设";
+  const copy = createStructuredElement("div");
+  const heading = createStructuredElement("h2");
+  heading.textContent = title || "(未命名)";
+  copy.append(heading);
+  const sub = createStructuredElement("p", "s-sub");
+  sub.textContent = view.kind === "character-card" ? "角色卡 · 设定/角色" :
+    view.kind === "arc" ? "角色线 · 弧线定义 + 阶段规划" :
+    view.kind === "character-status" ? "角色状态 · 追踪/角色状态" : "设定文档";
+  copy.append(sub);
+  if (Array.isArray(view.aliases) && view.aliases.length) {
+    const tags = createStructuredElement("div", "s-tags");
+    for (const alias of view.aliases) { const tag = createStructuredElement("span", "s-tag"); tag.textContent = alias; tags.append(tag); }
+    copy.append(tags);
+  }
+  master.append(avatar, copy);
+  return master;
+}
+
+function renderTableGroup(view) {
+  const group = createStructuredElement("section", "s-group");
+  const heading = createStructuredElement("h3", "s-group-title");
+  heading.textContent = "出场记录";
+  const badge = createStructuredElement("span", "s-count");
+  badge.textContent = view.table.rows.length + " 行";
+  heading.append(badge);
+  group.append(heading);
+  const wrap = createStructuredElement("div", "s-table-wrap");
+  const table = createStructuredElement("table");
+  const thead = createStructuredElement("thead");
+  const headRow = createStructuredElement("tr");
+  for (const cell of view.table.header) { const th = createStructuredElement("th"); th.textContent = cell; headRow.append(th); }
+  thead.append(headRow);
+  table.append(thead);
+  const tbody = createStructuredElement("tbody");
+  for (const row of view.table.rows) {
+    const tr = createStructuredElement("tr");
+    view.table.header.forEach((_, i) => { const td = createStructuredElement("td"); td.textContent = row[i] ?? ""; tr.append(td); });
+    tbody.append(tr);
+  }
+  table.append(tbody);
+  wrap.append(table);
+  group.append(wrap);
+  return group;
+}
+
+// overridden：已被结构化渲染的节标题，不再进「其他小节」原始编辑；
+// skipPre：角色状态的头部前置行已被 header 渲染。
+function renderRawSections(view, overridden, options = {}) {
+  const raw = view.rawSections || [];
+  const stack = createStructuredElement("div", "s-fields");
+  let shown = 0;
+  raw.forEach((part, index) => {
+    if (part.kind === "h1") return;
+    if (part.kind === "section" && overridden.has((part.heading || "").trim())) return;
+    if (part.kind === "pre" && options.skipPre) return;
+    const details = createStructuredElement("details", "s-raw-section");
+    const summary = createStructuredElement("summary");
+    if (part.kind === "hr") { summary.textContent = "——— 分隔线 ———"; details.classList.add("s-raw-note"); }
+    else summary.textContent = part.kind === "pre" ? "§ 前言 / 文档说明" : "§ " + (part.heading || "未命名节");
+    details.append(summary);
+    if (part.kind !== "hr") {
+      const body = createStructuredElement("div", "s-raw-body");
+      const hint = createStructuredElement("p", "s-raw-hint");
+      hint.textContent = "按 Markdown 原文编辑，保存时原样写回。";
+      body.append(hint);
+      const ta = createStructuredElement("textarea", "s-raw-input");
+      ta.value = part.kind === "pre" ? part.text : (part.lines || []).join("\n");
+      ta.rows = structuredRows(ta.value);
+      ta.dataset.bind = JSON.stringify({ k: "r", i: index });
+      body.append(ta);
+      details.append(body);
+    }
+    stack.append(details);
+    shown += 1;
+  });
+  if (!shown) return null;
+  const group = createStructuredElement("section", "s-group");
+  const heading = createStructuredElement("h3", "s-group-title");
+  heading.textContent = "其他小节";
+  group.append(heading, stack);
+  return group;
+}
+
+function renderStructured() {
+  const view = state.structuredView;
+  if (!view) return;
+  const pane = elements.structuredPane;
+  pane.replaceChildren();
+  const scroll = createStructuredElement("div", "s-scroll");
+  scroll.append(renderStructuredMaster(view));
+  if (view.kind === "character-card") {
+    if (view.basic.length) {
+      const g = renderStructuredGroup("基本信息");
+      view.basic.forEach((field, i) => g.body.append(renderFieldRow(field.core, field.value, { k: "f", set: "basic", i })));
+      scroll.append(g.group);
+    }
+    if (view.table) scroll.append(renderTableGroup(view));
+    const raw = renderRawSections(view, new Set(["基本信息", "出场记录"]));
+    if (raw) scroll.append(raw);
+  } else if (view.kind === "arc") {
+    if (view.definition.length) {
+      const g = renderStructuredGroup("弧线定义");
+      view.definition.forEach((field, i) => g.body.append(renderFieldRow(field.core, field.value, { k: "def", i })));
+      scroll.append(g.group);
+    }
+    if (view.stages.length) {
+      const g = renderStructuredGroup("阶段规划", view.stages.length + " 阶段");
+      for (const stage of view.stages) {
+        const details = createStructuredElement("details", "s-stage");
+        details.open = true;
+        const summary = createStructuredElement("summary");
+        summary.textContent = stage.heading;
+        details.append(summary);
+        const body = createStructuredElement("div", "s-fields");
+        stage.items.forEach((item, j) => body.append(renderFieldRow(item.core, item.value, { k: "stage", i: view.stages.indexOf(stage), j })));
+        details.append(body);
+        g.body.append(details);
+      }
+      scroll.append(g.group);
+    }
+    const overridden = new Set(["弧线定义", "阶段规划"]);
+    for (const part of view.rawSections || []) {
+      if (part.kind === "section" && /^阶段\s*\d+/.test((part.heading || "").trim())) overridden.add((part.heading || "").trim());
+    }
+    const raw = renderRawSections(view, overridden);
+    if (raw) scroll.append(raw);
+  } else if (view.kind === "character-status") {
+    if (view.header.length) {
+      const g = renderStructuredGroup("当前状态");
+      view.header.forEach((field, i) => g.body.append(renderFieldRow(field.core, field.value, { k: "h", i })));
+      scroll.append(g.group);
+    }
+    const raw = renderRawSections(view, new Set(), { skipPre: true });
+    if (raw) scroll.append(raw);
+  } else {
+    const raw = renderRawSections(view, new Set(), { skipPre: false });
+    if (raw) scroll.append(raw);
+    else { const empty = createStructuredElement("p", "s-raw-hint"); empty.textContent = "该设定文档没有可拆分的小节。"; scroll.append(empty); }
+  }
+  pane.append(scroll);
+}
+
+function applyStructuredEdit(bind, value) {
+  const view = state.structuredView;
+  if (!view || !bind) return;
+  if (bind.k === "f") { const list = view[bind.set]; if (list && list[bind.i]) list[bind.i].value = value; }
+  else if (bind.k === "def") { if (view.definition && view.definition[bind.i]) view.definition[bind.i].value = value; }
+  else if (bind.k === "stage") { const s = view.stages && view.stages[bind.i]; if (s && s.items && s.items[bind.j]) s.items[bind.j].value = value; }
+  else if (bind.k === "h") { if (view.header && view.header[bind.i]) view.header[bind.i].value = value; }
+  else if (bind.k === "r") {
+    const part = view.rawSections && view.rawSections[bind.i];
+    if (part) { if (part.kind === "pre") part.text = value; else part.lines = value.split("\n"); }
+  }
+  const md = serializeStructured(view);
+  elements.editorInput.value = md;
+  setDirty(md !== state.originalContent);
+  updateDocumentMeta();
+}
+
+// 结构化视图的编辑事件（事件委托到面板容器）
+elements.structuredPane.addEventListener("input", (event) => {
+  const textarea = event.target.closest("textarea[data-bind]");
+  if (!textarea) return;
+  try { applyStructuredEdit(JSON.parse(textarea.dataset.bind), textarea.value); } catch { /* 忽略损坏的绑定 */ }
 });
 
 window.addEventListener("beforeunload", (event) => {

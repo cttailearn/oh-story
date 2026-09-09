@@ -693,3 +693,50 @@ test("@mobile 手机视口仍可从真实长篇项目打开大纲", async ({ pag
 		await expect(page.locator(".editor-panel")).toBeHidden();
 	}
 });
+
+test("角色卡结构化视图：查看基本信息/出场记录并编辑回写", async ({ page }) => {
+	const consoleErrors = [];
+	page.on("console", (message) => {
+		if (message.type() === "error") consoleErrors.push(message.text());
+	});
+	page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+	await page.goto("/");
+	await page.getByRole("tab", { name: /写作项目/ }).click();
+	await expect(page.locator("#fileTree")).toContainText(
+		"让你管账号，你高燃混剪炸全网",
+	);
+	await page.locator("summary").filter({ hasText: "设定" }).first().click();
+	await page.locator("summary").filter({ hasText: "角色" }).click();
+	await page
+		.locator(".file-row[data-path$='/设定/角色/江晨.md']")
+		.click();
+
+	await expect(page.locator("#editorTitle")).toHaveText("江晨.md");
+	const structuredButton = page.getByRole("button", {
+		name: "结构化",
+		exact: true,
+	});
+	await expect(structuredButton).toBeVisible();
+	await structuredButton.click();
+
+	await expect(page.locator("#structuredPane")).toContainText("基本信息");
+	await expect(page.locator("#structuredPane .s-master h2")).toHaveText("江晨");
+	await expect(page.locator("#structuredPane")).toContainText("出场记录");
+	// 出场记录渲染成真表格
+	await expect(page.locator("#structuredPane .s-table-wrap th").first()).toHaveText("章节");
+
+	// 编辑基本信息「身份」→ 正文与脏标记同步
+	const identity = page
+		.locator("#structuredPane .s-field", { hasText: "身份" })
+		.first();
+	await identity.locator("textarea").fill("火箭军文工团宣传兵（E2E 修改）");
+	await expect(page.locator("#dirtyStatus")).toContainText("待保存");
+	await expect(page.locator("#editorInput")).toHaveValue(/（E2E 修改）/);
+	// 切回编辑模式，序列化后的 Markdown 仍在
+	await page.getByRole("button", { name: "编辑", exact: true }).click();
+	await expect(page.locator("#editorInput")).toHaveValue(/E2E 修改/);
+
+	expect(consoleErrors).toEqual([]);
+});
+

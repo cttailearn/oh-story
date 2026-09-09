@@ -69,6 +69,7 @@ const CONTENT_TYPES = {
 	".html": "text/html; charset=utf-8",
 	".js": "text/javascript; charset=utf-8",
 	".json": "application/json; charset=utf-8",
+	".mjs": "text/javascript; charset=utf-8",
 	".svg": "image/svg+xml; charset=utf-8",
 };
 
@@ -872,7 +873,7 @@ async function deleteWorkspaceFile(root, payload) {
 
 async function serveStaticFile(requestPath, response) {
 	const assetName = requestPath === "/" ? "index.html" : requestPath.slice(1);
-	if (!["index.html", "styles.css", "app.js"].includes(assetName)) {
+	if (!["index.html", "styles.css", "app.js", "structured.mjs"].includes(assetName)) {
 		sendJson(response, 404, {
 			error: { code: "not_found", message: "页面不存在" },
 		});

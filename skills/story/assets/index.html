@@ -140,6 +140,7 @@
                   </svg>
                 </button>
                 <div class="mode-switch" role="group" aria-label="文稿模式">
+                  <button id="structuredModeButton" type="button" data-mode="structured" aria-pressed="false" hidden>结构化</button>
                   <button type="button" data-mode="edit" aria-pressed="true">编辑</button>
                   <button type="button" data-mode="preview" aria-pressed="false">预览</button>
                 </div>
@@ -150,6 +151,7 @@
               <label class="sr-only" for="editorInput">文件内容</label>
               <textarea id="editorInput" spellcheck="true"></textarea>
               <article id="previewPane" class="preview-pane" aria-label="Markdown 预览" hidden></article>
+              <div id="structuredPane" class="structured-pane" aria-label="结构化视图" hidden></div>
             </div>
 
             <footer class="editor-footer">

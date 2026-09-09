@@ -31,6 +31,17 @@
 - `scripts/install-dsh.ps1` 改为经 `dsh plugin` 安装/更新/卸载，去掉手工挂载行逻辑；README / README_EN 的 dsh 安装段同步改写，v2.4.x 用户升级时移除旧挂载行即可。
 - 版本号 2.4.0 → 2.5.0（四源同步：package.json / skills/story/VERSION / current-contract.json / story-setup）。
 
+### Story Dashboard 结构化视图（设定 / 角色卡 / 角色线 / 角色状态）
+
+- **新「结构化」模式**：打开 `设定/角色/*.md`（角色卡）、`大纲/角色线` 或 `追踪/角色线/*.md`（角色线）、`追踪/角色状态/*.md`（角色状态）、任意 `设定/**/*.md`（设定文档）时，工具栏出现「结构化」按钮，把 Markdown 渲染成便于阅读的表单式视图：
+  - 角色卡：头像 + 别名标签 + 基本信息逐字段编辑（子子弹保留）+ 出场记录渲染为真表格 + 其余小节折叠式原文编辑；
+  - 角色线：弧线定义字段 + 阶段规划阶段卡片（阶段目标/关键事件/变化信号/影响维度逐项编辑）；
+  - 角色状态：头部字段 + 各节；
+  - 设定文档：`##` 小节大纲式折叠，逐节原文编辑。
+- **保存零丢失**：表单只重写被编辑的字段/片段，其余 Markdown（frontmatter、块引用、说明行）原样保真回写；编辑实时同步到正文与脏标记。
+- **预览表格**：`markdownToSafeHtml` 增加 Markdown 表格渲染（出场记录等在预览模式下也成表）。
+- 新增 `skills/story/assets/structured.mjs`（纯解析/序列化，`node:test` 单测 6 例）与 `tests/structured.test.mjs`，接入 `npm run test:dashboard`；dashboard e2e 增加结构化视图用例。
+
 ### 说明
 
 - 触发、安装、更新与卸载方式不变（pi：`pi install git:...@v2.5.0`；dsh：`dsh plugin --profile web add github:...@v2.5.0`）

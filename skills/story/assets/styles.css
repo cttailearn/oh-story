@@ -1363,6 +1363,7 @@ kbd {
     gap: 0;
   }
 
+
   .document-status > span + span::before {
     margin-right: 9px;
   }
@@ -1426,3 +1427,47 @@ kbd {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ============ 结构化视图（设定 / 角色卡 / 角色线 / 角色状态） ============ */
+.structured-pane { width: 100%; height: 100%; overflow: auto; padding: 26px clamp(20px, 4vw, 60px) 90px; color: var(--ink-900); background: var(--surface); }
+.structured-pane .s-scroll { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.s-master { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: linear-gradient(135deg, var(--surface-active), var(--surface)); border: 1px solid var(--line); border-radius: 12px; }
+.s-avatar { flex: 0 0 auto; width: 52px; height: 52px; display: grid; place-items: center; color: #fff; background: var(--blue-600); border-radius: 12px; font-size: 22px; font-weight: 700; }
+.s-master h2 { margin: 0; font-size: 20px; letter-spacing: 0.02em; }
+.s-master .s-sub { margin: 2px 0 0; color: var(--ink-600); font-size: 12px; }
+.s-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.s-tag { padding: 2px 9px; color: var(--blue-700); background: var(--blue-100); border-radius: 999px; font-size: 11px; line-height: 1.5; }
+.s-group { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.s-group > .s-group-title { display: flex; align-items: center; gap: 8px; padding: 10px 16px; margin: 0; color: var(--ink-800); background: var(--surface-muted); border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 650; }
+.s-group > .s-group-title .s-count { margin-left: auto; color: var(--ink-500); font-size: 11px; font-weight: 400; }
+.s-fields { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.s-field { display: grid; grid-template-columns: 150px 1fr; gap: 10px 14px; align-items: start; }
+.s-field dt { padding-top: 7px; color: var(--ink-600); font-size: 12.5px; font-weight: 600; line-height: 1.5; }
+.s-field dd { margin: 0; min-width: 0; }
+textarea.s-field-input, textarea.s-raw-input { width: 100%; min-height: 40px; padding: 8px 10px; color: var(--ink-900); background: var(--surface-subtle); border: 1px solid var(--line-strong); border-radius: 8px; font-family: var(--sans); font-size: 13px; line-height: 1.7; resize: vertical; }
+textarea.s-field-input:focus, textarea.s-raw-input:focus { background: var(--surface); border-color: var(--blue-600); box-shadow: var(--focus); }
+.s-table-wrap { overflow-x: auto; padding: 6px 14px 16px; }
+.s-table-wrap table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.s-table-wrap th, .s-table-wrap td { padding: 8px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); line-height: 1.65; }
+.s-table-wrap th { color: var(--ink-600); background: var(--surface-subtle); font-weight: 650; white-space: nowrap; }
+.s-table-wrap tbody tr:hover { background: var(--surface-subtle); }
+.s-stage { border-top: 1px solid var(--line); padding: 12px 16px 16px; }
+.s-stage summary { cursor: pointer; color: var(--ink-800); font-size: 13px; font-weight: 650; padding: 4px 0; }
+.s-stage[open] summary { margin-bottom: 10px; }
+.s-raw-section { border-top: 1px solid var(--line); }
+.s-raw-section > summary { display: flex; align-items: center; gap: 6px; padding: 10px 16px; cursor: pointer; color: var(--ink-700); background: var(--surface); font-size: 12.5px; font-weight: 600; user-select: none; }
+.s-raw-section > summary:hover { background: var(--surface-subtle); }
+.s-raw-section[open] > summary { border-bottom: 1px solid var(--line); }
+.s-raw-section .s-raw-body { padding: 10px 14px 16px; }
+.s-raw-section .s-raw-hint { margin: 0 0 8px; color: var(--ink-500); font-size: 11px; }
+.s-raw-section textarea { min-height: 120px; }
+.s-outline { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 8px 8px; }
+.s-outline a { padding: 4px 10px; color: var(--blue-700); background: var(--blue-100); border-radius: 999px; font-size: 11.5px; cursor: pointer; text-decoration: none; }
+.s-outline a:hover { background: var(--surface-active); }
+@media (max-width: 640px) { .structured-pane { padding: 18px 14px 70px; } .s-field { grid-template-columns: 1fr; gap: 5px; } .s-field dt { padding-top: 2px; } }
+
+/* Markdown 预览表格（出场记录等） */
+.preview-pane .md-table { overflow-x: auto; margin: 12px 0; }
+.preview-pane .md-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.preview-pane .md-table th, .preview-pane .md-table td { padding: 7px 11px; text-align: left; vertical-align: top; border: 1px solid var(--line); line-height: 1.6; }
+.preview-pane .md-table th { background: var(--surface-muted); font-weight: 650; white-space: nowrap; }
