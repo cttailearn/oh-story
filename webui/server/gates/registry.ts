@@ -4,8 +4,13 @@ import { makeSpawnGate, runProcess } from './spawn.ts';
 import { existsSync, readdirSync, mkdirSync, writeFileSync, unlinkSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as tc from './impl/tracking-commit.ts';
+import * as am from './impl/author-memory-commit.ts';
 import { normalizeBookFile } from './impl/normalize-punctuation.ts';
 import { writeReviewRecord } from './impl/write-review-record.ts';
+import { runDeliveryContract } from './impl/delivery-contract.ts';
+import { scanCharacters, readRoleLine } from '../fs/roleLine.ts';
+import { getConfig } from '../config/index.ts';
+import { join as joinPath } from 'node:path';
 
 /** 原技能包脚本目录（spawn 兜底目标）：从本文件向上找仓库根（含 skills/） */
 function findRepoRoot(start: string): string {
@@ -181,27 +186,6 @@ export function buildGateAdapters(): GateAdapter[] {
             blocking: findings.map((f) => ({ rule: 'outline-copy', level: 'blocking', evidence: f.text, file: f.file })),
             warnings: (rows.filter((r) => r.error)).map((r) => ({ rule: 'read-error', level: 'warning', evidence: String(r.file) + ': ' + String(r.error) })),
             value: { checked: rows.length, blocking: findings.length },
-          };
-        },
-      }),
-      register('delivery-contract', {
-        script: join(scriptsDir, 'check-delivery-contract.js'),
-        dynamicArgs: (opts) => {
-          const spec = gateSpecOf(opts.args?.stage, 'delivery-contract');
-          const min = typeof spec.min === 'number' ? spec.min : 500;
-          const max = typeof spec.max === 'number' ? spec.max : 20000;
-          return ['--json', '--min-chars', String(min), '--max-chars', String(max), '--sections', '1', opts.bookDir];
-        },
-        collectInputs: (opts) => [],
-        parse: (json: any) => {
-          const checks = Array.isArray(json?.checks) ? json.checks : [];
-          const failed = checks.filter((ch: any) => ch.ok === false);
-          const warns = checks.filter((ch: any) => ch.ok === true && ch.hint);
-          return {
-            passed: !!json?.ok && failed.length === 0,
-            blocking: failed.map((ch: any) => ({ rule: String(ch.id ?? 'delivery-contract'), level: 'blocking' as const, evidence: String(ch.evidence ?? ch.repair ?? '') })),
-            warnings: warns.map((ch: any) => ({ rule: String(ch.id ?? 'delivery-hint'), level: 'warning' as const, evidence: String(ch.hint ?? ch.evidence ?? '') })),
-            value: { ok: json?.ok, char_count: json?.char_count ?? json?.chars ?? null },
           };
         },
       }),
@@ -458,7 +442,169 @@ export function buildInlineAdapters(): GateAdapter[] {
         }
       },
     },
+    {
+      // delivery-contract：形态感知（短篇走 skills 契约 + 节数守恒；长篇走确定性交付校验）
+      name: 'delivery-contract',
+      async run(opts: GateOptions): Promise<GateReport> {
+        const spec = gateSpecOf(opts.args?.stage, 'delivery-contract') as { min?: number; max?: number; sections?: number };
+        return runDeliveryContract(opts, {
+          script: join(SKILL_SCRIPTS_DIR, 'check-delivery-contract.js'),
+          min: spec.min,
+          max: spec.max,
+          sections: typeof spec.sections === 'number' ? spec.sections : undefined,
+        });
+      },
+    },
+    {
+      // imagegen-env：封面/角色图的生成环境自检（skills/story-image check-imagegen-env.sh 的 WebUI 等价物）
+      // 非阻塞（定义里 blocking:false），但必须真的跑，而不是"声明了却没有适配器"被静默跳过。
+      name: 'imagegen-env',
+      async run(opts: GateOptions): Promise<GateReport> {
+        const started = Date.now();
+        const cfg = getConfig();
+        const imageModels = cfg.channels
+          .filter((c) => c.enabled !== false)
+          .flatMap((c) => c.image_models ?? []);
+        const hasCover = existsSync(joinPath(opts.bookDir, '封面'));
+        const warnings: GateReport['warnings'] = [];
+        if (!hasCover) {
+          warnings.push({
+            rule: 'no-cover-dir',
+            level: 'warning',
+            evidence: '本书尚无 封面/ 目录（cover 阶段未产出图片）',
+          });
+        }
+        if (imageModels.length === 0) {
+          warnings.push({
+            rule: 'no-image-channel',
+            level: 'warning',
+            evidence: '未配置图像模型（设置页 → 渠道「获取模型」勾选图像模型后写入 image_models），cover 阶段无法生成封面/角色图',
+          });
+        }
+        return {
+          gate: 'imagegen-env',
+          ok: warnings.length === 0,
+          passed: warnings.length === 0,
+          blocking: [],
+          warnings,
+          value: { image_models: imageModels.length, has_cover_dir: hasCover },
+          ran_ms: Date.now() - started,
+          job_id: opts.jobId ?? null,
+          stage_id: opts.stageId,
+          revision: opts.revision ?? null,
+        };
+      },
+    },
+    {
+      // role-line-consistency：角色线阶段编号连续性 + 卡/线一致性（skills character-card-line §5）
+      name: 'role-line-consistency',
+      async run(opts: GateOptions): Promise<GateReport> {
+        const started = Date.now();
+        const blocking: GateReport['blocking'] = [];
+        const warnings: GateReport['warnings'] = [];
+        let checked = 0;
+        for (const c of scanCharacters(opts.bookDir)) {
+          if (!c.lineExists) {
+            warnings.push({ rule: 'no-role-line', level: 'warning', evidence: `${c.name}：有角色卡但无角色线文件（${c.lineRel ?? '设定/角色线/*.md'}）` });
+            continue;
+          }
+          checked++;
+          const r = readRoleLine(opts.bookDir, c.name);
+          if (!r.line || r.line.stages.length === 0) {
+            warnings.push({ rule: 'empty-role-line', level: 'warning', evidence: `${c.name}：角色线文件无阶段小节` });
+            continue;
+          }
+          const nos = r.line.stages.map((s) => s.no).sort((a, b) => a - b);
+          for (let i = 0; i < nos.length; i++) {
+            if (nos[i] !== i + 1) {
+              blocking.push({
+                rule: 'role-line-stage-sequence',
+                level: 'blocking',
+                evidence: `${c.name}：角色线阶段编号不连续（实际 ${nos.join(',')}，应 1..${Math.max(...nos)}）`,
+              });
+              break;
+            }
+          }
+          if (new Set(nos).size !== nos.length) {
+            blocking.push({ rule: 'role-line-stage-duplicate', level: 'blocking', evidence: `${c.name}：角色线阶段编号重复` });
+          }
+          const active = r.line.stages.filter((s) => s.status === 'active');
+          if (active.length > 1) {
+            blocking.push({ rule: 'role-line-multi-active', level: 'blocking', evidence: `${c.name}：同时有 ${active.length} 个 active 阶段（阶段 ${active.map((s) => s.no).join(',')}）` });
+          }
+        }
+        return {
+          gate: 'role-line-consistency',
+          ok: blocking.length === 0,
+          passed: blocking.length === 0,
+          blocking,
+          warnings,
+          value: { checked },
+          ran_ms: Date.now() - started,
+          job_id: opts.jobId ?? null,
+          stage_id: opts.stageId,
+          revision: opts.revision ?? null,
+        };
+      },
+    },
+    {
+      // author-memory：作者记忆状态完整性校验（skills/author_memory_commit.py check 的 TS 移植版）
+      name: 'author-memory',
+      async run(opts: GateOptions): Promise<GateReport> {
+        const started = Date.now();
+        const workspace = opts.cwd || opts.bookDir;
+        const stateFile = am.memoryStatePath(workspace);
+        if (!existsSync(stateFile)) {
+          return {
+            gate: 'author-memory',
+            ok: true,
+            passed: true,
+            blocking: [],
+            warnings: [{ rule: 'no-memory', level: 'warning', evidence: '工作区尚无 .story/作者记忆/_author-memory-state.json（未启用作者记忆）' }],
+            value: { initialized: false },
+            ran_ms: Date.now() - started,
+            job_id: opts.jobId ?? null,
+            stage_id: opts.stageId,
+            revision: opts.revision ?? null,
+          };
+        }
+        try {
+          const r = am.commandCheck(workspace) as Record<string, unknown>;
+          return {
+            gate: 'author-memory',
+            ok: true,
+            passed: true,
+            blocking: [],
+            warnings: [],
+            value: { initialized: true, ...r },
+            ran_ms: Date.now() - started,
+            job_id: opts.jobId ?? null,
+            stage_id: opts.stageId,
+            revision: opts.revision ?? null,
+          };
+        } catch (e: any) {
+          return {
+            gate: 'author-memory',
+            ok: false,
+            passed: false,
+            blocking: [{ rule: 'author-memory-check', level: 'blocking', evidence: String(e?.message ?? e).slice(0, 300) }],
+            warnings: [],
+            value: { initialized: true },
+            ran_ms: Date.now() - started,
+            job_id: opts.jobId ?? null,
+            stage_id: opts.stageId,
+            revision: opts.revision ?? null,
+          };
+        }
+      },
+    },
   ];
+}
+
+/** 定义里声明但当前环境不可用的门禁（调用方必须 fail-closed，不得静默跳过） */
+export function missingGateAdapters(declared: string[]): string[] {
+  const have = new Set(buildGateAdapters().map((a) => a.name));
+  return [...new Set(declared)].filter((n) => !have.has(n));
 }
 
 function safeParseJson(s: string): any {

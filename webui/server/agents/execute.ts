@@ -58,22 +58,81 @@ function fakeArtifact(bundle: ContextBundle, taskTitle: string, stageId?: string
   const isConcept = known ? known === 'concept' : /世界观|金手指|题材/.test(all);
 
   if (isChapter) {
-    let body = `# 第一章 开篇（fake 示例产物）\n\n`;
-    const sentences = [
-      '他走进演播室时，窗外正飘着细雨，楼下的灯一盏接一盏亮起来。',
-      '江晨把稿子又看了一遍，那些被他反复打磨的字句落在纸上，像一块石头落了地。',
-      '有人推门喊他，说导播在等。他合上文件夹，脚步声在走廊里起了回音。',
-      '镜头前的灯亮了，他没有立刻开口，只是先看了一眼面前的提词器。',
-      '台下的同事对他点头，他忽然觉得，这条路他确实走了很久。',
-      '回家路上他接到一条消息，说昨晚那条视频的播放量翻了倍。',
-      '他愣了几秒，随即笑了一下，把手机揣回兜里，脚步轻快了许多。',
-      '这只是一个开始，他心里清楚。后面还有更长的路要走。',
+    let body = `# 第001章 开篇（fake 示例产物）\n\n`;
+    // 组合生成不重复的句子：避免 degeneration 门禁（复读/同句≥3 次）把假产物判死，
+    // 假渠道的用途是"能过最小门禁地跑通全链路"，因此正文必须无重复句。
+    const who = ['江晨', '导播老周', '编导小许', '值班的保安', '同组的主播', '灯光师', '剪辑师小唐', '宣传处的干事'];
+    const where = ['演播室', '走廊尽头', '剪辑间', '楼下的便利店', '会议室', '天台', '化妆间', '车库'];
+    const what = [
+      '把稿子又看了一遍，指尖在标题上停了停',
+      '调低了监视器的亮度，画面里的噪点淡了下去',
+      '把耳机摘下来，听见窗外有雨敲在铁皮上',
+      '把水杯推到桌角，杯壁上的水痕慢慢洇开',
+      '把时间轴往后拖了三格，又拖回原位',
+      '在便签上写下一个数字，随即划掉',
+      '把外套挂在椅背上，袖口还沾着雨',
+      '把提词器的字号调大了一档',
     ];
-    for (let i = 0; i < 96; i++) {
-      body += `　　${sentences[i % sentences.length]}\n\n`;
+    const tail = [
+      '，说等会儿再定。',
+      '，没有再多解释。',
+      '，动作很轻。',
+      '，像是在确认什么。',
+      '，然后把门带上。',
+      '，屋里安静了几秒。',
+      '，屏幕上的进度条走到了底。',
+      '，走廊里传来脚步声。',
+    ];
+    let n = 0;
+    for (let a = 0; a < who.length; a++) {
+      for (let b = 0; b < where.length; b++) {
+        const s = who[a] + '在' + where[b] + what[(a + b) % what.length] + tail[(a * 3 + b) % tail.length];
+        body += `　　${s}\n\n`;
+        n++;
+        if (n >= 96) break;
+      }
+      if (n >= 96) break;
     }
     body += `　　（此处为 demo 假产物，用于 e2e 验证门禁与确认链路；真实写作由 M1 真渠道产出。）\n`;
-    return body;
+    // 控制块（引擎会剥离，不写入手稿）：追踪事务 + 写章三查载荷
+    const tx = {
+      tracking_tx: {
+        schema_version: 1,
+        mode: 'append',
+        chapter: 1,
+        chapter_title: '开篇（fake 示例产物）',
+        delta: {
+          result: '江晨进入演播室，第一条内容完成录制。',
+          character_changes: [],
+          foreshadow_changes: [],
+          timeline_events: [],
+          constraints: [],
+          next_chapter_commitments: ['推进首支视频的数据反馈链。'],
+        },
+        context: {
+          position: { volume: '第一卷', volume_start_chapter: 1, story_time: '开篇当日', scene: '演播室' },
+          long_term_constraints: [],
+          active_character_names: [],
+          continuity_risks: [],
+        },
+        character_snapshots: {},
+      },
+    };
+    const review = {
+      review: {
+        chapter: 1,
+        chapter_name: '开篇（fake 示例产物）',
+        check2: {
+          items: [
+            { item: '核心事件与细纲一致（演播室录制开场）', ok: true, note: 'fake 产物' },
+            { item: '结尾钩子已落地（播放量翻倍的消息）', ok: true, note: 'fake 产物' },
+          ],
+        },
+        conclusion: '完成',
+      },
+    };
+    const F = '\u0060\u0060\u0060';
+    return body + '\n' + F + 'json\n' + JSON.stringify(tx, null, 2) + '\n' + F + '\n\n' + F + 'json\n' + JSON.stringify(review, null, 2) + '\n' + F + '\n';
   }
   if (isCharacters) {
     // 按 artifact file-set 契约分块输出（设定/角色/*.md + 设定/角色线/*.md），

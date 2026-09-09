@@ -75,6 +75,10 @@ export const api = {
 
   listBooks: () => http<{ items: Book[]; total: number }>('/books'),
   getBook: (id: string) => http<BookDetail>(`/books/${id}`),
+  workspaceDirs: () => http<{ workspace: string; items: string[] }>('/workspace/dirs'),
+  materialList: (bookId: string) => http<any>(`/books/${bookId}/material`),
+  materialDecompose: (bookId: string, body: any) =>
+    http<any>(`/books/${bookId}/material/decompose`, { method: 'POST', body: JSON.stringify(body) }),
   createBook: (body: { name: string; type?: string; theme_color?: string; dir?: string; pipeline?: string; requirements?: Record<string, unknown> }) =>
     http<Book>('/books', { method: 'POST', body: JSON.stringify(body) }),
 

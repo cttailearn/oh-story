@@ -96,6 +96,13 @@ export async function registerRoutes(
     };
   });
 
+  // ---------- Workspace dirs (new-project wizard save-location picker) ----------
+  app.get('/api/workspace/dirs', async () => {
+    const excluded = ['node_modules', 'dist', 'docs', 'tests', 'scripts', '_archive', '.tmp-ui-shots', 'webui', '.github', 'skills', 'extensions', 'demo'];
+    const items = fileio.collectDirs(ctx.workspace, 2, excluded);
+    return { workspace: ctx.workspace, items };
+  });
+
   // ---------- Books ----------
   app.get('/api/books', async () => {
     const rows = db.db
@@ -135,8 +142,16 @@ export async function registerRoutes(
     const pipeline = kind === 'novel' && (body.pipeline === 'long' || body.pipeline === 'short') ? body.pipeline : null;
     const theme_color = body.theme_color ?? '#B8860B';
     const id = ulid('bk');
-    // 目录：默认 <workspace>/<name>；允许显式 dir（用于注册 demo）
-    const bookDir = body.dir ? fileio.resolveSafe(ctx.workspace, body.dir) : fileio.resolveSafe(ctx.workspace, name);
+    // 目录：默认 <workspace>/<name>；新建向导可显式选择相对工作区的保存目录
+    let bookDir: string;
+    try {
+      bookDir = body.dir ? fileio.resolveSafe(ctx.workspace, body.dir) : fileio.resolveSafe(ctx.workspace, name);
+    } catch (e: any) {
+      if (e?.message === 'INVALID_PATH') {
+        return reply.code(400).send({ error: { code: 'INVALID_INPUT', message: '\u4fdd\u5b58\u76ee\u5f55\u975e\u6cd5\uff08\u9700\u4e3a\u5de5\u4f5c\u533a\u5185\u76f8\u5bf9\u8def\u5f84\uff09', detail: { dir: body.dir } } });
+      }
+      throw e;
+    }
     const ts = nowIso();
     try {
       db.db

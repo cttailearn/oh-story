@@ -156,6 +156,19 @@ describe('importNovel', () => {
     expect(importReviewPending(bookDir, JSON.parse(row.meta_json))).toBe(false);
   });
 });
+  it('clipboard + dir 相对保存目录 → 建书落在所选目录', async () => {
+    const text = '第一章 开端\n林晚醒来。';
+    const r = await importNovel(db, ws, { name: '目录书', mode: 'clipboard', text, dir: '文件夹/子文件夹' });
+    expect(r.book).not.toBeNull();
+    const expected = join(ws, '文件夹', '子文件夹');
+    expect((r.book as any).dir).toBe(expected);
+    expect(readdirSync(join(expected, '正文')).length).toBeGreaterThan(0);
+  });
+  it('dir 越界/绝对路径 → 拒绝', async () => {
+    await expect(importNovel(db, ws, { name: '越界书', mode: 'clipboard', text: '第一章\n内容', dir: '../escape' })).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+    await expect(importNovel(db, ws, { name: '绝对书', mode: 'clipboard', text: '第一章\n内容', dir: 'C:/tmp/x' })).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
 
 describe('applyImportReview（导入校对应用）', () => {
   let counter = 0;

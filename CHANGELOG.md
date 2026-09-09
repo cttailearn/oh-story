@@ -9,7 +9,8 @@
 - **`npm run verify:ui`**：真实 Chromium 打开 9 个页面，16 条断言（关键文案 + 零 console/page 错误 + 截图）
 - **`server/engine/jobLifecycle.test.ts`**：job 终态 / 重跑保留历史 / 空阶段不得 review / 阻塞落 error 的回归锁定
 - **设置页「获取模型」**：填 `base_url` + `API Key` 后一键拉取该渠道 `/models` 目录（保存前即可探测），自动分「对话 / 图像 / 其它（embedding·语音等）」，点选即写入模型目录；新增 `POST /api/config/channels/probe`（密钥只用于请求上游、绝不回显；不传 key 时回退该渠道已存密钥）
-- **`npm run verify:settings`**：真实 Chromium + 本地假网关（`scripts/mock-gateway.mjs`）跑完整设置流程 17 条断言，含「掩码密钥往返不得覆盖真实密钥」回归；跑完自动还原配置
+- **`npm run verify:settings`**：真实 Chromium + 本地假网关（`scripts/mock-gateway.mjs`）跑完整设置流程 25 条断言，含「掩码密钥往返不得覆盖真实密钥」与「常驻密钥录入」回归；跑完自动还原配置
+- **设置页渠道区常驻密钥录入**：新增常驻「＋ 快速新增渠道」表单（渠道名 / `base_url` / `API Key`），**没有任何渠道时也能直接看到并录入密钥**（此前空态下整块区域没有密钥输入框）；渠道卡片的密钥框补「显示/隐藏」与「密钥已存 / 未设密钥」状态标识
 
 ### 修复（webui）
 

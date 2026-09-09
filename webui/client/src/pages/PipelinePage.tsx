@@ -37,6 +37,10 @@ export function PipelinePage() {
   const [currentCost, setCurrentCost] = useState<any>(null);
   const closeSseRef = useRef<(() => void) | null>(null);
   const [cost, setCost] = useState<any>(null);
+  /** 追踪状态（skills tracking-transaction）：last_committed_chapter / state_revision / 条目数 */
+  const [tracking, setTracking] = useState<any>(null);
+  /** 最近一次 job 错误（GATE_UNAVAILABLE / REVIEW_DATA_MISSING / IMAGE_GEN_NOT_IMPLEMENTED 等） */
+  const [jobError, setJobError] = useState<{ code?: string; message: string } | null>(null);
 
   const loadCost = useCallback(() => {
     if (!bookId) return;
@@ -49,10 +53,11 @@ export function PipelinePage() {
   const load = useCallback(() => {
     if (!bookId) return;
     setLoading(true);
-    Promise.all([api.stages(bookId), api.getBook(bookId)])
-      .then(([s, b]) => {
+    Promise.all([api.stages(bookId), api.getBook(bookId), api.tracking(bookId).catch(() => null)])
+      .then(([s, b, t]) => {
         setStages(s.stages ?? []);
         setBookName(b.name);
+        setTracking(t ? { exists: true, ...t } : { exists: false });
         setError(null);
       })
       .catch((e) => setError(e?.message ?? String(e)))
@@ -72,13 +77,17 @@ export function PipelinePage() {
       if (name === 'job:review') {
         setLatestGates(data.latest_gates ?? null);
         setCurrentCost(data.cost ?? { total_cents: 0 });
+        if (data.tracking) setTracking({ exists: true, ...data.tracking });
+        setJobError(null);
         setRunningStage(null);
       } else if (name === 'job:error') {
+        setJobError({ code: data.code, message: String(data.message ?? '') });
         setToast(`⚠️ job 出错：${data.message ?? ''}`);
         setRunningStage(null);
       } else if (name === 'job:start') {
         setRunningStage(data.stage ?? null);
         setLatestGates(null);
+        setJobError(null);
       } else if (name === 'gate:batch') {
         setLatestGates((prev: any) => ({
           ...(prev ?? {}),
@@ -183,6 +192,33 @@ export function PipelinePage() {
           ⚠️ {error}
         </div>
       )}
+      {jobError && (
+        <div style={{ padding: '9px 14px', border: '1px solid var(--red-vermillion)', borderRadius: 6, marginBottom: 12, fontSize: 13, background: 'color-mix(in srgb, var(--red-vermillion) 6%, var(--paper))' }}>
+          <div style={{ color: 'var(--red-vermillion)' }}>
+            ⚠️ 阶段未通过{jobError.code ? `（${jobError.code}）` : ''}：{jobError.message}
+          </div>
+          {jobError.code === 'GATE_UNAVAILABLE' && (
+            <div style={{ color: 'var(--ink-2)', marginTop: 4 }}>
+              门禁脚本不可用（通常是把 webui/ 单独部署、缺少同仓的 skills/）。门禁缺失时引擎拒绝放行，请补齐仓库或设置 OH_STORY_SKILLS_DIR。
+            </div>
+          )}
+          {jobError.code === 'REVIEW_DATA_MISSING' && (
+            <div style={{ color: 'var(--ink-2)', marginTop: 4 }}>
+              模型未按约定输出「写章三查」控制块（review.check2.items + conclusion）。引擎不代填三查，重跑本阶段即可。
+            </div>
+          )}
+          {String(jobError.message).includes('IMAGE_GEN_NOT_IMPLEMENTED') && (
+            <div style={{ color: 'var(--ink-2)', marginTop: 4 }}>
+              封面/角色图生成尚未接入。可对该阶段点「跳过」，不影响正文与导出链路。
+            </div>
+          )}
+          <div style={{ marginTop: 6 }}>
+            <button className="ink-btn" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setJobError(null)}>
+              知道了
+            </button>
+          </div>
+        </div>
+      )}
       {toast && (
         <div className="stamp-in" style={{ padding: '9px 14px', border: '1px solid var(--green-jade)', color: 'var(--green-jade)', borderRadius: 6, marginBottom: 12, fontSize: 13, background: 'color-mix(in srgb, var(--green-jade) 6%, var(--paper))' }}>
           {toast}
@@ -252,24 +288,55 @@ export function PipelinePage() {
           {/* 门禁快报 */}
           {latestGates && (
             <div style={{ marginTop: 12, display: 'grid', gap: 6 }}>
-              {Object.entries(latestGates).map(([gate, gv]: any) => (
-                <div key={gate} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', border: '1px solid var(--line)', borderRadius: 5, fontSize: 12.5 }}>
-                  <strong style={{ minWidth: 130 }}>{gate}</strong>
-                  <span className={`seal ${gv?.blocking?.length ? 'seal-blocking' : gv?.ok ? 'seal-pass' : 'seal-pending'}`}>
-                    {gv?.blocking?.length ? `${gv.blocking.length} 阻塞` : gv?.ok ? 'PASS' : '有警示'}
+              {Object.entries(latestGates).map(([gate, gv]: any) => {
+                const vals: string[] = [];
+                const v = gv?.value ?? {};
+                if (v.shape) vals.push(v.shape === 'short' ? '短篇' : '长篇');
+                if (typeof v.planned_sections === 'number') vals.push(`规划 ${v.planned_sections} 节`);
+                if (typeof v.chapters === 'number') vals.push(`${v.chapters} 章`);
+                if (typeof v.char_count === 'number') vals.push(`${v.char_count} 字`);
+                if (typeof v.last_committed_chapter === 'number') vals.push(`已提交至第 ${v.last_committed_chapter} 章`);
+                if (typeof v.image_models === 'number') vals.push(`图像模型 ${v.image_models}`);
+                return (
+                  <div key={gate} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '5px 8px', border: '1px solid var(--line)', borderRadius: 5, fontSize: 12.5 }}>
+                    <strong style={{ minWidth: 130 }}>{gate}</strong>
+                    <span className={`seal ${gv?.blocking?.length ? 'seal-blocking' : gv?.ok ? 'seal-pass' : 'seal-pending'}`}>
+                      {gv?.blocking?.length ? `${gv.blocking.length} 阻塞` : gv?.ok ? 'PASS' : '有警示'}
+                    </span>
+                    <div style={{ flex: 1, display: 'grid', gap: 2 }}>
+                      {vals.length > 0 && <span className="mono" style={{ color: 'var(--ink-2)', fontSize: 11.5 }}>{vals.join(' · ')}</span>}
+                      {(gv?.blocking as any[] | undefined)?.slice(0, 2).map((b, i) => (
+                        <span key={i} style={{ color: 'var(--red-vermillion)', fontSize: 12 }}>
+                          {b.rule}：{String(b.evidence ?? '').slice(0, 120)}
+                        </span>
+                      ))}
+                      {(gv?.warnings as any[] | undefined)?.slice(0, 2).map((w, i) => (
+                        <span key={'w' + i} style={{ color: 'var(--gold-saffron)', fontSize: 11.5 }}>
+                          {w.rule}：{String(w.evidence ?? '').slice(0, 120)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 追踪状态（skills tracking-transaction）：章节提交的可见反馈 */}
+          {tracking && (
+            <div style={{ marginTop: 12, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 6, background: 'var(--paper-2)', fontSize: 12.5, display: 'grid', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <strong className="serif">追踪状态</strong>
+                <span className={`seal ${tracking.exists ? 'seal-pass' : 'seal-pending'}`}>{tracking.exists ? '已初始化' : '未初始化'}</span>
+                {tracking.exists && (
+                  <span className="mono" style={{ color: 'var(--ink-2)' }}>
+                    已提交至第 {Number(tracking.last_committed_chapter ?? 0)} 章 · state_revision {Number(tracking.state_revision ?? 0)} · 角色 {Object.keys(tracking.characters ?? {}).length} · 伏笔 {Object.keys(tracking.foreshadow ?? {}).length} · 时间线 {Object.keys(tracking.timeline ?? {}).length}
                   </span>
-                  {gv?.blocking?.length > 0 && (
-                    <span style={{ color: 'var(--red-vermillion)', fontSize: 12 }}>
-                      {(gv.blocking as any[]).slice(0, 3).map((b) => b.rule).join('、')}
-                    </span>
-                  )}
-                  {gv?.warnings?.length > 0 && (
-                    <span style={{ color: 'var(--gold-saffron)', fontSize: 12 }}>
-                      {gv.warnings.length} 警示
-                    </span>
-                  )}
-                </div>
-              ))}
+                )}
+                {!tracking.exists && (
+                  <span style={{ color: 'var(--ink-2)' }}>写章阶段会自动按契约初始化（追踪/_tracking-state.json）</span>
+                )}
+              </div>
             </div>
           )}
 

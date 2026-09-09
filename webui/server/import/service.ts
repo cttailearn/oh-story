@@ -11,7 +11,7 @@ import {
   rmSync,
   readdirSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, resolve, sep, join } from 'node:path';
 import Database from 'better-sqlite3';
 type Sqlite = InstanceType<typeof Database>;
 
@@ -260,6 +260,7 @@ export interface ImportRequest {
   mode: 'text-file' | 'clipboard' | 'dir';
   path?: string;
   text?: string;
+  dir?: string; // 相对工作区的保存目录（新建向导/导入时选择）
 }
 
 export interface ImportResult {
@@ -277,7 +278,8 @@ export async function importNovel(
   const name = (req.name ?? '').trim();
   if (!name) throw Object.assign(new Error('缺少 name（书名）'), { code: 'INVALID_INPUT' });
 
-  const dupDir = join(workspace, name);
+  const relDir = (req.dir ?? '').trim().replace(/\\/g, '/').replace(/^\.\//, '');
+  const dupDir = !relDir || req.mode === 'dir' ? join(workspace, name) : resolveUnder(workspace, relDir);
   const dup = db.prepare('SELECT * FROM books WHERE dir = ?').get(dupDir);
   if (dup) return { book: { id: (dup as any).id, name, dir: dupDir, kind: (dup as any).kind, pipeline: 'long' }, review: null, duplicate: true };
 
@@ -304,6 +306,7 @@ export async function importNovel(
   const tmp = join(workspace, '.story-import-' + Date.now().toString(36));
   writeBookTree(tmp, chapters, tracking);
   try {
+    mkdirSync(dirname(dupDir), { recursive: true });
     renameSync(tmp, dupDir);
   } catch (e: any) {
     rmSync(tmp, { recursive: true, force: true });
@@ -561,6 +564,23 @@ function safeTitle(t: string): string {
 }
 function readFileSafe(p: string): string {
   try { return readFileSync(p, 'utf8'); } catch (e) { throw Object.assign(new Error('读文件失败：' + String((e as Error).message)), { code: 'NOT_FOUND' }); }
+}
+
+/** 校验并解析工作区内相对保存目录（拒绝绝对路径 / 越界） */
+function resolveUnder(root: string, rel: string): string {
+  if (/^[a-zA-Z]:/.test(rel) || rel.startsWith('/')) {
+    throw Object.assign(new Error('目录需为工作区内相对路径'), { code: 'INVALID_INPUT' });
+  }
+  const parts = rel.split('/').filter((x) => x !== '' && x !== '.');
+  if (parts.includes('..')) {
+    throw Object.assign(new Error('目录不能包含 ..'), { code: 'INVALID_INPUT' });
+  }
+  const abs = join(root, ...parts);
+  const ws = resolve(root);
+  if (abs !== ws && !abs.startsWith(ws + sep)) {
+    throw Object.assign(new Error('目录越界'), { code: 'INVALID_INPUT' });
+  }
+  return abs;
 }
 function bookId(): string {
   return 'nb_' + Date.now().toString(36).padStart(10, '0') + Math.random().toString(36).slice(2, 10).padEnd(8, '0');

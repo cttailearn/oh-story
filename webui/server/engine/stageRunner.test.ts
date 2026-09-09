@@ -1,6 +1,6 @@
 // M1.5/M1.7 集成：Context 组装 + FakeAgent + stageRunner（fake 模式全链路）
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import Database from 'better-sqlite3';
@@ -163,11 +163,18 @@ describe('stageRunner fake 全链路（M1.7）', () => {
     });
     expect(res.status).toBe('blocked');
     expect(res.gateBlocking).toBe(true);
-    // long.json chapter 的 gates=7，retry_limit=2 → 引擎内循环共跑 2 轮 = 14 行 gate_runs
+    // long.json chapter 的 gates=9，其中 write-review-record 只在其余门禁全过后才跑（三查不得在有 blocking 时落盘），
+    // retry_limit=2 → 每轮 8 个门禁 × 2 轮 = 16 行 gate_runs
     const runs = db
       .prepare(`SELECT COUNT(*) AS n FROM gate_runs WHERE book_id=?`)
       .get('nb_chapter_blocked') as { n: number };
-    expect(runs.n).toBe(14);
+    expect(runs.n).toBe(16);
+    const gates = db
+      .prepare(`SELECT DISTINCT gate FROM gate_runs WHERE book_id=?`)
+      .all('nb_chapter_blocked') as Array<{ gate: string }>;
+    expect(gates.map((g) => g.gate)).not.toContain('write-review-record');
+    // 阻塞时不得留下"本章完成"的三查记录（修复前会伪造并落盘）
+    expect(existsSync(join(bookDir, '大纲', '审查记录', '正文审查_第001章.md'))).toBe(false);
     const row = getStageRow(db, 'nb_chapter_blocked', 'chapter')!;
     expect(row.status).toBe('blocked');
     expect(row.revision).toBe(1);

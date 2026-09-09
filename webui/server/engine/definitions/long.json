@@ -46,7 +46,10 @@
       "requires": ["concept"],
       "entry": { "assemble": "context-characters", "templates": ["agents/character-designer.md"], "knowledge_refs": ["character-basics.md", "character-design-methods.md", "dialogue-mastery.md"], "model_role": "writer" },
       "artifact": { "kind": "file-set", "path": "${book}/设定/{角色/*.md, 角色线/*.md}" },
-      "gates": [{ "name": "project-consistency", "args": ["--scope", "setup"] }],
+      "gates": [
+        { "name": "project-consistency", "args": ["--scope", "setup"] },
+        { "name": "role-line-consistency", "blocking": true }
+      ],
       "confirm": { "required": true, "actions": ["approve", "edit_rerun"], "rerun_scope": "this_stage" }
     },
     {
@@ -76,6 +79,8 @@
         { "name": "degeneration", "blocking": true },
         { "name": "normalize-punctuation", "blocking": true },
         { "name": "chapter-consistency", "args": ["--check"] },
+        { "name": "role-line-consistency", "blocking": false },
+        { "name": "author-memory", "blocking": false },
         { "name": "write-review-record" },
         { "name": "tracking-commit", "on_commit": true }
       ],

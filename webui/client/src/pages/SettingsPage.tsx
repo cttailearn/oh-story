@@ -25,6 +25,10 @@ export function SettingsPage() {
   const [probe, setProbe] = useState<Record<string, ProbeState>>({});
   /** 用户新输入的密钥（仅本次编辑会话持有；保存后清空，绝不回显已存密钥） */
   const [keyDraft, setKeyDraft] = useState<Record<string, string>>({});
+  /** 每张渠道卡片的密钥是否明文显示（默认密码态，避免肩窥） */
+  const [keyVisible, setKeyVisible] = useState<Record<string, boolean>>({});
+  /** 常驻「快速新增渠道」表单：保证渠道配置区随时都有 base_url + 密钥输入框 */
+  const [draft, setDraft] = useState<{ name: string; base_url: string; api_key: string }>({ name: '', base_url: '', api_key: '' });
   const [tab, setTab] = useState<'config' | 'ops'>('config');
 
   useEffect(() => {
@@ -90,6 +94,27 @@ export function SettingsPage() {
     });
   };
 
+  /** 快速新增：用表单里的 名称/base_url/密钥 直接生成一张渠道卡片（密钥暂存本会话，保存时回传） */
+  const addChannelFromDraft = () => {
+    const base_url = draft.base_url.trim();
+    if (!base_url) {
+      setErr('请先填写 base_url 再添加渠道');
+      return;
+    }
+    const id = `ch_${Date.now().toString(36)}`;
+    const name = draft.name.trim() || '新渠道';
+    const api_key = draft.api_key.trim();
+    patchConfig((cfg) => {
+      cfg.channels = cfg.channels ?? [];
+      cfg.channels.push({ id, name, base_url, models: [], enabled: true });
+      return cfg;
+    });
+    if (api_key) setKeyDraft((k) => ({ ...k, [id]: api_key }));
+    setDraft({ name: '', base_url: '', api_key: '' });
+    setErr(null);
+    setMsg('已添加渠道卡片：点「⤓ 获取模型」勾选模型，再点「保存设置」');
+  };
+
   const testChannel = async (id: string) => {
     setTesting((t) => ({ ...t, [id]: { loading: true } }));
     try {
@@ -138,6 +163,21 @@ export function SettingsPage() {
   const clearModels = (i: number) =>
     patchConfig((c) => {
       c.channels[i].models = [];
+      return c;
+    });
+
+  /** 图像模型目录（image_models）：cover 阶段与 imagegen-env 门禁读它 */
+  const toggleImageModel = (i: number, model: string) =>
+    patchConfig((c) => {
+      const cur: string[] = c.channels[i].image_models ?? [];
+      c.channels[i].image_models = cur.includes(model) ? cur.filter((m) => m !== model) : [...cur, model];
+      return c;
+    });
+
+  const addImageModels = (i: number, list: string[]) =>
+    patchConfig((c) => {
+      const cur: string[] = c.channels[i].image_models ?? [];
+      c.channels[i].image_models = [...cur, ...list.filter((m) => !cur.includes(m))];
       return c;
     });
 
@@ -202,9 +242,9 @@ export function SettingsPage() {
               </button>
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 10, lineHeight: 1.7 }}>
-              填 <span className="mono">base_url</span> + <span className="mono">API Key</span> → 点「获取模型」拉取该渠道可用模型 → 点选加入模型目录 → 保存。
+              在下方「快速新增渠道」里填 <span className="mono">base_url</span> + <span className="mono">API Key</span> → 点「⤓ 获取模型」拉取该渠道可用模型 → 点选加入模型目录 → 保存。
               <br />
-              已保存的密钥不会回显（显示为 <span className="mono">sk-a****z</span>）；留空即保持原密钥不变。
+              已保存的密钥不会回显（显示为 <span className="mono">sk-a****z</span>）；卡片里的密钥框留空即保持原密钥不变，点「显示」可查看本次输入。
             </div>
             <div style={{ display: 'grid', gap: 10 }}>
               {(config.channels ?? []).map((ch: any, i: number) => {
@@ -216,14 +256,34 @@ export function SettingsPage() {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <input value={ch.name} onChange={(e) => patchConfig((c) => { c.channels[i].name = e.target.value; return c; })} style={inputStyle} placeholder="渠道名" />
                       <input value={ch.base_url} onChange={(e) => patchConfig((c) => { c.channels[i].base_url = e.target.value; return c; })} style={{ ...inputStyle, flex: 1, minWidth: 240 }} placeholder="https://api.example.com/v1" />
-                      <input
-                        type="password"
-                        autoComplete="new-password"
-                        value={keyDraft[ch.id] ?? ''}
-                        onChange={(e) => setKeyDraft((k) => ({ ...k, [ch.id]: e.target.value }))}
-                        style={{ ...inputStyle, width: 200, fontFamily: 'var(--font-mono)' }}
-                        placeholder={ch.api_key ? `已保存 ${ch.api_key}（留空不改）` : 'API Key（sk-…）'}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input
+                          type={keyVisible[ch.id] ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          data-channel-key={ch.id}
+                          aria-label="API Key"
+                          value={keyDraft[ch.id] ?? ''}
+                          onChange={(e) => setKeyDraft((k) => ({ ...k, [ch.id]: e.target.value }))}
+                          style={{ ...inputStyle, width: 230, fontFamily: 'var(--font-mono)' }}
+                          placeholder={ch.api_key ? `已保存 ${ch.api_key}（留空不改）` : 'API Key（sk-…）'}
+                        />
+                        <button
+                          type="button"
+                          className="ink-btn"
+                          style={{ padding: '4px 8px', fontSize: 11 }}
+                          onClick={() => setKeyVisible((v) => ({ ...v, [ch.id]: !v[ch.id] }))}
+                          title="切换密钥明文/密文显示"
+                        >
+                          {keyVisible[ch.id] ? '隐藏' : '显示'}
+                        </button>
+                        <span
+                          className={`seal ${ch.api_key ? 'seal-pass' : 'seal-pending'}`}
+                          data-key-state={ch.api_key ? 'set' : 'unset'}
+                          title={ch.api_key ? '已保存密钥（不回显明文；输入新值可替换）' : '尚未保存密钥'}
+                        >
+                          {ch.api_key ? '密钥已存' : '未设密钥'}
+                        </span>
+                      </div>
                       <span className={`seal ${ch.enabled === false ? 'seal-pending' : 'seal-pass'}`} style={{ cursor: 'pointer' }} onClick={() => patchConfig((c) => { c.channels[i].enabled = !c.channels[i].enabled; return c; })}>
                         {ch.enabled === false ? '停用' : '启用'}
                       </span>
@@ -264,17 +324,30 @@ export function SettingsPage() {
                                     {label}（{(list ?? []).length}）
                                     {key !== 'other' && (
                                       <button className="ink-btn" style={{ marginLeft: 8, padding: '1px 7px', fontSize: 11 }} onClick={() => addModels(i, list ?? [])}>
-                                        全选
+                                        全选到模型目录
+                                      </button>
+                                    )}
+                                    {key === 'image' && (
+                                      <button className="ink-btn" style={{ marginLeft: 6, padding: '1px 7px', fontSize: 11 }} onClick={() => addImageModels(i, list ?? [])}>
+                                        全选到图像目录
                                       </button>
                                     )}
                                   </div>
                                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 170, overflow: 'auto' }}>
-                                    {(list ?? []).map((m) => (
-                                      <button key={m} style={chip(chosen.includes(m))} onClick={() => toggleModel(i, m)} title={m}>
-                                        {chosen.includes(m) ? '✓ ' : ''}
-                                        {m}
-                                      </button>
-                                    ))}
+                                    {(list ?? []).map((m) => {
+                                      const on = key === 'image' ? (ch.image_models ?? []).includes(m) : chosen.includes(m);
+                                      return (
+                                        <button
+                                          key={m}
+                                          style={chip(on)}
+                                          onClick={() => (key === 'image' ? toggleImageModel(i, m) : toggleModel(i, m))}
+                                          title={key === 'image' ? m + '（图像模型，cover 阶段用）' : m}
+                                        >
+                                          {on ? '✓ ' : ''}
+                                          {m}
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               ),
@@ -290,17 +363,65 @@ export function SettingsPage() {
                     )}
 
                     <div style={{ marginTop: 8 }}>
-                      <span style={{ fontSize: 12, color: 'var(--ink-2)', marginRight: 6 }}>模型目录（逗号分隔，可手工编辑）：</span>
-                      <input value={chosen.join(', ')} onChange={(e) => patchConfig((c) => { c.channels[i].models = e.target.value.split(/[,，\s]+/).filter(Boolean); return c; })} style={{ ...inputStyle, minWidth: 360, fontFamily: 'var(--font-mono)' }} placeholder="deepseek-v4-pro, gpt-image-2, …" />
+                      <span style={{ fontSize: 12, color: 'var(--ink-2)', marginRight: 6 }}>模型目录（对话/文本，逗号分隔）：</span>
+                      <input data-models value={chosen.join(', ')} onChange={(e) => patchConfig((c) => { c.channels[i].models = e.target.value.split(/[,，\s]+/).filter(Boolean); return c; })} style={{ ...inputStyle, minWidth: 360, fontFamily: 'var(--font-mono)' }} placeholder="deepseek-v4-pro, …" />
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--ink-2)', marginRight: 6 }}>图像模型（封面/角色图，cover 阶段用）：</span>
+                      <input data-image-models value={(ch.image_models ?? []).join(', ')} onChange={(e) => patchConfig((c) => { c.channels[i].image_models = e.target.value.split(/[,，\s]+/).filter(Boolean); return c; })} style={{ ...inputStyle, minWidth: 360, fontFamily: 'var(--font-mono)' }} placeholder="gpt-image-2, nano-banana, …" />
                     </div>
                     {t?.ok && <div style={{ fontSize: 12.5, color: 'var(--green-jade)', marginTop: 6, lineHeight: 1.6 }}>✅ {t.msg}</div>}
                     {t && t.ok === false && <div style={{ fontSize: 12.5, color: 'var(--red-vermillion)', marginTop: 6 }}>❌ {t.msg}（ping {t.llm?.ping_ms}ms）</div>}
                   </div>
                 );
               })}
+
+              {/* 常驻「快速新增渠道」：无论是否已有渠道，这里都直接有 base_url + API Key 输入框 */}
+              <div data-channel-quickadd style={{ border: '1px dashed var(--line)', borderRadius: 6, padding: '10px 12px', background: 'var(--paper-2)' }}>
+                <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.6 }}>
+                  ＋ 快速新增渠道：填 <span className="mono">base_url</span> + <span className="mono">API Key</span> → 「添加渠道」→ 在卡片里点「⤓ 获取模型」勾选模型 → 「保存设置」
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    data-quickadd="name"
+                    value={draft.name}
+                    onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                    style={{ ...inputStyle, width: 150 }}
+                    placeholder="渠道名（可选）"
+                  />
+                  <input
+                    data-quickadd="base_url"
+                    value={draft.base_url}
+                    onChange={(e) => setDraft((d) => ({ ...d, base_url: e.target.value }))}
+                    style={{ ...inputStyle, flex: 1, minWidth: 240 }}
+                    placeholder="https://api.example.com/v1"
+                  />
+                  <input
+                    data-quickadd="api_key"
+                    type="password"
+                    autoComplete="new-password"
+                    aria-label="API Key"
+                    value={draft.api_key}
+                    onChange={(e) => setDraft((d) => ({ ...d, api_key: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === 'Enter') addChannelFromDraft(); }}
+                    style={{ ...inputStyle, width: 230, fontFamily: 'var(--font-mono)' }}
+                    placeholder="API Key（sk-…）"
+                  />
+                  <button
+                    className="ink-btn primary"
+                    style={{ padding: '5px 12px', fontSize: 12.5 }}
+                    onClick={addChannelFromDraft}
+                    disabled={!draft.base_url.trim()}
+                    title={draft.base_url.trim() ? '用这些值新增一张渠道卡片' : '请先填写 base_url'}
+                  >
+                    ＋ 添加渠道
+                  </button>
+                </div>
+              </div>
+
               {(config.channels ?? []).length === 0 && (
                 <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-                  尚无渠道。新增后填 base_url + API Key，点「获取模型」勾选即可；流程也可用「假渠道」开发（POST run 传 fake）。
+                  尚无渠道：直接在上面填 <span className="mono">base_url</span> + <span className="mono">API Key</span>，点「＋ 添加渠道」即可；流程也可用「假渠道」开发（POST run 传 fake）。
                 </div>
               )}
             </div>

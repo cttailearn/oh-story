@@ -16,11 +16,20 @@ import { assembleBundle, type ContextBundle, type PromptBlock } from '../agents/
 import { runFakeAgent, runRealAgent } from '../agents/execute.ts';
 import { roleFor } from '../agents/roles.ts';
 import { getConfig } from '../config/index.ts';
-import { buildGateAdapters } from '../gates/registry.ts';
+import { buildGateAdapters, missingGateAdapters, SKILL_SCRIPTS_DIR } from '../gates/registry.ts';
 import { runGates, hasBlocking, summarize } from '../gates/runner.ts';
 import type { GateReport } from '../gates/types.ts';
 import { publishJob } from './sse.ts';
 import type { DbHandle } from '../db/index.ts';
+import {
+  ensureTrackingInitialized,
+  writePendingTx,
+  readPendingTx,
+  clearPendingTx,
+  hasTrackingState,
+  trackingSummary,
+} from './tracking.ts';
+import { splitAgentOutput } from './agentOutput.ts';
 
 export interface StageRunOptions {
   db: DbHandle;
@@ -97,11 +106,37 @@ async function runAndGate(
     }
   }
 
+  // 0.5) 门禁可用性 fail-closed（修复：声明了却没有适配器 / skills/ 缺失时，阶段曾静默"全过"）
+  const adapters = buildGateAdapters();
+  const declaredGates = stage.gates.map((g) => g.name);
+  const missing = missingGateAdapters(declaredGates);
+  const hardMissing = missing.filter((n) => (stage.gates.find((g) => g.name === n)?.blocking ?? true) !== false);
+  if (hardMissing.length > 0) {
+    throw Object.assign(
+      new Error(
+        `GATE_UNAVAILABLE: 阶段 ${stage.id} 声明的门禁不可用：${hardMissing.join('、')}` +
+          `（技能脚本目录：${SKILL_SCRIPTS_DIR || '未找到 skills/'}）—— 门禁不可用时拒绝放行，请确认仓库完整（skills/ 与 webui/ 同仓发布）`,
+      ),
+      { code: 'GATE_UNAVAILABLE' },
+    );
+  }
+  if (missing.length > 0) {
+    publishJob(bookId, jobId, 'job:progress', { phase: 'gate-missing', percent: 5, missing, soft: true });
+  }
+
+  // 0.6) 无 model_role 的阶段 = 确定性阶段（design §226：cover/export 不走文本 agent）
+  if (!stage.entry.model_role) {
+    return await runDeterministicStage(opts, stage, revision, jobId, adapters);
+  }
+
   // 1) 组装 Context（含角色线块等，见 process §5）
   const role = roleFor(stage.entry.model_role || 'architect');
   const retryLimit = stage.retry_policy?.limit ?? def.defaults.retry_limit ?? 0;
   let bundle = await assembleBundle({ bookDir, stage: stage.entry, role: role.id, bookTitle: bookName });
   const revBase = opts.stageId === 'deslop' ? snapshotDeslopBase(opts.bookDir) : '';
+  const hasTrackingGate = stage.gates.some((g) => g.name === 'tracking-commit');
+  const hasReviewGate = stage.gates.some((g) => g.name === 'write-review-record');
+  const selected = adapters.filter((a) => stage.gates.some((g) => g.name === a.name));
 
   // 2) 生成→门禁 内循环（agents-runtime §2.2：有 blocking 且未超限 → 带报告重建重跑 ≤retry_limit）
   let attempts = 0;
@@ -131,22 +166,43 @@ async function runAndGate(
     });
     publishJob(bookId, jobId, 'job:progress', { phase: 'write-artifact', percent: 40 });
 
-    // 3) 写产物（按 artifact.path 落盘）；deslop 已先存基稿
-    const written = writeArtifact(opts, stage, revision, result.text);
+    // 3) 切分 Agent 输出：正文落产物，控制块（追踪事务/三查载荷）单独处理
+    //    —— 修复：此前整段（含 JSON）直接写进手稿，且三查由引擎机械伪造
+    const out = splitAgentOutput(result.text);
+    if (out.stripped > 0) {
+      publishJob(bookId, jobId, 'job:progress', { phase: 'control-blocks', percent: 38, stripped: out.stripped });
+    }
+    const written = writeArtifact(opts, stage, revision, out.body);
+
+    // 3.5) 追踪事务 → skills 契约路径 .story-txn/pending.json；并幂等初始化追踪状态
+    let txJson = hasTrackingGate ? readPendingTx(bookDir) : undefined;
+    if (hasTrackingGate) {
+      if (out.tx) {
+        writePendingTx(bookDir, out.tx);
+        // 读回落盘内容：writePendingTx 会补齐 expected_state_revision（乐观锁），不能用原对象
+        txJson = readPendingTx(bookDir) ?? JSON.stringify(out.tx);
+        publishJob(bookId, jobId, 'job:progress', {
+          phase: 'tracking-tx',
+          percent: 55,
+          chapter: (out.tx as any).chapter,
+          mode: (out.tx as any).mode,
+        });
+      } else {
+        publishJob(bookId, jobId, 'job:progress', { phase: 'tracking-tx-missing', percent: 55 });
+      }
+      if (!hasTrackingState(bookDir)) {
+        const init = ensureTrackingInitialized({ bookDir, bookTitle: bookName });
+        publishJob(bookId, jobId, 'job:progress', { phase: 'tracking-init', percent: 56, ok: init.ok, msg: init.msg });
+      }
+    }
     publishJob(bookId, jobId, 'job:progress', { phase: 'gates', percent: 60 });
 
-    const reviewData = stage.id === 'chapter' ? buildReviewData(opts.bookDir, written, bookName) : undefined;
-    const pendingTx = stage.gates.some((g) => g.name === 'tracking-commit' && g.on_commit)
-      ? readPendingTrackingTx(opts.bookDir)
-      : undefined;
-
-    // 4) 门禁（顺序执行，blocking 命中即记，跑完全批再决策）
-    const adapters = buildGateAdapters();
-    const selected = adapters.filter((a) => stage.gates.some((g) => g.name === a.name));
+    // 4) 门禁：先跑除 write-review-record 外的全部（三查记录必须在其余门禁全过后才写）
+    const preAdapters = selected.filter((a) => a.name !== 'write-review-record');
     const reports = await runGates(
       db.db,
-      selected,
-      { bookDir, cwd: dirname(bookDir), args: { stage, written, revBase, reviewData, tx: pendingTx } },
+      preAdapters,
+      { bookDir, cwd: dirname(bookDir), args: { stage, written, revBase, tx: txJson } },
       { bookId, stageId: stage.id, revision, jobId },
     );
     for (const r of reports) {
@@ -154,8 +210,44 @@ async function runAndGate(
     }
     const blocked = hasBlocking(reports);
 
-    // 5a) 全过 → review
+    // 5a) 全过 → 写三查记录（用真实门禁结果）→ review
     if (!blocked) {
+      if (hasReviewGate) {
+        const reviewAdapter = selected.find((a) => a.name === 'write-review-record');
+        if (reviewAdapter) {
+          // 三查载荷必须由 Agent 产出（查2/结论）；引擎只用真实状态与门禁结果补 查1/查3
+          if (stage.id === 'chapter' && !out.review) {
+            const reason3 = 'REVIEW_DATA_MISSING: 产物缺少写章三查载荷（约定 json 控制块 review.check2.items + conclusion）—— 不伪造三查记录';
+            markBlocked({ db: db.db, def }, { bookId, stageId: stage.id, revision, reason: reason3 });
+            markJobStatus(db.db, jobId, 'error', { error: reason3 });
+            publishJob(bookId, jobId, 'job:error', { code: 'REVIEW_DATA_MISSING', message: reason3 });
+            return { jobId, status: 'blocked', gateBlocking: true };
+          }
+          const reviewData = stage.id === 'chapter' ? buildReviewData(bookDir, written, bookName, reports, out.review) : undefined;
+          const post = await runGates(
+            db.db,
+            [reviewAdapter],
+            { bookDir, cwd: dirname(bookDir), args: { stage, written, revBase, reviewData } },
+            { bookId, stageId: stage.id, revision, jobId },
+          );
+          for (const r of post) {
+            publishJob(bookId, jobId, 'gate:batch', { gate: r.gate, ok: r.passed, blocking: r.blocking, warnings: r.warnings, attempt: attempts });
+          }
+          reports.push(...post);
+          if (hasBlocking(post)) {
+            const reason2 = post
+              .filter((r) => r.blocking.length)
+              .map((r) => r.gate + ':' + r.blocking.map((b) => b.rule).join(','))
+              .join('; ');
+            markBlocked({ db: db.db, def }, { bookId, stageId: stage.id, revision, reason: reason2 });
+            markJobStatus(db.db, jobId, 'error', { error: 'GATE_BLOCKING: ' + reason2 });
+            return { jobId, status: 'blocked', gateBlocking: true };
+          }
+        }
+      }
+      const tc = reports.find((r) => r.gate === 'tracking-commit');
+      if (hasTrackingGate && tc?.passed) clearPendingTx(bookDir);
+
       markReview({ db: db.db, def }, { bookId, stageId: stage.id, revision });
       markJobStatus(db.db, jobId, 'review');
       const latestGates = summarize(reports);
@@ -164,6 +256,7 @@ async function runAndGate(
         revision,
         attempts,
         latest_gates: latestGates,
+        tracking: hasTrackingGate ? trackingSummary(bookDir) : undefined,
         cost: { total_cents: result.usage.cost_cents },
       });
       return { jobId, status: 'review', gateBlocking: false };
@@ -182,6 +275,69 @@ async function runAndGate(
     bundle = withFixBlock(bundle, reports, attempts, retryLimit);
     publishJob(bookId, jobId, 'job:progress', { phase: 'fix-rerun', percent: 75, attempt: attempts, blocking: reason });
   }
+}
+
+/**
+ * 确定性阶段（无 model_role）：不调文本 agent，直接落产物 + 跑门禁。
+ *   export → 调导出服务（markdown/txt…），产物落 交付/
+ *   cover  → 图像生成尚未接入（skills/story-image）时 fail-closed，绝不伪造文本"封面"
+ */
+async function runDeterministicStage(
+  opts: StageRunOptions,
+  stage: StageDefinition,
+  revision: number,
+  jobId: string,
+  adapters: ReturnType<typeof buildGateAdapters>,
+): Promise<StageRunResult> {
+  const { db, def, bookId, bookDir } = opts;
+  const selected = adapters.filter((a) => stage.gates.some((g) => g.name === a.name));
+  const fail = (reason: string): StageRunResult => {
+    markBlocked({ db: db.db, def }, { bookId, stageId: stage.id, revision, reason });
+    markJobStatus(db.db, jobId, 'error', { error: reason });
+    publishJob(bookId, jobId, 'job:error', { code: 'DETERMINISTIC_STAGE_UNAVAILABLE', message: reason });
+    return { jobId, status: 'blocked', gateBlocking: true };
+  };
+
+  if (stage.artifact.kind === 'image-set') {
+    return fail(
+      'IMAGE_GEN_NOT_IMPLEMENTED: 封面/角色图生成尚未接入（skills/story-image）。该阶段不会伪造文本产物；' +
+        '请在设置页配置图像渠道，或对该阶段使用「跳过」。',
+    );
+  }
+
+  let written: string[] = [];
+  try {
+    const { exportBook } = await import('../export/service.ts');
+    const r = exportBook(db.db, { id: bookId, name: opts.bookName, dir: bookDir }, { format: 'markdown' });
+    if (!r.ok) return fail('EXPORT_BLOCKED: ' + (r.stats.blocked ?? []).join('；'));
+    written = [r.relPath];
+    publishJob(bookId, jobId, 'job:progress', { phase: 'write-artifact', percent: 40, files: written });
+  } catch (e: any) {
+    return fail('EXPORT_FAILED: ' + String(e?.message ?? e));
+  }
+
+  const reports = await runGates(
+    db.db,
+    selected,
+    { bookDir, cwd: dirname(bookDir), args: { stage, written, revBase: '' } },
+    { bookId, stageId: stage.id, revision, jobId },
+  );
+  for (const r of reports) {
+    publishJob(bookId, jobId, 'gate:batch', { gate: r.gate, ok: r.passed, blocking: r.blocking, warnings: r.warnings, attempt: 1 });
+  }
+  if (hasBlocking(reports)) {
+    const reason = reports
+      .filter((r) => r.blocking.length)
+      .map((r) => r.gate + ':' + r.blocking.map((b) => b.rule).join(','))
+      .join('; ');
+    markBlocked({ db: db.db, def }, { bookId, stageId: stage.id, revision, reason });
+    markJobStatus(db.db, jobId, 'error', { error: 'GATE_BLOCKING: ' + reason });
+    return { jobId, status: 'blocked', gateBlocking: true };
+  }
+  markReview({ db: db.db, def }, { bookId, stageId: stage.id, revision });
+  markJobStatus(db.db, jobId, 'review');
+  publishJob(bookId, jobId, 'job:review', { stage: stage.id, revision, attempts: 1, latest_gates: summarize(reports), cost: { total_cents: 0 } });
+  return { jobId, status: 'review', gateBlocking: false };
 }
 
 /** 门禁修复块：把 blocking 明细作为追加指令注入下一轮 Agent（重建，保证任务即上下文纯净） */
@@ -223,53 +379,72 @@ function routeModel(roleKey: string): { channelId: string; modelId: string } {
 }
 
 /** 产物写盘（按 artifact.path；file-set 拆多文件：细纲按 ## 第NN章 分文件） */
-/** 章节阶段：为 write-review-record 门禁机械生成三查数据（查2 由引擎占位，查1/查3 机械填充） */
-function buildReviewData(bookDir: string, written: string[], bookName?: string): string | undefined {
+/**
+ * 章节阶段：组装写章三查数据（skills workflow-chapter §13 / write-review-record.js 契约）
+ *   查1：追踪状态（写前）—— 引擎从 追踪/_tracking-state.json + tracking-commit 门禁结果真实读取
+ *   查2：细纲兑现差异（写后）—— **由 Agent 产出**（review.check2.items），引擎不代填
+ *   查3：禁用词/退化门禁（写后）—— 引擎取本轮 ai-patterns / degeneration 的真实 blocking 数
+ * 修复：此前三个查项全部写死 ok:true + conclusion:'完成'，门禁失败也照样写"本章完成"。
+ */
+function buildReviewData(
+  bookDir: string,
+  written: string[],
+  bookName: string | undefined,
+  reports: GateReport[],
+  payload: import('./agentOutput.ts').ReviewPayload | null,
+): string | undefined {
   const chapters = written.filter((w) => /正文[\\/]第\d+章/.test(w));
   if (chapters.length === 0) return undefined;
   const nums = chapters.map((w) => {
     const mm = w.match(/第(\d+)章/);
     return mm && mm[1] ? parseInt(mm[1], 10) : 0;
   });
-  const chapter = Math.max(0, ...nums) || 1;
-  let lcc = 0;
-  let rev = 0;
-  try {
-    const tp = join(bookDir, '追踪/_tracking-state.json');
-    if (existsSync(tp)) {
-      const t = JSON.parse(readFileSync(tp, 'utf8')) as { last_committed_chapter?: number; state_revision?: number };
-      lcc = t.last_committed_chapter ?? 0;
-      rev = t.state_revision ?? 0;
-    }
-  } catch {
-    /* 无追踪状态则按 0 处理 */
-  }
+  const chapter = payload?.chapter && payload.chapter > 0 ? payload.chapter : Math.max(0, ...nums) || 1;
+
+  const summary = trackingSummary(bookDir);
+  const tcReport = reports.find((r) => r.gate === 'tracking-commit');
+  const blockingCount = (gate: string): number => {
+    const r = reports.find((x) => x.gate === gate);
+    return r ? r.blocking.length : 0;
+  };
+  const aiBlocking = blockingCount('ai-patterns');
+  const degBlocking = blockingCount('degeneration');
+
+  const check2Items = payload?.check2.items ?? [];
+  const failedCheck2 = check2Items.filter((i) => i.ok === false);
+  const conclusion =
+    payload?.conclusion?.trim() ||
+    (failedCheck2.length === 0 ? '完成' : '未完成（查2 存在未兑现项）');
+
   const data = {
     chapter,
-    chapter_name: String(bookName ?? '') + '·第' + chapter + '章',
-    check1: { last_committed_chapter: lcc, state_revision: rev, ok: true, note: '机械填充（WebUI 引擎）' },
-    check2: { items: [
-      { item: '本章形如正文章节（自动生成三查记录，查2 由人工/Agent 在 M2 细化）', ok: true, note: '机械填充' },
-    ] },
-    check3: { ai_blocking: 0, deg_blocking: 0, note: '机械填充（引擎路径）' },
-    conclusion: '完成',
+    chapter_name: payload?.chapter_name ?? String(bookName ?? '') + '·第' + chapter + '章',
+    check1: {
+      last_committed_chapter: summary.last_committed_chapter,
+      state_revision: summary.state_revision,
+      ok: tcReport ? tcReport.passed : summary.exists,
+      note: tcReport
+        ? tcReport.passed
+          ? 'tracking-commit ' + (tcReport.detail && (tcReport.detail as any).mode === 'commit' ? '提交通过' : '校验通过')
+          : 'tracking-commit 未通过：' + (tcReport.blocking[0]?.evidence ?? '').slice(0, 120)
+        : '本轮无 tracking-commit 门禁，按状态文件读取',
+    },
+    check2: {
+      items: check2Items.map((i) => ({ item: i.item, ok: i.ok, note: i.note ?? (i.ok === undefined ? '未自评（人工复核）' : undefined) })),
+      note: '查2 由 Agent 产出（引擎不做语义判定）',
+    },
+    check3: {
+      ai_blocking: aiBlocking,
+      deg_blocking: degBlocking,
+      note: '取自本轮 ai-patterns / degeneration 门禁真实结果',
+    },
+    conclusion,
   };
   const rel = '.story/review-data/review-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + '.json';
   const abs = join(bookDir, rel);
   mkdirSync(dirname(abs), { recursive: true });
   writeFileSync(abs, JSON.stringify(data, null, 2) + '\n', 'utf8');
   return abs;
-}
-
-/** on_commit 通道：若书目录存在 .story/pending-tracking.json（由后续 AI 编辑/登记流程产出），交给 tracking-commit gate 提交 */
-function readPendingTrackingTx(bookDir: string): string | undefined {
-  try {
-    const f = join(bookDir, '.story', 'pending-tracking.json');
-    if (!existsSync(f)) return undefined;
-    return readFileSync(f, 'utf8');
-  } catch {
-    return undefined;
-  }
 }
 
 /** deslop 改写前：把现有 正文/ 章节快照到 .story/rev-base/（revision-duplicate 的原始对照） */

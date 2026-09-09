@@ -131,7 +131,29 @@ const blockingRuns = gateRuns.filter((g) => {
 ok(gateRuns.length > 0, 'gate_runs 有留痕', gateRuns.length);
 ok(blockingRuns.length === 0, 'gate_runs 无 blocking', { total: gateRuns.length, blocking: blockingRuns.map((g) => g.gate) });
 
-// 9) 健康深检：不得再有「挂起任务」残留
+// 9) 章节全链路（P0-B/P0-D）：写章 → 追踪提交 → 三查落盘 → 手稿无控制块
+const chRun = await j(`/books/${bookId}/stages/chapter/run`, { method: 'POST', body: JSON.stringify({ fake: true }) });
+ok(chRun.status === 200 && chRun.body?.status === 'review', 'run chapter → review', chRun.body);
+const tree2 = (await j(`/books/${bookId}/tree`)).body?.tree ?? [];
+const flat2 = [];
+(function walk2(ns) { for (const n of ns) { if (n.type === 'file') flat2.push(n.path); if (n.children) walk2(n.children); } })(tree2);
+const manuscript = flat2.find((f) => f.startsWith('正文/第001章'));
+ok(!!manuscript, '章节产物落盘', flat2.filter((f) => f.startsWith('正文/')));
+ok(flat2.includes('追踪/_tracking-state.json'), '追踪状态已按契约初始化');
+ok(flat2.some((f) => f.startsWith('大纲/审查记录/正文审查_第001章')), '写章三查记录已落盘');
+ok(!flat2.some((f) => f.startsWith('.story-txn/')), '提交成功后 pending 事务已清理');
+if (manuscript) {
+  const body = (await j(`/files?path=${encodeURIComponent(manuscript)}&book_id=${bookId}`)).body?.content ?? '';
+  ok(!body.includes('tracking_tx') && !body.includes('\u0060\u0060\u0060'), '手稿不含控制块（json/代码围栏）', body.slice(0, 80));
+}
+const track = (await j(`/books/${bookId}/tracking`)).body ?? {};
+ok(Number(track.last_committed_chapter) === 1, 'tracking last_committed_chapter = 1', track.last_committed_chapter);
+ok(Number(track.state_revision) >= 1, 'tracking state_revision 已推进', track.state_revision);
+const chGates = (await j(`/books/${bookId}/gate-runs`)).body?.items ?? [];
+const chBlocking = chGates.filter((g) => g.stage_id === 'chapter').flatMap((g) => { try { return JSON.parse(g.blocking_json || '[]'); } catch { return []; } });
+ok(chBlocking.length === 0, 'chapter 门禁无 blocking', chBlocking.map((b) => b.rule));
+
+// 10) 健康深检：不得再有「挂起任务」残留
 const deep = (await j('/health?depth=full')).body ?? {};
 ok(deep.db?.jobs_pending === 0, 'health.depth=full jobs_pending = 0', deep.db?.jobs_pending);
 

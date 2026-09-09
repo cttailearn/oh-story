@@ -55,3 +55,9 @@ webui/.tmp-*/
 
 # 提交信息临时文件
 _commitmsg.tmp
+# 本地验证/测试书残留（随机后缀 ID，不入库）
+*_mttal*/
+
+# 本地调试 scratch
+_scan*.js
+_t*.js

@@ -11,7 +11,7 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
 
-/** CodeMirror 6 书页式编辑器（webui-frontend §3.3 / M0.6），草稿存 localStorage */
+/** CodeMirror 6 page-like editor (webui-frontend v3.3 / M0.6), draft stored in localStorage */
 
 interface PageEditorProps {
   value: string;
@@ -25,6 +25,13 @@ export function PageEditor({ value, onChange, draftKey, placeholder }: PageEdito
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+
+  // Whether a local draft exists for the current file. When it does, the draft is the
+  // source of truth and external value changes must NOT overwrite it. When no draft
+  // exists, the editor must keep following external value (server-loaded content),
+  // which fixes the bug where switching chapters keeps showing the previous chapter
+  // and first-open stays blank (the lazy chunk / post-switch fetch complete late).
+  const draftExistRef = useRef(false);
 
   const darkTheme = EditorView.theme(
     {
@@ -65,15 +72,15 @@ export function PageEditor({ value, onChange, draftKey, placeholder }: PageEdito
     { dark: false },
   );
 
+  // Create the editor. Re-runs whenever draftKey changes (a different file is opened),
+  // rebuilding the CM instance with the right initial content.
   useEffect(() => {
     if (!hostRef.current) return;
 
-    // 草稿优先
-    let initContent = value;
-    if (draftKey) {
-      const draft = loadDraft(draftKey);
-      if (draft != null) initContent = draft;
-    }
+    // Draft wins when present; otherwise start from the current value (server content if loaded).
+    const draft = draftKey ? loadDraft(draftKey) : null;
+    const initContent = draft != null ? draft : value;
+    draftExistRef.current = draft != null;
 
     const state = EditorState.create({
       doc: initContent,
@@ -86,7 +93,7 @@ export function PageEditor({ value, onChange, draftKey, placeholder }: PageEdito
         syntaxHighlighting(defaultHighlightStyle),
         darkTheme,
         placeholder ? cmPlaceholder(placeholder) : [],
-        // 变更 → onChange（不写回 value，父组件负责）
+        // change -> onChange (the parent owns the value; we never write it back ourselves)
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChangeRef.current?.(update.state.doc.toString());
@@ -107,15 +114,18 @@ export function PageEditor({ value, onChange, draftKey, placeholder }: PageEdito
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
 
-  // 外部 value 变化（非草稿模式）→ 同步（避免光标跳走）
+  // Sync external value changes into the editor (keeps the caret from jumping).
+  // When a draft exists the draft is the source of truth, so do not overwrite it;
+  // user keystrokes already flow back through onChange so there is nothing to re-apply.
+  // When no draft exists (including the post-switch server fetch resolving), replace the
+  // doc with the newest value -- this fixes stale/blank content across file switches.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    if (!draftKey) {
-      const cur = view.state.doc.toString();
-      if (cur !== value) {
-        view.dispatch({ changes: { from: 0, to: cur.length, insert: value } });
-      }
+    if (draftExistRef.current) return;
+    const cur = view.state.doc.toString();
+    if (cur !== value) {
+      view.dispatch({ changes: { from: 0, to: cur.length, insert: value } });
     }
   }, [value, draftKey]);
 
@@ -132,14 +142,14 @@ export function PageEditor({ value, onChange, draftKey, placeholder }: PageEdito
 
 function loadDraft(key: string): string | null {
   try {
-    return localStorage.getItem(`draft:${key}`);
+    return localStorage.getItem('draft:' + key);
   } catch {
     return null;
   }
 }
 function saveDraft(key: string, value: string) {
   try {
-    localStorage.setItem(`draft:${key}`, value);
+    localStorage.setItem('draft:' + key, value);
   } catch {
     /* ignore */
   }

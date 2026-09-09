@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client.ts';
+import { DirPicker, normalizeDirInput } from '../components/DirPicker.tsx';
 
 /** 新建小说向导（webui-frontend P2 需求录入）：表单 → 建书(种子落盘) → 流程看板 */
 export function NewNovelPage() {
@@ -8,6 +9,14 @@ export function NewNovelPage() {
   const [form, setForm] = useState({ name: '', pipeline: 'long', 题材: '', 类型: '', 目标字数: '', 平台风格: '番茄', 金手指: '', 核心卖点: '', 一句话Idea: '', keywords: '' });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [dir, setDir] = useState('');
+  const [dirAuto, setDirAuto] = useState(true);
+
+
+  // Keep the save directory in sync with the book name until the user edits it.
+  useEffect(() => {
+    if (dirAuto && form.name.trim()) setDir('./' + form.name.trim());
+  }, [form.name, dirAuto]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const inp: any = { width: '100%', padding: '6px 8px', border: '1px solid var(--line)', background: 'var(--paper)', color: 'var(--ink)', fontFamily: 'var(--font-serif)', fontSize: 14 };
@@ -22,6 +31,7 @@ export function NewNovelPage() {
         type: 'novel',
         pipeline: form.pipeline,
         theme_color: '#B8860B',
+        dir: normalizeDirInput(dir, ''),
         requirements: {
           题材: form.题材 || undefined,
           类型: form.类型 || undefined,
@@ -45,6 +55,9 @@ export function NewNovelPage() {
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr', alignItems: 'start' }}>
         <div className="rail-block" style={{ display: 'grid', gap: 10 }}>
           <label style={row}>书名<input value={form.name} onChange={(e) => set('name', e.target.value)} style={inp} /></label>
+          <label style={{ ...row, marginBottom: 4 }}>{'\u4fdd\u5b58\u76ee\u5f55' /* 保存目录 */}
+            <DirPicker value={dir} onChange={(v) => { setDirAuto(false); setDir(v); }} placeholder="./" />
+          </label>
           <label style={row}>类型<select value={form.pipeline} onChange={(e) => set('pipeline', e.target.value)} style={inp}><option value="long">长篇</option><option value="short">短篇</option></select></label>
           <label style={row}>题材<input value={form.题材} onChange={(e) => set('题材', e.target.value)} placeholder="都市系统流 / 玄幻…" style={inp} /></label>
           <label style={row}>目标字数<input type="number" value={form.目标字数} onChange={(e) => set('目标字数', e.target.value)} placeholder="200000" style={inp} /></label>

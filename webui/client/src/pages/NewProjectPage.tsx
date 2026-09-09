@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client.ts';
+import { DirPicker, normalizeDirInput } from '../components/DirPicker.tsx';
 
 type Step = 'type' | 'info' | 'confirm';
 interface WizardState {
@@ -25,6 +26,13 @@ export function NewProjectPage() {
     error: null,
   });
 
+  const [dir, setDir] = useState('');
+  const [dirAuto, setDirAuto] = useState(true);
+  // Keep the save directory in sync with the project name until the user edits it.
+  useEffect(() => {
+    if (dirAuto && s.name.trim()) setDir('./' + s.name.trim());
+  }, [s.name, dirAuto]);
+
   const set = (patch: Partial<WizardState>) => setS((p) => ({ ...p, ...patch }));
 
   const create = async () => {
@@ -39,11 +47,11 @@ export function NewProjectPage() {
     setS((p) => ({ ...p, creating: true, error: null }));
     try {
       if (s.projectType === 'import') {
-        const r = await api.importNovel({ name: s.name.trim(), mode: 'clipboard', text: importText });
+        const r = await api.importNovel({ name: s.name.trim(), mode: 'clipboard', text: importText, dir: normalizeDirInput(dir, '') });
         // M4：进入「导入校对」页（审核分章/角色/伏笔/时间线后解锁续写）
         navigate(`/novels/${r.book.id}/import-review`);
       } else {
-        const book = await api.createBook({ name: s.name.trim(), type: s.projectType, theme_color: s.themeColor });
+        const book = await api.createBook({ name: s.name.trim(), type: s.projectType, theme_color: s.themeColor, dir: normalizeDirInput(dir, '') });
         navigate(`/novels/${book.id}`);
       }
     } catch (e: any) {
@@ -126,6 +134,10 @@ export function NewProjectPage() {
         <div style={{ display: 'grid', gap: 14 }}>
           <label style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>项目名称</span>
+          <label style={{ display: 'grid', gap: 6, marginTop: 4 }}>
+            <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{'\u4fdd\u5b58\u76ee\u5f55'}</span>
+            <DirPicker value={dir} onChange={(v) => { setDirAuto(false); setDir(v); }} placeholder="./" />
+          </label>
             <input
               value={s.name}
               onChange={(e) => set({ name: e.target.value })}

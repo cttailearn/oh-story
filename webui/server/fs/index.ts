@@ -238,4 +238,30 @@ export function fileStat(root: string, rel: string): { size: number; mtime: numb
   return { size: st.size, mtime: st.mtimeMs };
 }
 
+
+/**
+ * Collect existing directories under root up to the given depth (relative posix paths).
+ * Used by the new-book/new-project wizard to let the user pick where to save a project.
+ */
+export function collectDirs(root: string, depth = 2, exclude: string[] = []): string[] {
+  const out: string[] = [];
+  const denied = new Set(exclude);
+  const walk = (rel: string, level: number) => {
+    if (level > depth) return;
+    let entries: DirEntry[];
+    try {
+      entries = listDir(root, rel);
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.type !== 'dir' || denied.has(e.name)) continue;
+      out.push(e.path);
+      walk(e.path, level + 1);
+    }
+  };
+  walk('', 1);
+  out.sort((p, q) => p.localeCompare(q, 'zh-CN'));
+  return out;
+}
 export { basename };

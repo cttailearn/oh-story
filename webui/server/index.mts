@@ -17,6 +17,7 @@ import { registerImportRoute } from './routes/import.ts';
 import { registerExportRoute } from './routes/export.ts';
 import { registerAnalyticsRoutes } from './routes/analytics.ts';
 import { registerTeardownRoutes } from './routes/teardowns.ts';
+import { registerMaterialRoutes } from './routes/material.ts';
 import { registerOpsRoutes } from './routes/ops.ts';
 import { recoverJobsOnBoot, runBackup } from './ops/service.ts';
 
@@ -99,6 +100,7 @@ async function main() {
   await registerExportRoute(app, ctx);
   await registerAnalyticsRoutes(app, ctx);
   await registerTeardownRoutes(app, ctx);
+  await registerMaterialRoutes(app, ctx);
   await registerOpsRoutes(app, { db, workspace, webuiDir });
 
   // 每日维护（scale-performance §5）：optimize + checkpoint + gate_runs 归档；启动 2min 后做一次日备份

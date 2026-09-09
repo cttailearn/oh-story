@@ -27,6 +27,7 @@ export async function registerImportRoute(app: FastifyInstance, ctx: ImportRoute
         name: body.name ?? '',
         mode: mode as ImportRequest['mode'],
         path: body.path,
+        dir: body.dir,
         text: body.text,
       });
       return r.book ? { book: r.book, review: r.review, duplicate: r.duplicate } : { duplicate: true };

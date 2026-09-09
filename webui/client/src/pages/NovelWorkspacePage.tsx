@@ -8,9 +8,10 @@ import { TrackingBoard } from '../components/TrackingBoard.tsx';
 import { CharactersDualView } from '../components/CharactersDualView.tsx';
 import { AIEditDrawer } from '../components/AIEditDrawer.tsx';
 import { SearchPanel } from '../components/SearchPanel.tsx';
+import { MaterialPanel } from '../components/MaterialPanel.tsx';
 import { EmotionLine, RhythmStrip } from '../components/ChartCard.tsx';
 
-type Module = 'settings' | 'outline' | 'chapters' | 'state' | 'pipeline';
+type Module = 'settings' | 'outline' | 'chapters' | 'state' | 'pipeline' | 'material';
 
 /** P3 小说工作台：左结构树 + 中手稿 + 右工具廊 */
 export function NovelWorkspacePage() {
@@ -52,6 +53,7 @@ export function NovelWorkspacePage() {
     ['chapters', '正文'],
     ['state', '状态'],
     ['pipeline', '流程'],
+    ['material', '素材'],
   ];
 
   const setModule = useCallback(
@@ -167,6 +169,8 @@ export function NovelWorkspacePage() {
               打开流程看板 →
             </Link>
           </div>
+        ) : module === 'material' ? (
+          <MaterialPanel bookId={bookId!} />
         ) : params.get('view') === 'characters' ? (
           <CharactersDualView
             bookId={bookId!}
@@ -235,6 +239,9 @@ function iconFor(m: Module): string {
     case 'state':
       return '◈';
     case 'pipeline':
+      return '▤';
+    case 'material':
+      return '◩';
       return '▤';
   }
 }
@@ -338,7 +345,7 @@ function FileEditor({
   defaultCandidates: string[];
   onSaved: () => void;
 }) {
-  const [activePath, setActivePath] = useState<string | null>(filePath ?? defaultCandidates[0] ?? null);
+  const [activePath, setActivePath] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [mtime, setMtime] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -348,17 +355,29 @@ function FileEditor({
   const [gateResult, setGateResult] = useState<any>(null);
   const [gating, setGating] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [attemptIdx, setAttemptIdx] = useState(0);
+  const [fallbackIdx, setFallbackIdx] = useState(0);
+  // The file the user explicitly selected via URL (?path=); null when none selected.
+  const explicitPath = filePath ?? null;
 
+
+  // Adopt the selected file: on an explicit URL pick we switch to it and immediately clear
+  // stale content so the editor never shows the previous chapter's text while the new one
+  // loads; without an explicit pick we fall back to the first default candidate.
   useEffect(() => {
-    if (filePath) setActivePath(filePath);
-  }, [filePath]);
-
+    const target = explicitPath ?? defaultCandidates[0] ?? null;
+    setActivePath((prev) => (prev === target ? prev : target));
+    setFallbackIdx(0);
+    setContent('');
+    setMtime(null);
+    setLastSaveAt(null);
+    setConflict(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [explicitPath]);
+  // Load the content for the active path.
   useEffect(() => {
     if (!activePath) return;
     let cancelled = false;
     setLoading(true);
-    setLastSaveAt(null);
     setConflict(null);
     api
       .readFile(bookId, activePath)
@@ -369,21 +388,27 @@ function FileEditor({
       })
       .catch((e) => {
         if (cancelled) return;
-        // M4：默认候选不存在（如新建书无「军宣新星」章）→ 自动切到树里下一个可用文件，避免空白
         const notFound = e?.status === 404;
-        if (notFound && attemptIdx < defaultCandidates.length - 1) {
-          const next = defaultCandidates[attemptIdx + 1];
-          if (next) setActivePath(next);
-          setAttemptIdx(attemptIdx + 1);
-          return;
+        // Fall back to the next candidate ONLY when no file was explicitly picked (e.g. a
+        // brand-new book whose hardcoded default chapter does not exist), so the workspace is
+        // not blank. A chapter the user explicitly clicked must never be silently replaced
+        // with a different one - show the missing-file error instead.
+        if (notFound && !explicitPath && fallbackIdx < defaultCandidates.length - 1) {
+          const next = defaultCandidates[fallbackIdx + 1];
+          if (next) {
+            setActivePath(next);
+            setFallbackIdx(fallbackIdx + 1);
+            return;
+          }
         }
-        setConflict(e?.message ?? String(e));
+        setContent('');
+        setConflict(notFound ? '\u6587\u4ef6\u4e0d\u5b58\u5728\uff1a' + activePath : (e?.message ?? String(e)));
       })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [bookId, activePath, attemptIdx, defaultCandidates]);
+  }, [bookId, activePath, explicitPath, fallbackIdx, defaultCandidates]);
 
   const save = useCallback(async () => {
     if (!activePath || saving) return;
@@ -430,6 +455,11 @@ function FileEditor({
         {activePath.split('/').pop()}
       </h2>
       <div className="page-sub">{activePath}</div>
+      {loading && (
+        <div className="mono" style={{ color: 'var(--ink-2)', fontSize: 12, margin: '4px 0 10px' }}>
+          {'\u8f7d\u5165\u4e2d'}…
+        </div>
+      )}
 
       <div className="editor-toolbar">
         <button
@@ -563,7 +593,7 @@ function ToolRail({
 
   return (
     <>
-      <h5>工具廊 · {module === 'chapters' ? '正文' : module === 'outline' ? '大纲' : module === 'settings' ? '设定' : '状态'}</h5>
+      <h5>{'\u5de5\u5177\u5eca \u00b7 '}{module === 'chapters' ? '正文' : module === 'outline' ? '大纲' : module === 'settings' ? '设定' : module === 'material' ? '素材' : '状态'}</h5>
 
       <div className="rail-block">
         <div className="rb-title">✒ AI 编辑</div>

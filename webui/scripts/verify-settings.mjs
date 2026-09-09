@@ -67,13 +67,19 @@ try {
   ok(text.includes('text-embedding-3-large'), 'embedding 归入「其它」分组');
 
   await card.getByRole('button', { name: 'mock-chat-pro', exact: true }).click();
+  await page.waitForTimeout(200);
+  const modelsInput = card.locator('[data-models]');
+  const typedModels = await modelsInput.inputValue();
+  ok(typedModels.includes('mock-chat-pro'), '勾选写入模型目录', typedModels);
+
+  // 图像模型目录（cover 阶段 / imagegen-env 门禁用）
   await card.getByRole('button', { name: 'mock-image-xl', exact: true }).click();
   await page.waitForTimeout(200);
-  const modelsInput = card.locator('input[placeholder^="deepseek-v4-pro"]');
-  const typedModels = await modelsInput.inputValue();
-  ok(typedModels.includes('mock-chat-pro') && typedModels.includes('mock-image-xl'), '勾选写入模型目录', typedModels);
+  const imageInput = card.locator('[data-image-models]');
+  const typedImage = await imageInput.inputValue();
+  ok(typedImage.includes('mock-image-xl'), '勾选写入图像模型目录', typedImage);
 
-  await page.getByText('保存设置').click();
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await page.waitForTimeout(1200);
   ok((await page.textContent('body')).includes('配置已保存'), '保存成功提示');
 
@@ -82,12 +88,14 @@ try {
   const saved = (after.body?.channels ?? []).find((c) => c.name === CH_NAME);
   ok(!!saved, '渠道已保存');
   ok(saved?.base_url === gw.url, 'base_url 已保存', saved?.base_url);
-  ok((saved?.models ?? []).slice().sort().join(',') === 'mock-chat-pro,mock-image-xl', '模型目录已保存', saved?.models);
+  ok((saved?.models ?? []).slice().sort().join(',') === 'mock-chat-pro', '模型目录已保存', saved?.models);
+  ok((saved?.image_models ?? []).slice().sort().join(',') === 'mock-image-xl', '图像模型目录已保存', saved?.image_models);
   ok(String(saved?.api_key ?? '').includes('****'), 'GET /config 回显为掩码', saved?.api_key);
 
   const disk = readConfigFile();
   const diskCh = (disk.channels ?? []).find((c) => c.name === CH_NAME);
   ok(diskCh?.api_key === KEY, '配置文件存的是真实密钥（非掩码）', diskCh?.api_key);
+  ok((diskCh?.image_models ?? []).join(',') === 'mock-image-xl', '图像模型目录已落盘', diskCh?.image_models);
 
   // 回归：把 GET 到的整份配置原样 PUT 回去，真实密钥不得被掩码覆盖
   await api('/config', { method: 'PUT', body: JSON.stringify(after.body) });
@@ -102,6 +110,29 @@ try {
   ok(reuse.body?.ok === true && (reuse.body?.chat ?? []).length === 2, '不传 key 时回退已存密钥', { ok: reuse.body?.ok, chat: reuse.body?.chat });
   const badUrl = await api('/config/channels/probe', { method: 'POST', body: JSON.stringify({ base_url: 'ftp://x' }) });
   ok(badUrl.status === 400, '非法 base_url → 400', badUrl.status);
+
+  // 回归：常驻「快速新增渠道」区 —— 渠道配置区随时都有 base_url + API Key 输入框（无渠道时也可见）
+  const quickKey = page.locator('[data-channel-quickadd] input[data-quickadd="api_key"]');
+  ok((await quickKey.count()) === 1, '渠道配置区常驻 API Key 输入框（不必先建渠道）');
+  ok((await quickKey.getAttribute('type')) === 'password', '常驻密钥框默认密文');
+  const quickName = 'mock 快增 ' + Date.now().toString(36);
+  await page.locator('[data-channel-quickadd] input[data-quickadd="name"]').fill(quickName);
+  await page.locator('[data-channel-quickadd] input[data-quickadd="base_url"]').fill(gw.url);
+  await quickKey.fill(KEY);
+  await page.getByRole('button', { name: '＋ 添加渠道', exact: true }).click();
+  await page.waitForTimeout(400);
+  const quickCard = page.locator('[data-channel-card]').last();
+  ok((await quickCard.locator('input').first().inputValue()) === quickName, '快速新增生成渠道卡片');
+  ok((await quickCard.locator('input[data-channel-key]').inputValue()) === KEY, '密钥已随卡片暂存（保存前即可获取模型）');
+  ok((await quickCard.locator('[data-key-state="unset"]').count()) === 1, '未保存时卡片显示「未设密钥」');
+  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await page.waitForTimeout(1200);
+  const after2 = await api('/config');
+  const saved2 = (after2.body?.channels ?? []).find((c) => c.name === quickName);
+  ok(!!saved2, '快速新增的渠道已保存');
+  ok(String(saved2?.api_key ?? '').includes('****'), '快速新增渠道回显为掩码', saved2?.api_key);
+  const disk3 = (readConfigFile().channels ?? []).find((c) => c.name === quickName);
+  ok(disk3?.api_key === KEY, '快速新增的密钥落盘为真实值', disk3?.api_key);
 
   ok(errs.length === 0, '无 console/page 脚本错误', errs.slice(0, 3));
 } finally {

@@ -191,8 +191,14 @@ export async function buildChapter(opts: { bookDir: string; stage: StageEntry; r
     block(
       'task',
       '交付格式',
-      `输出 markdown 正文一章（第一章「${opts.bookTitle ?? '未命名书'}」，2000-2600 字）+ 结尾三查字段。` +
-        `随后引擎将跑门禁：char-count≥1800、ai-patterns=0 blocking、tracking-commit 提交。`,
+      `输出 markdown 正文一章（2000-2600 字，标题行形如「# 第001章 章名」）。` +
+        `随后引擎将跑门禁：char-count≥1800、ai-patterns=0 blocking、tracking-commit 提交、写章三查落盘。\n\n` +
+        `除正文外，必须再输出两个 json 代码块（引擎会自动剥离，不会写进手稿）：\n` +
+        `1) 追踪事务（契约见 skills tracking-transaction）：{"tracking_tx":{"schema_version":1,"mode":"append","chapter":<本章号>,` +
+        `"chapter_title":"<章名>","delta":{"result":"<本章结果一句话>","character_changes":[],"foreshadow_changes":[],"timeline_events":[],"constraints":[],"next_chapter_commitments":["<下一章承诺>"]},` +
+        `"context":{"position":{"volume":"<卷名>","volume_start_chapter":1,"story_time":"<故事时间>","scene":"<场景>"},"long_term_constraints":[],"active_character_names":[],"continuity_risks":[]},"character_snapshots":{}}}\n` +
+        `2) 写章三查（查2 由你判定，不得虚报）：{"review":{"chapter":<本章号>,"chapter_name":"<章名>","check2":{"items":[{"item":"<细纲要求项>","ok":true,"note":"<证据/差异>"}]},"conclusion":"完成"}}\n` +
+        `注意：check2 必须逐条覆盖本章细纲的核心事件/情节点序列/禁止提前释放/结尾钩子；引擎只填查1（追踪状态）与查3（门禁真实结果），不会替你补查2。`,
     ),
   );
   return bundle(tmpl, blocks);
