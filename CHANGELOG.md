@@ -1,4 +1,4 @@
-## 未发布（v2.5.1 修复 dsh 安装后启动崩溃）
+## v2.5.1（修复 dsh 安装后启动崩溃）
 
 > 修复 v2.5.0 的严重回归：`dsh web` 在安装 oh-story 后无法启动，报
 > `duplicate loader entry id: oh-story-skills` —— v2.5.0 包内 bundle patch 与旧版

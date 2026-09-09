@@ -51,10 +51,12 @@ dsh plugin --profile web add github:cttailearn/oh-story#v2.5.1
 dsh plugin --profile web add github:cttailearn/oh-story
 ```
 
+**版本怎么取？** 不带 `#tag` 的裸源 `github:cttailearn/oh-story` 会**自动安装 main 分支最新版**（当前即 v2.5.1，已实测）；带 `#tag`（如 `#v2.5.1`）是**精确固定版本**，适合线上环境与复现。已按裸源装过、想拉更新的新代码：换一个 ref 重新 `add` 即可（pnpm 会重新解析默认分支 HEAD）。
+
 更新 / 卸载（安装即被 dsh 加入 `dsh.profile.bundles`，reconcile 自动增删）：
 
 ```powershell
-dsh plugin --profile web add github:cttailearn/oh-story#新tag   # 升级（改 ref 即可）
+dsh plugin --profile web add github:cttailearn/oh-story#新tag   # 升级/更新（改或加 ref；裸源则换 ref 触发重新解析）
 dsh plugin --profile web remove oh-story                        # 卸载（自动移出 bundles + 移除依赖）
 ```
 

@@ -61,11 +61,16 @@ dsh plugin --profile web add github:cttailearn/oh-story#v2.5.1
 dsh plugin --profile web add github:cttailearn/oh-story
 ```
 
+**How versions are picked**: the bare source `github:cttailearn/oh-story` (no `#tag`)
+**auto-installs the latest main-branch release** (currently v2.5.1 — verified), while `#tag`
+(e.g. `#v2.5.1`) pins an exact release for reproducible/stable installs. To pull newer code
+on an existing bare install, change the ref and re-`add` (pnpm re-resolves the branch HEAD).
+
 Update / uninstall (dsh adds the package to `dsh.profile.bundles` on install; reconcile
 maintains the list automatically):
 
 ```powershell
-dsh plugin --profile web add github:cttailearn/oh-story#new-tag   # upgrade (change the ref)
+dsh plugin --profile web add github:cttailearn/oh-story#new-tag   # upgrade/update (change or add the ref)
 dsh plugin --profile web remove oh-story                        # uninstall (removes from bundles + deps)
 ```
 
