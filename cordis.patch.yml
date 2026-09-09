@@ -1,26 +1,26 @@
-# oh-story - DeepSeek Harness profile bundle patch.
+# oh-story — DeepSeek Harness profile bundle patch.
 #
-# This file is mounted by @deepseek-ai/dsh-app-boot when dsh boots a profile
-# that lists oh-story in dsh.profile.bundles (the dsh.bundle.patch declaration
-# in package.json). It registers an isolated @deepseek-ai/dsh-skill-filesystem
-# provider so the 13 bundled skills are available in every project/workspace
-# of the profile.
+# Mounted by @deepseek-ai/dsh-app-boot when dsh boots a profile that lists
+# oh-story in dsh.profile.bundles (the dsh.bundle.patch declaration in
+# package.json).
 #
-# Why an isolated instance: dsh-base already mounts the default skill-filesystem
-# provider, but that one scans project/user roots only - it does NOT see
-# <profile>/node_modules/oh-story/skills. This instance is scoped to exactly
-# that directory (includeDefaultRoots: false).
+# Design (v2.5.1): instead of inserting a NEW skill-filesystem instance, this
+# patch id-targets the skill-filesystem entry that @deepseek-ai/dsh-base already
+# mounts and amends its config to ALSO scan this package's skills dir. That way:
+#  - fresh installs keep a single 'filesystem' provider (project/user roots +
+#    oh-story's skills together), no second provider instance;
+#  - stale rows from the old v2.4.x manual mount (which inserted the same
+#    'oh-story-skills' id into ~/.dsh/cordis.patch.yml) can no longer collide:
+#    overriding by id never creates a duplicate loader entry, so the whole web
+#    tree keeps booting even if the old row is still present (it is just
+#    redundant and can be removed).
 #
 # Path resolution: baseUrl anchors at the profile directory (the include root
 # is <profile>/cordis.yml), so node_modules/oh-story/skills/ resolves to the
 # profile-installed copy of this package. customSkillDirs values are resolved
 # against process.cwd(), which is why the entry is baked to an absolute file
-# path by the standard fileURLToPath(..., baseUrl) expression.
-- insert:
-    - id: oh-story-skills
-      name: '@deepseek-ai/dsh-skill-filesystem'
-      config:
-        providerName: oh-story
-        includeDefaultRoots: false
-        customSkillDirs:
-          - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))
+# path with the standard fileURLToPath(..., baseUrl) expression.
+- id: skill-filesystem
+  config:
+    customSkillDirs:
+      - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))

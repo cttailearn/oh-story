@@ -5,14 +5,15 @@
   Sources (priority): -Package (npm, published) > -GitHub owner/repo[@tag] > local repo via link:.
   Uses the dsh plugin manager (dsh plugin --profile ...), so oh-story joins the profile's
   dsh.profile.bundles automatically (v2.5.0+ ships the dsh.bundle metadata and a root
-  cordis.patch.yml that mounts its skills) - no manual ~/.dsh/cordis.patch.yml edits needed.
+  cordis.patch.yml that id-targets the base skill-filesystem to expose its skills) - no manual
+  ~/.dsh/cordis.patch.yml edits needed; Remove-LegacyMountRow cleans stale v2.4.x rows.
   -CheckUpdate: compare local skills/story/VERSION against GitHub tags (git ls-remote).
   -Update: link: source -> git pull; GitHub/npm source -> re-add latest. Restart dsh after updates.
   -Uninstall: dsh plugin remove + legacy junction cleanup. Idempotent.
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -GitHub cttailearn/oh-story
-  powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -GitHub "cttailearn/oh-story@v2.5.0"
+  powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -GitHub "cttailearn/oh-story@v2.5.1"
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -CheckUpdate
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Update
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Uninstall

@@ -23,7 +23,7 @@
 ### pi 通道（git 安装）
 
 ```bash
-pi install git:github.com/cttailearn/oh-story@v2.5.0
+pi install git:github.com/cttailearn/oh-story@v2.5.1
 ```
 
 更新 / 卸载：
@@ -38,13 +38,14 @@ pi remove git:github.com/cttailearn/oh-story           # 卸载
 
 oh-story 自 v2.5.0 起是**原生 dsh profile 层插件**：包内 `package.json` 声明了
 `dsh.bundle` 元数据（plugins 页会显示为「已加载 / 生效」的 profile 层插件），并随包发布
-`cordis.patch.yml` —— 它挂载一个隔离的 `@deepseek-ai/dsh-skill-filesystem` 实例，把
-`node_modules/oh-story/skills` 暴露为 skill 根，全 profile 可用。**安装即生效，无需手工改**
-**`~/.dsh/cordis.patch.yml`**；安装/更新后重启 dsh 会话一次即可。
+`cordis.patch.yml` —— 它**按 id 覆盖** `@deepseek-ai/dsh-base` 已挂载的 `skill-filesystem`
+条目，把 `node_modules/oh-story/skills` 追加进 `customSkillDirs`，全 profile 可用。
+**安装即生效，无需手工改 `~/.dsh/cordis.patch.yml`**（沿用旧版手工挂载行也只是冗余、不会
+让 dsh 启动失败）；安装/更新后重启 dsh 会话一次即可。
 
 ```powershell
 # 安装（GitHub 源，指定发布 tag，推荐）
-dsh plugin --profile web add github:cttailearn/oh-story#v2.5.0
+dsh plugin --profile web add github:cttailearn/oh-story#v2.5.1
 
 # 或安装 main 分支最新内容（开发版）
 dsh plugin --profile web add github:cttailearn/oh-story
@@ -57,9 +58,10 @@ dsh plugin --profile web add github:cttailearn/oh-story#新tag   # 升级（改 
 dsh plugin --profile web remove oh-story                        # 卸载（自动移出 bundles + 移除依赖）
 ```
 
-> **从 v2.4.x 升级的用户**：删除旧版为绕过「非 profile 层插件」手工追加到
-> `~/.dsh/cordis.patch.yml` 的 `oh-story-skills` 挂载行（整段 `- insert:` 块），否则会与
-> 新包自带 bundle 的挂载重复；然后重新安装到 v2.5.0 并重启会话。
+> **从 v2.4.x 升级的用户**：v2.4.x 按文档手工追加到 `~/.dsh/cordis.patch.yml` 的
+> `oh-story-skills` 挂载行（整段 `- insert:` 块）可**直接删除**（v2.5.1 起包内 bundle 以按 id
+> 覆写方式挂载，无需也不再和它冲突；即便留着也只是冗余、不会让 dsh 启动失败）。
+> 删除后重新安装到 v2.5.1 并重启会话即可。
 >
 > **本地开发**：`dsh plugin --profile web add link:<本地克隆路径>`（`link:` 协议创建 junction
 > 指向仓库，git pull 即更新，无需重装）。
@@ -256,7 +258,7 @@ pi 无 hooks 机制，原多端版的运行时硬拦截由两层等价物承担�
   `/story` 命令别名由包内扩展注册；子代理部署到 `.pi/agents/`。npm 发布因账号 2FA 策略暂缓，
   待条件允许后补充（包名 `oh-story` 已预留）。
 - **dsh（DeepSeek Harness）**：原生支持（v2.5.0 起为携带 `dsh.bundle` 元数据的 profile 层插件）。
-  `dsh plugin --profile web add github:cttailearn/oh-story#v2.5.0` 后 13 个 skill 由包内 bundle
+  `dsh plugin --profile web add github:cttailearn/oh-story#v2.5.1` 后 13 个 skill 由包内 bundle
   patch 挂载、全 profile 可见（plugins 页显示为已加载/生效）；触发 `/story`、`/story-*` 或自然语言；
   子代理 prompt 模板部署到 `.dsh/story-agents/`。dsh 的 AGENTS.md 自动加载让项目路由表直接生效。
 - 旧多端版（Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix）见上游仓库

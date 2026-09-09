@@ -1,4 +1,24 @@
-## 未发布（产品线收敛：去掉独立 WebUI，专注 dsh / pi 插件扩展包）
+## 未发布（v2.5.1 修复 dsh 安装后启动崩溃）
+
+> 修复 v2.5.0 的严重回归：`dsh web` 在安装 oh-story 后无法启动，报
+> `duplicate loader entry id: oh-story-skills` —— v2.5.0 包内 bundle patch 与旧版
+> （v2.4.x 文档）手工追加到 `~/.dsh/cordis.patch.yml` 的挂载行都以 `insert` 注入同名条目，
+> dsh loader 对重复 entry id fail-loud，整棵 web 树启动失败（经 @deepseek-ai/dsh-app-boot
+> 实机 compose 复现确认）。
+
+### 修复
+
+- **bundle patch 改为按 id 覆盖 base 的 `skill-filesystem`**（`cordis.patch.yml`）：不再新增
+  `oh-story-skills` insert，而是给 `@deepseek-ai/dsh-base` 已挂载的 `skill-filesystem` 条目
+  追加 `customSkillDirs → <profile>/node_modules/oh-story/skills`。覆写永不产生重复 entry id：
+  - 全新安装：单个 filesystem 提供方同时扫描项目/用户根 + 包内 skills，不再多挂一个实例；
+  - 旧挂载行残留：冗余但**不再崩溃**，事后删除即可（`install-dsh.ps1` 会自动清理）。
+- **回归测试** `tests/dsh-bundle-patch.test.mjs`：用 `@deepseek-ai/dsh-app-boot` 的
+  `composeEntries` 验证 base + bundle + 旧 home 行组合不产生重复 id、覆写生效。
+- 版本号 2.5.0 → 2.5.1（四源同步）。
+
+## v2.5.0
+
 
 > 仓库重新定位为**纯 dsh / pi 插件与扩展包**：删除独立 WebUI「书稿编辑部」及其全部设计文档，
 > 保留并持续打磨 skills + extensions + 本地 Story Dashboard 工作台。被删代码与设计规格
@@ -44,7 +64,7 @@
 
 ### 说明
 
-- 触发、安装、更新与卸载方式不变（pi：`pi install git:...@v2.5.0`；dsh：`dsh plugin --profile web add github:...@v2.5.0`）
+- 触发、安装、更新与卸载方式不变（pi：`pi install git:...@v2.5.1`；dsh：`dsh plugin --profile web add github:...@v2.5.1`）
 - 本包不再承载 WebUI；需要独立工作台的用户可回看仓库历史
 
 ## v2.4.0
