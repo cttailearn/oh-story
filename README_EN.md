@@ -33,7 +33,7 @@ layered context-state management · human-AI collaboration.
 ### pi channel (git)
 
 ```bash
-pi install git:github.com/cttailearn/oh-story@v2.4.0
+pi install git:github.com/cttailearn/oh-story@v2.5.0
 ```
 
 Update / uninstall:
@@ -46,39 +46,36 @@ pi remove git:github.com/cttailearn/oh-story        # uninstall
 
 ### dsh channel (DeepSeek Harness)
 
+Since v2.5.0 oh-story is a **native dsh profile-layer plugin**: its package.json declares
+`dsh.bundle` metadata (the Plugins page shows it as a live/active profile-layer plugin) and
+ships `cordis.patch.yml`, which mounts an isolated `@deepseek-ai/dsh-skill-filesystem` instance
+exposing `node_modules/oh-story/skills` as a skill root for the whole profile. **Install and
+restart once — no manual `~/.dsh/cordis.patch.yml` edits needed.**
+
 ```powershell
 # Install from GitHub (pinned release tag, recommended)
-dsh plugin --profile web add github:cttailearn/oh-story#v2.4.0
+dsh plugin --profile web add github:cttailearn/oh-story#v2.5.0
 
 # Or install the latest main-branch content (dev build)
 dsh plugin --profile web add github:cttailearn/oh-story
 ```
 
-After installing, **append the mount row once** to `~/.dsh/cordis.patch.yml` (home level,
-applies to every profile) so the skill registry discovers the in-package skills
-(dsh plugin activation is explicit: install ≠ activate; the mount row is a one-time step):
-
-```yaml
-- insert:
-    - id: oh-story-skills
-      name: '@deepseek-ai/dsh-skill-filesystem'
-      config:
-        providerName: oh-story
-        includeDefaultRoots: false
-        customSkillDirs:
-          - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))
-```
-
-Update / uninstall (same style as pi):
+Update / uninstall (dsh adds the package to `dsh.profile.bundles` on install; reconcile
+maintains the list automatically):
 
 ```powershell
 dsh plugin --profile web add github:cttailearn/oh-story#new-tag   # upgrade (change the ref)
-dsh plugin --profile web remove oh-story                        # uninstall
-# After uninstall: delete the mount row above; remove any leftover node_modules/oh-story directory
+dsh plugin --profile web remove oh-story                        # uninstall (removes from bundles + deps)
 ```
 
+> **Upgrading from v2.4.x**: delete the old `oh-story-skills` mount row (the whole `- insert:`
+> block) that was manually appended to `~/.dsh/cordis.patch.yml` to work around the package not
+> being a profile-layer plugin — it now duplicates the bundle's own mount. Then reinstall v2.5.0
+> and restart the session.
+>
 > **Local development**: `dsh plugin --profile web add link:<local clone path>` (`link:` creates a
 > junction to the repo; `git pull` updates it without reinstalling).
+>
 > **Note**: the web profile disables HMR, so **restart the dsh session** after install/update;
 > then typing `/story` (or natural language "我想写小说") should trigger — all 13 skills visible
 > means success. Saying "检查更新" in a session compares the GitHub version with local
@@ -281,12 +278,14 @@ subagents. Skill bodies and the knowledge base ship with the pi package
 
 ## Platforms
 
-- **pi**: first-class. `pi install git:github.com/cttailearn/oh-story@v2.4.0` makes all 13 skills
+- **pi**: first-class. `pi install git:github.com/cttailearn/oh-story@v2.5.0` makes all 13 skills
   available; the `/story` command alias comes from the in-package extension; agents deploy to
   `.pi/agents/`. npm publishing is deferred due to account 2FA policy (the `oh-story` name is reserved).
-- **dsh (DeepSeek Harness)**: first-class. `dsh plugin --profile web add github:cttailearn/oh-story#v2.4.0` + one mount row (see the install section) and the 13 skills are
-  discovered from the home-level skill root (project-level placement also works); trigger via
-  `/story`, `/story-*` or natural language; agent prompt templates deploy to `.dsh/story-agents/`.
+- **dsh (DeepSeek Harness)**: first-class (a `dsh.bundle` profile-layer plugin since v2.5.0).
+  `dsh plugin --profile web add github:cttailearn/oh-story#v2.5.0` — the 13 skills are mounted by
+  the in-package bundle patch and visible across the whole profile (the Plugins page shows it as
+  loaded/active); trigger via `/story`, `/story-*` or natural language; agent prompt templates
+  deploy to `.dsh/story-agents/`.
   dsh auto-loads the project `AGENTS.md`, so the routing table takes effect directly.
 - Legacy multi-CLI editions (Claude Code / OpenCode / Codex / ZCode / OpenClaw / Reasonix) live in
   the upstream repo [oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode)

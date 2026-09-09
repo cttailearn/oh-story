@@ -24,9 +24,16 @@
 - **本地 Story Dashboard 工作台**：`/story dashboard`（skills/story/scripts/dashboard-server.mjs，
   无后端依赖的轻量浏览 / 搜索 / 编辑服务，仅监听 127.0.0.1）
 
+### dsh 插件化（原生 profile 层 bundle）
+
+- **新增 `dsh.bundle` 元数据**：`package.json` 声明 `dsh.bundle.patch: ./cordis.patch.yml`，随包发布根级 `cordis.patch.yml` 挂载隔离的 `@deepseek-ai/dsh-skill-filesystem` 实例（providerName `oh-story`、`includeDefaultRoots: false`、`customSkillDirs → node_modules/oh-story/skills`）。
+- **安装即生效**：`dsh plugin --profile web add github:cttailearn/oh-story#v2.5.0` 后 reconcile 自动把 oh-story 加入 `dsh.profile.bundles`，plugins 页显示为已加载/生效的 profile 层插件；13 个 skill 全 profile 可见（不再依赖手工改 home 级 `cordis.patch.yml`）。
+- `scripts/install-dsh.ps1` 改为经 `dsh plugin` 安装/更新/卸载，去掉手工挂载行逻辑；README / README_EN 的 dsh 安装段同步改写，v2.4.x 用户升级时移除旧挂载行即可。
+- 版本号 2.4.0 → 2.5.0（四源同步：package.json / skills/story/VERSION / current-contract.json / story-setup）。
+
 ### 说明
 
-- 触发、安装、更新与卸载方式不变（pi：`pi install git:...@v2.4.0`；dsh：`dsh plugin --profile web add github:...@v2.4.0`）
+- 触发、安装、更新与卸载方式不变（pi：`pi install git:...@v2.5.0`；dsh：`dsh plugin --profile web add github:...@v2.5.0`）
 - 本包不再承载 WebUI；需要独立工作台的用户可回看仓库历史
 
 ## v2.4.0

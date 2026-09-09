@@ -3,14 +3,16 @@
   oh-story -> dsh plugin-style install / check-update / update / uninstall.
 .DESCRIPTION
   Sources (priority): -Package (npm, published) > -GitHub owner/repo[@tag] > local repo via link:.
-  Mounts an isolated skill-filesystem provider in ~/.dsh/cordis.patch.yml (global layer, all profiles).
+  Uses the dsh plugin manager (dsh plugin --profile ...), so oh-story joins the profile's
+  dsh.profile.bundles automatically (v2.5.0+ ships the dsh.bundle metadata and a root
+  cordis.patch.yml that mounts its skills) - no manual ~/.dsh/cordis.patch.yml edits needed.
   -CheckUpdate: compare local skills/story/VERSION against GitHub tags (git ls-remote).
   -Update: link: source -> git pull; GitHub/npm source -> re-add latest. Restart dsh after updates.
-  -Uninstall: remove mount row, profile dependency, legacy junction. Idempotent.
+  -Uninstall: dsh plugin remove + legacy junction cleanup. Idempotent.
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -GitHub cttailearn/oh-story
-  powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -GitHub "cttailearn/oh-story@v2.0.0"
+  powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -GitHub "cttailearn/oh-story@v2.5.0"
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -CheckUpdate
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Update
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Uninstall
@@ -27,7 +29,6 @@ param(
 
 $ErrorActionPreference = "Stop"
 $dshHome = Join-Path $env:USERPROFILE ".dsh"
-$patchFile = Join-Path $dshHome "cordis.patch.yml"
 $profileDir = Join-Path $dshHome (Join-Path "profiles" $Profile)
 $junctionPath = Join-Path $dshHome "skills"
 $absRepo = [System.IO.Path]::GetFullPath($Repo)
@@ -49,35 +50,44 @@ function Get-LocalVersion {
   if (Test-Path $vf) { return (Get-Content $vf -Raw).Trim() }
   return ""
 }
-function Remove-PatchBlock {
-  $lines = Get-Content $patchFile
-  $kept = @(); $i = 0
-  while ($i -lt $lines.Length) {
-    $l = $lines[$i]
-    $isTarget = $l -match "^\s*- id: skill-filesystem\s*$"
-    if (-not $isTarget -and $l -match "^\s*- insert:\s*$") {
-      $isTarget = ($lines[$i + 1] -match "oh-story-skills")
-    }
-    if ($isTarget) {
-      $i++;
-      while ($i -lt $lines.Length) {
-        $n = $lines[$i]
-        if ($n -match "^- ") { break }
-        if ($n -notmatch "^\s" -and $n.Trim() -ne "" -and $n -notmatch "^#") { break }
-        $i++;
-      }
-      continue;
-    }
-    $kept += $l;
-    $i++;
-  }
-  Set-Content $patchFile -Value ($kept -join [Environment]::NewLine) -Encoding UTF8
-}
-
 function Get-VersionKey {
   param([string]$Tag)
   if ($Tag -match 'v?(\d+)\.(\d+)\.(\d+)') { return [int]$Matches[1] * 1000000 + [int]$Matches[2] * 1000 + [int]$Matches[3] }
   return -1
+}
+function Invoke-DshPlugin {
+  # dsh plugin forwards to pnpm in the profile and reconciles dsh.profile.bundles.
+  param([string[]]$DshArgs)
+  & dsh plugin --profile $Profile @DshArgs 2>&1 | ForEach-Object { Write-Host $_ }
+  if ($LASTEXITCODE -ne 0) { Write-Error "dsh plugin failed (exit $LASTEXITCODE)" }
+}
+function Remove-LegacyMountRow {
+  # v2.4.x-era manual mount row in the home patch is now redundant (the package bundle
+  # mounts its own skills). Idempotently delete the "- insert:" block naming oh-story-skills.
+  $patchFile = Join-Path $dshHome "cordis.patch.yml"
+  if (-not (Test-Path $patchFile)) { return }
+  $lines = Get-Content $patchFile
+  $kept = @(); $i = 0
+  while ($i -lt $lines.Length) {
+    $l = $lines[$i]
+    $isTarget = $false
+    if ($l -match "^\s*- insert:\s*$") {
+      $isTarget = ($lines[$i + 1] -match "oh-story-skills")
+    }
+    if ($isTarget) {
+      $i++
+      while ($i -lt $lines.Length) {
+        $n = $lines[$i]
+        if ($n -match "^- ") { break }
+        if ($n -notmatch "^\s" -and $n.Trim() -ne "" -and $n -notmatch "^#") { break }
+        $i++
+      }
+      continue
+    }
+    $kept += $l
+    $i++
+  }
+  if ($kept.Count -ne $lines.Count) { Set-Content $patchFile -Value ($kept -join [Environment]::NewLine) -Encoding UTF8; Write-Host "[ok] removed old oh-story-skills mount row from $patchFile" }
 }
 if ($CheckUpdate) {
   $local = Get-LocalVersion
@@ -94,6 +104,7 @@ if ($CheckUpdate) {
   exit 0
 }
 if ($Update) {
+  Remove-LegacyMountRow
   $spec = ""
   if ($Package) { $spec = $Package }
   elseif ($GitHub) { $spec = "github:" + $GitHub }
@@ -101,27 +112,15 @@ if ($Update) {
     Write-Host "[update] link: source -> git pull"
     Push-Location $absRepo
     try { git pull --ff-only 2>&1 | ForEach-Object { Write-Host $_ }; if ($LASTEXITCODE -ne 0) { Write-Host "[warn] git pull failed (uncommitted changes?)" -ForegroundColor Yellow } } finally { Pop-Location }
+    $spec = "link:" + $absRepo.Replace("\", "/")
   }
-  if ($spec) {
-    Push-Location $profileDir
-    try { pnpm add $spec --ignore-scripts 2>&1 | ForEach-Object { Write-Host $_ }; if ($LASTEXITCODE -ne 0) { Write-Error "pnpm add failed (exit $LASTEXITCODE)" } } finally { Pop-Location }
-  }
+  Invoke-DshPlugin -DshArgs @("add", $spec)
   Write-Host "[done] update finished; restart dsh session to load it"
   exit 0
 }
 if ($Uninstall) {
-  if (Test-Path $patchFile) { Remove-PatchBlock }
-  $ppj = Join-Path $profileDir "package.json"
-  if (Test-Path $ppj) {
-    $pj = Get-Content $ppj -Raw | ConvertFrom-Json
-    if ($pj.dependencies.PSObject.Properties.Name -contains "oh-story") {
-      $pj.dependencies.PSObject.Properties.Remove("oh-story")
-      $json = $pj | ConvertTo-Json -Depth 10
-      [System.IO.File]::WriteAllText($ppj, $json, (New-Object System.Text.UTF8Encoding($false)))
-      Write-Host "[ok] removed oh-story from $ppj"
-      if (Test-Path (Join-Path $profileDir "node_modules\oh-story")) { Remove-Item (Join-Path $profileDir "node_modules\oh-story") -Force -Recurse }
-    }
-  }
+  Invoke-DshPlugin -DshArgs @("remove", "oh-story")
+  Remove-LegacyMountRow
   if (Test-Path $junctionPath) {
     $item = Get-Item $junctionPath
     if ($item.LinkType -eq "Junction") { cmd /c rmdir "$junctionPath" | Out-Null; Write-Host "[ok] legacy junction removed: $junctionPath" }
@@ -130,6 +129,7 @@ if ($Uninstall) {
   exit 0
 }
 
+# install
 if (-not (Test-Path $profileDir)) { Write-Error "profile not found: $profileDir" }
 $ppj = Join-Path $profileDir "package.json"
 $already = $false
@@ -138,58 +138,23 @@ if (Test-Path $ppj) {
   if ($pj.dependencies.PSObject.Properties.Name -contains "oh-story") { $already = $true }
 }
 if (-not $already) {
+  Remove-LegacyMountRow
   $spec = $Package
   if (-not $spec -and $GitHub) { $spec = "github:" + $GitHub }
   if (-not $spec) { $spec = "link:" + $absRepo.Replace("\", "/") }
-  Push-Location $profileDir
-  try {
-    $extra = if ($GitHub) { "--ignore-scripts" } else { "" }
-    pnpm add $spec $extra 2>&1 | ForEach-Object { Write-Host $_ }
-    if ($LASTEXITCODE -ne 0) { Write-Error "pnpm add failed (exit $LASTEXITCODE)" }
-  } finally { Pop-Location }
-  Write-Host "[ok] oh-story installed into profile $Profile"
+  Invoke-DshPlugin -DshArgs @("add", $spec)
+  Write-Host "[ok] oh-story installed into profile $Profile (bundle registered by dsh reconcile)"
 } else {
   Write-Host "[ok] oh-story already in profile $Profile dependencies"
-}
-
-# mount row in home patch (merge, no duplicates)
-if (-not (Test-Path $patchFile)) { Set-Content $patchFile -Value "" -Encoding UTF8 }
-$content = Get-Content $patchFile -Raw
-if ($content -match "oh-story-skills") {
-  Write-Host "[ok] mount row already present in $patchFile"
-} else {
-  $blockLines = @(
-    "",
-    "# oh-story: plugin-style skill provider (isolated skill-filesystem instance, global layer)",
-    "- insert:",
-    "    - id: oh-story-skills",
-    "      name: '@deepseek-ai/dsh-skill-filesystem'",
-    "      config:",
-    "        providerName: oh-story",
-    "        includeDefaultRoots: false",
-    "        customSkillDirs:",
-    "          - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))"
-  );
-  $block = $blockLines -join [Environment]::NewLine
-  $existing = ""
-  if ((Get-Content $patchFile -Raw).Trim()) { $existing = (Get-Content $patchFile -Raw).TrimEnd() + [Environment]::NewLine }
-  Set-Content $patchFile -Value ($existing + $block + [Environment]::NewLine) -Encoding UTF8
-  Write-Host "[ok] mount row added to $patchFile"
-}
-
-# legacy cleanup: remove old user-dsh junction if it points at this repo
-if (Test-Path $junctionPath) {
-  $item = Get-Item $junctionPath
-  if ($item.LinkType -eq "Junction" -and $item.Target -like ($absRepo + "*")) {
-    cmd /c rmdir "$junctionPath" | Out-Null
-    Write-Host "[ok] legacy junction removed: $junctionPath"
-  } else {
-    Write-Host "[skip] $junctionPath not ours, left untouched" -ForegroundColor Yellow
-  }
+  Remove-LegacyMountRow
 }
 
 # verify
 $skillCount = (Get-ChildItem (Join-Path $absRepo "skills\*") -Directory | Where-Object { Test-Path (Join-Path $_ "SKILL.md") }).Count
-$hasMount = (Get-Content $patchFile -Raw) -match "oh-story-skills"
-Write-Host "[verify] profile: $Profile | skills in package: $skillCount | mount row: $hasMount"
-Write-Host "[done] open/refresh a dsh session; the $skillCount skills should be listed; type /story to trigger."
+$inBundles = $false
+if (Test-Path $ppj) {
+  $pj = Get-Content $ppj -Raw | ConvertFrom-Json
+  $inBundles = $pj.dsh.profile.bundles -contains "oh-story"
+}
+Write-Host "[verify] profile: $Profile | skills in package: $skillCount | in dsh.profile.bundles: $inBundles"
+Write-Host "[done] restart the dsh session; the $skillCount skills should be listed and the Plugins page should show oh-story as loaded/active; type /story to trigger."

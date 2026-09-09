@@ -1,0 +1,26 @@
+# oh-story - DeepSeek Harness profile bundle patch.
+#
+# This file is mounted by @deepseek-ai/dsh-app-boot when dsh boots a profile
+# that lists oh-story in dsh.profile.bundles (the dsh.bundle.patch declaration
+# in package.json). It registers an isolated @deepseek-ai/dsh-skill-filesystem
+# provider so the 13 bundled skills are available in every project/workspace
+# of the profile.
+#
+# Why an isolated instance: dsh-base already mounts the default skill-filesystem
+# provider, but that one scans project/user roots only - it does NOT see
+# <profile>/node_modules/oh-story/skills. This instance is scoped to exactly
+# that directory (includeDefaultRoots: false).
+#
+# Path resolution: baseUrl anchors at the profile directory (the include root
+# is <profile>/cordis.yml), so node_modules/oh-story/skills/ resolves to the
+# profile-installed copy of this package. customSkillDirs values are resolved
+# against process.cwd(), which is why the entry is baked to an absolute file
+# path by the standard fileURLToPath(..., baseUrl) expression.
+- insert:
+    - id: oh-story-skills
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: oh-story
+        includeDefaultRoots: false
+        customSkillDirs:
+          - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))
