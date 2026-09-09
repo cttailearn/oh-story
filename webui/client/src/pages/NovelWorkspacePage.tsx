@@ -30,6 +30,9 @@ export function NovelWorkspacePage() {
   const module = (params.get('module') ?? 'chapters') as Module;
   const filePath = params.get('path');
 
+  // 流程联动：任一阶段待确认/阻塞 → 顶部横幅引导去流程看板
+  const pendingStage = (book?.stages ?? []).find((s) => s.status === 'review' || s.status === 'blocked');
+
   useEffect(() => {
     if (!bookId) return;
     api
@@ -146,6 +149,17 @@ export function NovelWorkspacePage() {
           </div>
         )}
         {error && <div style={{ color: 'var(--red-vermillion)', marginBottom: 10 }}>⚠️ {error}</div>}
+        {pendingStage && (
+          <div style={{ border: '1px solid var(--gold-saffron)', background: 'color-mix(in srgb, var(--gold-saffron) 10%, var(--paper))', padding: '9px 14px', borderRadius: 6, marginBottom: 12, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span>
+              创作流程有步骤待确认：<strong>「{STAGE_NAME[pendingStage.stage_id] ?? pendingStage.stage_id}」</strong>
+              {pendingStage.status === 'blocked' && <span style={{ color: 'var(--red-vermillion)' }}>（被门禁阻塞，需处理）</span>}
+            </span>
+            <Link to={'/novels/' + bookId + '/pipeline'} className="ink-btn primary" style={{ margin: 0 }}>
+              去流程看板 →
+            </Link>
+          </div>
+        )}
         {module === 'state' ? (
           <div>
             <TrackingBoard bookId={bookId!} />
@@ -228,6 +242,11 @@ export function NovelWorkspacePage() {
   );
 }
 
+const STAGE_NAME: Record<string, string> = {
+  intake: '需求录入', topic: '选题', concept: '世界观/金手指', characters: '人设', outline: '大纲',
+  chapter: '章节写作', review: '多视角审查', deslop: '去AI味', cover: '封面/角色图', export: '交付导出',
+};
+
 function iconFor(m: Module): string {
   switch (m) {
     case 'settings':
@@ -302,9 +321,11 @@ function FileModule({
   // 候选 = 默认文件 + 树里该模块目录下已有 .md 文件（保证总能打开到已有内容）
   const candidates = useMemo(() => {
     const list: string[] = [];
+    // 默认候选只用「通用路径」，绝不写死某本书专属的文件（曾硬编码 demo 书的 正文/第001章_军宣新星.md，
+    // 新书一打开就报「文件不存在」）。正文默认候选由树里实际文件决定；没有则走空态引导去流程看板。
     const defaults =
       module === 'chapters'
-        ? ['正文/第001章_军宣新星.md']
+        ? []
         : module === 'outline'
           ? ['大纲/大纲.md']
           : module === 'settings'
@@ -356,6 +377,8 @@ function FileEditor({
   const [gating, setGating] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [fallbackIdx, setFallbackIdx] = useState(0);
+  // 默认候选全部 404（新书尚无内容）时的温和空态，区别于「用户显式点开的文件不存在」的朱批错误。
+  const [noContent, setNoContent] = useState(false);
   // The file the user explicitly selected via URL (?path=); null when none selected.
   const explicitPath = filePath ?? null;
 
@@ -371,6 +394,7 @@ function FileEditor({
     setMtime(null);
     setLastSaveAt(null);
     setConflict(null);
+    setNoContent(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [explicitPath]);
   // Load the content for the active path.
@@ -379,6 +403,7 @@ function FileEditor({
     let cancelled = false;
     setLoading(true);
     setConflict(null);
+    setNoContent(false);
     api
       .readFile(bookId, activePath)
       .then((r) => {
@@ -390,9 +415,8 @@ function FileEditor({
         if (cancelled) return;
         const notFound = e?.status === 404;
         // Fall back to the next candidate ONLY when no file was explicitly picked (e.g. a
-        // brand-new book whose hardcoded default chapter does not exist), so the workspace is
-        // not blank. A chapter the user explicitly clicked must never be silently replaced
-        // with a different one - show the missing-file error instead.
+        // brand-new book whose default file does not exist yet). A file the user explicitly
+        // clicked must never be silently replaced with a different one - show the error.
         if (notFound && !explicitPath && fallbackIdx < defaultCandidates.length - 1) {
           const next = defaultCandidates[fallbackIdx + 1];
           if (next) {
@@ -402,6 +426,11 @@ function FileEditor({
           }
         }
         setContent('');
+        if (notFound && !explicitPath) {
+          // 未显式选中文件且候选耗尽：新书还没有正文/大纲/设定 → 温和空态，引导去流程，而不是朱批报错
+          setNoContent(true);
+          return;
+        }
         setConflict(notFound ? '\u6587\u4ef6\u4e0d\u5b58\u5728\uff1a' + activePath : (e?.message ?? String(e)));
       })
       .finally(() => !cancelled && setLoading(false));
@@ -444,7 +473,14 @@ function FileEditor({
   }, [bookId]);
 
   if (!activePath) {
-    return <div style={{ color: 'var(--ink-2)' }}>该书稿暂无正文文件可选。</div>;
+    return (
+      <div style={{ color: 'var(--ink-2)', fontSize: 13, lineHeight: 2 }}>
+        还没有可编辑的内容。正文 / 大纲 / 设定会随流程逐步生成。
+        <Link to={`/novels/${bookId}/pipeline`} className="ink-btn primary" style={{ marginLeft: 10, display: 'inline-block' }}>
+          打开流程看板 →
+        </Link>
+      </div>
+    );
   }
 
   const wordCount = content.replace(/\s/g, '').length;
@@ -510,6 +546,26 @@ function FileEditor({
         </div>
       )}
 
+      {noContent && (
+        <div
+          style={{
+            border: '1px solid var(--gold-saffron)',
+            background: 'color-mix(in srgb, var(--gold-saffron) 10%, var(--paper))',
+            padding: '10px 14px',
+            borderRadius: 6,
+            margin: '8px 0',
+            fontSize: 13,
+            lineHeight: 1.9,
+          }}
+        >
+          <strong>还没有「{moduleLabel(activePath ?? '')}」内容：</strong>
+          正文 / 大纲 / 设定会随「流程」各阶段逐步生成，从需求录入起步即可。
+          <Link to={`/novels/${bookId}/pipeline`} className="ink-btn primary" style={{ marginLeft: 8, display: 'inline-block' }}>
+            去流程看板 →
+          </Link>
+        </div>
+      )}
+
       <div className="editor-frame">
         <Suspense fallback={<div style={{ padding: 16, color: 'var(--ink-2)', fontSize: 13 }}>编辑器载入中…</div>}>
           <PageEditor
@@ -538,6 +594,14 @@ function FileEditor({
       />
     </div>
   );
+}
+
+/** 根据候选路径推导模块中文名（用于空态文案） */
+function moduleLabel(path: string): string {
+  if (path.startsWith('正文/')) return '正文（章节）';
+  if (path.startsWith('大纲/')) return '大纲';
+  if (path.startsWith('设定/')) return '设定';
+  return '书稿';
 }
 
 /** 右工具廊（webui-frontend P3）：门禁快报 + AI 编辑占位 */

@@ -52,7 +52,9 @@ export function NewProjectPage() {
         navigate(`/novels/${r.book.id}/import-review`);
       } else {
         const book = await api.createBook({ name: s.name.trim(), type: s.projectType, theme_color: s.themeColor, dir: normalizeDirInput(dir, '') });
-        navigate(`/novels/${book.id}`);
+        // 新建小说项目 → 直接进「流程看板」按流程从 intake 起步（而不是掉进空白正文编辑器）；
+        // 拆文项目 → 拆文工作台。
+        navigate(s.projectType === 'teardown' ? `/teardowns/${book.id}` : `/novels/${book.id}/pipeline`);
       }
     } catch (e: any) {
       setS((p) => ({ ...p, creating: false, error: e?.message ?? String(e) }));

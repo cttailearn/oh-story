@@ -67,7 +67,7 @@ await visit('/export', ['导出与发布'], 'export.png');
 await visit('/settings', ['设置'], 'settings.png');
 const ws = await visit('/novels/' + book.id, [book.name], 'workspace.png');
 ok(ws.length > 200, '工作台渲染内容', ws.length);
-await visit('/novels/' + book.id + '/pipeline', ['流程看板', 'intake'], 'pipeline.png');
+await visit('/novels/' + book.id + '/pipeline', ['创作流程', '需求录入', 'AI 生成'], 'pipeline.png');
 await visit('/novels/' + book.id + '/import-review', ['导入校对'], 'import-review.png');
 
 await browser.close();

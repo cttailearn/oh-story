@@ -51,6 +51,8 @@ export async function registerPipelineRoutes(app: FastifyInstance, ctx: EngineRo
       revision: byId.get(s.id)?.revision ?? 0,
       requires: s.requires,
       gates: s.gates.map((g) => g.name),
+      // 产物规格（file-set 支持多文件/多类型）：前端按它展开该步应编辑/查看的文件
+      artifact: s.artifact ? { kind: s.artifact.kind, path: s.artifact.path } : null,
     }));
     return { book_id: book.id, pipeline, version: def.version, stages };
   });
