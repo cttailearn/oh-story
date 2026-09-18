@@ -13,7 +13,7 @@
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -GitHub cttailearn/oh-story
-  powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -GitHub "cttailearn/oh-story@v2.5.1"
+  powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -GitHub "cttailearn/oh-story@v2.5.2"
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -CheckUpdate
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Update
   powershell -ExecutionPolicy Bypass -File scripts/install-dsh.ps1 -Uninstall

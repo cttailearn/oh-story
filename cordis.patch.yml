@@ -4,16 +4,29 @@
 # oh-story in dsh.profile.bundles (the dsh.bundle.patch declaration in
 # package.json).
 #
-# Design (v2.5.1): instead of inserting a NEW skill-filesystem instance, this
-# patch id-targets the skill-filesystem entry that @deepseek-ai/dsh-base already
-# mounts and amends its config to ALSO scan this package's skills dir. That way:
-#  - fresh installs keep a single 'filesystem' provider (project/user roots +
-#    oh-story's skills together), no second provider instance;
-#  - stale rows from the old v2.4.x manual mount (which inserted the same
-#    'oh-story-skills' id into ~/.dsh/cordis.patch.yml) can no longer collide:
-#    overriding by id never creates a duplicate loader entry, so the whole web
-#    tree keeps booting even if the old row is still present (it is just
-#    redundant and can be removed).
+# Design (v2.5.2): id-target the `skill-filesystem` entry that
+# @deepseek-ai/dsh-base already mounts and make that provider expose this
+# package's skills profile-wide:
+#  - `disabled: false` RE-ENABLES the row. Since the agent-preset builds
+#    (dsh-plugin-desktop 2.0.x with @deepseek-ai/* 0.1.x-rc), dsh-web-app
+#    DISABLES the global `skill-filesystem` row and each agent preset mounts
+#    its OWN per-scope copy instead. A patch that only appended
+#    `customSkillDirs` (v2.5.1) silently did nothing there — the target row
+#    was disabled, so the installed package's skills never registered and
+#    nothing appeared for ordinary sessions ("installed but not effective").
+#    Re-enabling the host row registers a GLOBAL-layer provider, and every
+#    session's catalog merges the global layer, so the skills become visible
+#    in all profiles/sessions. On older builds that never disable the row,
+#    `disabled: false` is simply a no-op.
+#  - `includeDefaultRoots: false` keeps this provider ISOLATED to the
+#    package's own skills dir. It must not re-scan project/user roots — the
+#    preset's own `skill-filesystem` already owns those, and a second scan
+#    would duplicate discovery. (dshHome/agentsHome/bundledSkillDir fall back
+#    sensibly when absent.)
+#  - Overriding by id never creates a duplicate loader entry, so stale rows
+#    from the old v2.4.x manual mount (same 'oh-story-skills' id in the home
+#    patch) can no longer collide: the whole tree keeps booting even if the
+#    old row is still present (it is just redundant and can be removed).
 #
 # Path resolution: baseUrl anchors at the profile directory (the include root
 # is <profile>/cordis.yml), so node_modules/oh-story/skills/ resolves to the
@@ -21,6 +34,8 @@
 # against process.cwd(), which is why the entry is baked to an absolute file
 # path with the standard fileURLToPath(..., baseUrl) expression.
 - id: skill-filesystem
+  disabled: false
   config:
+    includeDefaultRoots: false
     customSkillDirs:
       - !!js process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/oh-story/skills/', baseUrl))

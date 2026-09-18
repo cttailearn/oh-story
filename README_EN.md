@@ -33,7 +33,7 @@ layered context-state management · human-AI collaboration.
 ### pi channel (git)
 
 ```bash
-pi install git:github.com/cttailearn/oh-story@v2.5.1
+pi install git:github.com/cttailearn/oh-story@v2.5.2
 ```
 
 Update / uninstall:
@@ -49,21 +49,26 @@ pi remove git:github.com/cttailearn/oh-story        # uninstall
 Since v2.5.0 oh-story is a **native dsh profile-layer plugin**: its package.json declares
 `dsh.bundle` metadata (the Plugins page shows it as a live/active profile-layer plugin) and
 ships `cordis.patch.yml`, which **id-targets the `skill-filesystem` entry that
-`@deepseek-ai/dsh-base` already mounts** and appends `node_modules/oh-story/skills` to its
-`customSkillDirs` for the whole profile. **Install and restart once — no manual
+`@deepseek-ai/dsh-base` already mounts**, appends `node_modules/oh-story/skills` to its
+`customSkillDirs`, and **re-enables the row** (`disabled: false`, v2.5.2): agent-preset
+builds (dsh-plugin-desktop 2.0.x) disable the global `skill-filesystem` row and give each
+agent preset its own copy, so v2.5.1's patch-append alone hit a disabled row and the skills
+never registered ("installed but not effective"). v2.5.2 re-enables the global row with
+`includeDefaultRoots: false` (isolated to the package's own skills), so the 13 skills are
+visible across the whole profile and every session. **Install and restart once — no manual
 `~/.dsh/cordis.patch.yml` edits needed** (a stale manual mount row is redundant, not fatal).
 
 ```powershell
 # Install from GitHub (pinned release tag, recommended)
-dsh plugin --profile web add github:cttailearn/oh-story#v2.5.1
+dsh plugin --profile web add github:cttailearn/oh-story#v2.5.2
 
 # Or install the latest main-branch content (dev build)
 dsh plugin --profile web add github:cttailearn/oh-story
 ```
 
 **How versions are picked**: the bare source `github:cttailearn/oh-story` (no `#tag`)
-**auto-installs the latest main-branch release** (currently v2.5.1 — verified), while `#tag`
-(e.g. `#v2.5.1`) pins an exact release for reproducible/stable installs. To pull newer code
+**auto-installs the latest main-branch release** (currently v2.5.2 — verified), while `#tag`
+(e.g. `#v2.5.2`) pins an exact release for reproducible/stable installs. To pull newer code
 on an existing bare install, change the ref and re-`add` (pnpm re-resolves the branch HEAD).
 
 Update / uninstall (dsh adds the package to `dsh.profile.bundles` on install; reconcile
@@ -77,7 +82,7 @@ dsh plugin --profile web remove oh-story                        # uninstall (rem
 > **Upgrading from v2.4.x**: the old `oh-story-skills` mount row (the whole `- insert:` block)
 > manually appended to `~/.dsh/cordis.patch.yml` can be **deleted** — since v2.5.1 the in-package
 > bundle mounts via an id-targeted override, so it no longer collides and is merely redundant if
-> left (it never blocks a dsh boot). Delete it, reinstall v2.5.1 and restart the session.
+> left (it never blocks a dsh boot). Delete it, reinstall v2.5.2 and restart the session.
 >
 > **Local development**: `dsh plugin --profile web add link:<local clone path>` (`link:` creates a
 > junction to the repo; `git pull` updates it without reinstalling).
@@ -284,11 +289,11 @@ subagents. Skill bodies and the knowledge base ship with the pi package
 
 ## Platforms
 
-- **pi**: first-class. `pi install git:github.com/cttailearn/oh-story@v2.5.1` makes all 13 skills
+- **pi**: first-class. `pi install git:github.com/cttailearn/oh-story@v2.5.2` makes all 13 skills
   available; the `/story` command alias comes from the in-package extension; agents deploy to
   `.pi/agents/`. npm publishing is deferred due to account 2FA policy (the `oh-story` name is reserved).
 - **dsh (DeepSeek Harness)**: first-class (a `dsh.bundle` profile-layer plugin since v2.5.0).
-  `dsh plugin --profile web add github:cttailearn/oh-story#v2.5.1` — the 13 skills are mounted by
+  `dsh plugin --profile web add github:cttailearn/oh-story#v2.5.2` — the 13 skills are mounted by
   the in-package bundle patch and visible across the whole profile (the Plugins page shows it as
   loaded/active); trigger via `/story`, `/story-*` or natural language; agent prompt templates
   deploy to `.dsh/story-agents/`.

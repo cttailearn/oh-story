@@ -1,3 +1,35 @@
+## v2.5.2（修复 dsh agent-preset 构建下安装后 skills 未生效）
+
+> 在 agent-preset 构建的 dsh 上（dsh-plugin-desktop 2.0.11 + @deepseek-ai/* 0.1.x-rc，如本机
+> DSH Desktop），`dsh web` / `desktop` profile 把 skill 发现的「agent plane」移到 agent
+> preset：`@deepseek-ai/dsh-web-app` 把全局 `skill-filesystem` 行 `disabled: true`，由各
+> preset 自行挂载 per-scope 的副本。v2.5.1 的 bundle patch 只往这行追加
+> `customSkillDirs`，命中的是一条被禁用的条目——**安装后 skills 根本不注册**（
+> 「安装了但未生效」）。经 @deepseek-ai/dsh-app-boot 对 web / desktop profile 实机
+> `composeEntries` 复现确认：v2.5.1 组合结果为 `disabled: true`。
+
+### 修复
+
+- **bundle patch 重新启用全局 `skill-filesystem` 行并隔离到包内 skills**（`cordis.patch.yml`）：
+  - `disabled: false`：把被 agent-preset 构建禁用、但仍是技能注册表全局层的宿主行重新启用。
+    全局层是每个会话都合并读的层（dsh-skill 的 host+per-scope 分层设计），启用后包内 13 个
+    skill 对全 profile / 全会话可见；老构建（该行本就没被禁用）里 `disabled: false` 是无害空操作。
+  - `includeDefaultRoots: false`：该提供方只扫描包内 `skills/`，不再重复扫描项目/用户根
+    （项目/用户根由 preset 自己的 skill-filesystem 副本负责，避免重复发现）。
+  - 仍为按 id 覆盖（无 insert、新 id），不引入重复 entry id，v2.5.1 的防崩溃保证不变。
+- **回归测试** `tests/dsh-bundle-patch.test.mjs`：断言 patch 含 `disabled: false` 与
+  `includeDefaultRoots: false`，防止未来被改回「只挂 customSkillDirs = 对 disabled 行无效」。
+- 版本号 2.5.1 → 2.5.2（四源同步）。
+
+### 升级
+
+- 重新下载 / 更新包后**重启 dsh 会话**（安装 / 更新后 skills 在下次启动装载）。
+- 若此前按**裸源** `github:cttailearn/oh-story` 安装：pnpm 的 lockfile 会把旧提交 pin 住，
+  更新时请**换 ref 重新 add**（如 `dsh plugin --profile web add github:cttailearn/oh-story#v2.5.2`，
+  或先 `remove oh-story` 再 `add`），否则拉到的是旧版。
+- 本机已装 `@michengai/dsh-skills-manager` 会把「仓库自身目录」当作项目技能源扫描 —— 当前
+  会话里能看到 story-* 正来源于此，与 bundle 加载是两套机制；修复后 bundle 才是全局生效的渠道。
+
 ## v2.5.1（修复 dsh 安装后启动崩溃）
 
 > 修复 v2.5.0 的严重回归：`dsh web` 在安装 oh-story 后无法启动，报
